@@ -308,33 +308,6 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
         }
-        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter with Special Characters" {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample[]File.txt"
-            "Some Random Content" | Out-File -LiteralPath $sourcePath
-            $destinationPath = "$TestDrive\SampleSingleFileWithSpecialCharacters.zip"
-            try
-            {
-                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
-        	    Test-Path -LiteralPath $destinationPath | Should Be $true
-            }
-            finally
-            {
-                Remove-Item -LiteralPath $sourcePath -Force
-            }
-        }
-        It "Validate that Compress-Archive cmdlet can accept DestinationPath parameter with Special Characters" {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
-            $destinationPath = "$TestDrive\Sample[]SingleFile.zip"
-            try
-            {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-        	    Test-Path -LiteralPath $destinationPath | Should Be $true
-            }
-            finally
-            {
-                Remove-Item -LiteralPath $destinationPath -Force
-            }
-        }
         It "Validate that Source Path can be at SystemDrive location" {
             $sourcePath = "$env:SystemDrive\SourceDir"
             $destinationPath = "$TestDrive\SampleFromSystemDrive.zip"
@@ -621,44 +594,15 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             $destinationPath = "$TestDrive\DestDirForBasicExpand"
             $files = @("Sample-1.txt", "Sample-2.txt")
 
-            # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
-            $fileCreationTimeStamp = "6/13/2014 3:50:20 PM"
-
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
             foreach($currentFile in $files)
             {
                 $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
                 Test-Path $expandedFile | Should Be $True
-
-                # We are validating to make sure that time stamps are preserved in the 
-                # compressed archive are reflected back when the file is expanded. 
-                (dir $expandedFile).LastWriteTime.ToString() | Should Be $fileCreationTimeStamp
-                
                 Get-Content $expandedFile | Should Be $content
             }
         }
-        It "Validate Expand-Archive scenario where DestinationPath has Special Characters" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
-            $content = "Some Data"
-            $destinationPath = "$TestDrive\DestDir[]Expand"
-            $files = @("Sample-1.txt", "Sample-2.txt")
 
-            # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
-            $fileCreationTimeStamp = "6/13/2014 3:50:20 PM"
-
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
-            foreach($currentFile in $files)
-            {
-                $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
-                Test-Path -LiteralPath $expandedFile | Should Be $True
-
-                # We are validating to make sure that time stamps are preserved in the 
-                # compressed archive are reflected back when the file is expanded. 
-                (dir -LiteralPath $expandedFile).LastWriteTime.ToString() | Should Be $fileCreationTimeStamp
-                
-                Get-Content -LiteralPath $expandedFile | Should Be $content
-            }
-        }
         It "Invoke Expand-Archive with relative path in Path parameter and -Force parameter" {
             $sourcePath = ".\SamplePreCreatedArchive.zip"
             $destinationPath = "$TestDrive\SomeOtherNonExistingDir\Path"
