@@ -306,7 +306,73 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
             $destinationPath = "$TestDrive\SampleSingleFile.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-        	Test-Path $destinationPath | Should Be $true
+            $destinationPath | Should Exist
+        }
+        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter with Special Characters" {
+            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample[]File.txt"
+            "Some Random Content" | Out-File -LiteralPath $sourcePath
+            $destinationPath = "$TestDrive\SampleSingleFileWithSpecialCharacters.zip"
+            try
+            {
+                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
+                $destinationPath | Should Exist
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $sourcePath -Force
+            }
+        }
+        It "Validate that Compress-Archive cmdlet errors out when DestinationPath resolves to multiple locations" {
+
+            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
+            New-Item $TestDrive\SampleDir\Child-2 -Type Directory -Force | Out-Null
+            New-Item $TestDrive\SampleDir\Test.txt -Type File -Force | Out-Null
+
+            $destinationPath = "$TestDrive\SampleDir\Child-*\SampleChidArchive.zip"
+            $sourcePath = "$TestDrive\SampleDir\Test.txt"
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                throw "Failed to detect that destination $destinationPath can resolve to multiple paths"
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should Be "InvalidArchiveFilePath,Compress-Archive"
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+            }
+        }
+        It "Validate that Compress-Archive cmdlet works when DestinationPath has wild card pattern and resolves to a single valid path" {
+
+            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
+            New-Item $TestDrive\SampleDir\Test.txt -Type File -Force | Out-Null
+
+            $destinationPath = "$TestDrive\SampleDir\Child-*\SampleChidArchive.zip"
+            $sourcePath = "$TestDrive\SampleDir\Test.txt"
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                $destinationPath | Should Exist
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+            }
+        }
+        It "Validate that Compress-Archive cmdlet can accept DestinationPath parameter with Special Characters" {
+            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
+            $destinationPath = "$TestDrive\Sample[]SingleFile.zip"
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+        	    Test-Path -LiteralPath $destinationPath | Should Be $true
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $destinationPath -Force
+            }
         }
         It "Validate that Source Path can be at SystemDrive location" {
             $sourcePath = "$env:SystemDrive\SourceDir"
@@ -594,15 +660,80 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             $destinationPath = "$TestDrive\DestDirForBasicExpand"
             $files = @("Sample-1.txt", "Sample-2.txt")
 
+            # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
+            $fileCreationTimeStamp = "6/13/2014 3:50:20 PM"
+
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
             foreach($currentFile in $files)
             {
                 $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
                 Test-Path $expandedFile | Should Be $True
+
+                # We are validating to make sure that time stamps are preserved in the 
+                # compressed archive are reflected back when the file is expanded. 
+                (dir $expandedFile).LastWriteTime.ToString() | Should Be $fileCreationTimeStamp
+                
                 Get-Content $expandedFile | Should Be $content
             }
         }
+        It "Validate that Expand-Archive cmdlet errors out when DestinationPath resolves to multiple locations" {
+            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
+            New-Item $TestDrive\SampleDir\Child-2 -Type Directory -Force | Out-Null
 
+            $destinationPath = "$TestDrive\SampleDir\Child-*"
+            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            try
+            {
+                Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+                throw "Failed to detect that destination $destinationPath can resolve to multiple paths"
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should Be "InvalidDestinationPath,Expand-Archive"
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+            }
+        }
+        It "Validate that Expand-Archive cmdlet works when DestinationPath resolves has wild card pattern and resolves to a single valid path" {
+            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
+
+            $destinationPath = "$TestDrive\SampleDir\Child-*"
+            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            try
+            {
+                Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+                $expandedFiles = Get-ChildItem $destinationPath -Recurse
+                $expandedFiles.Length | Should BeGreaterThan 1       
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+            }
+        }
+        It "Validate Expand-Archive scenario where DestinationPath has Special Characters" {
+            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            $content = "Some Data"
+            $destinationPath = "$TestDrive\DestDir[]Expand"
+            $files = @("Sample-1.txt", "Sample-2.txt")
+
+            # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
+            $fileCreationTimeStamp = "6/13/2014 3:50:20 PM"
+
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            foreach($currentFile in $files)
+            {
+                $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
+                Test-Path -LiteralPath $expandedFile | Should Be $True
+
+                # We are validating to make sure that time stamps are preserved in the 
+                # compressed archive are reflected back when the file is expanded. 
+                (dir -LiteralPath $expandedFile).LastWriteTime.ToString() | Should Be $fileCreationTimeStamp
+                
+                Get-Content -LiteralPath $expandedFile | Should Be $content
+            }
+        }
         It "Invoke Expand-Archive with relative path in Path parameter and -Force parameter" {
             $sourcePath = ".\SamplePreCreatedArchive.zip"
             $destinationPath = "$TestDrive\SomeOtherNonExistingDir\Path"
