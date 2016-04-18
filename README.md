@@ -1,5 +1,5 @@
-# Archive-Module
-[The Archive module](https://technet.microsoft.com/en-us/library/dn818910.aspx) contains cmdlets that let you create and extract ZIP archives.
+# Microsoft.PowerShell.Archive Module
+[Microsoft.PowerShell.Archive module](https://technet.microsoft.com/en-us/library/dn818910.aspx) contains cmdlets that let you create and extract ZIP archives.
 
 ## [Compress-Archive](https://technet.microsoft.com/library/dn841358.aspx) examples
 1. Create an archive from an entire folder including subdirectories: `Compress-Archive -Path C:\Reference -DestinationPath C:\Archives\Draft.zip`
