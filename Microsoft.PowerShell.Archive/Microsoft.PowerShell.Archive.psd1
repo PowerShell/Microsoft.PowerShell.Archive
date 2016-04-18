@@ -5,6 +5,8 @@ CompanyName="Microsoft Corporation"
 Copyright="© Microsoft Corporation. All rights reserved."
 ModuleVersion="1.0.0.0"
 FunctionsToExport = @('Compress-Archive', 'Expand-Archive')
+CmdletsToExport = @()
+AliasesToExport = @()
 NestedModules="Microsoft.PowerShell.Archive.psm1"
 HelpInfoURI = 'http://go.microsoft.com/fwlink/?LinkId=393254'
 }
