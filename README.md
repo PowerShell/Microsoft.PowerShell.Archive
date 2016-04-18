@@ -11,6 +11,6 @@
 
 =============
 
-|Master   |Development |
-|:------:|:-------:|:-------:|
-[![Build status](https://ci.appveyor.com/api/projects/status/2c5glo1kuveayorx/branch/master?svg=true)](https://ci.appveyor.com/project/PowerShell/archive-module/branch/master)|[![Build status](https://ci.appveyor.com/api/projects/status/2c5glo1kuveayorx/branch/develop?svg=true)](https://ci.appveyor.com/project/PowerShell/archive-module/branch/develop)|
+|Master   |
+|:------:|:-------:|
+[![Build status](https://ci.appveyor.com/api/projects/status/t09difl1p5litxrd/branch/master?svg=true)](https://ci.appveyor.com/project/PowerShell/microsoft-powershell-archive/branch/master)|
