@@ -4,7 +4,7 @@
  # used for validating Microsoft.PowerShell.Archive module.
  ############################################################################################>
 $script:TestSourceRoot = $PSScriptRoot
-Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" {
+Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
     BeforeAll {
         
@@ -26,6 +26,18 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
 
         $preCreatedArchivePath = Join-Path $script:TestSourceRoot "SamplePreCreatedArchive.archive"
         Copy-Item $preCreatedArchivePath $TestDrive\SamplePreCreatedArchive.zip -Force
+    }
+
+    function Add-CompressionAssemblies {
+        Add-Type -AssemblyName System.IO.Compression
+        if ($psedition -eq "Core")
+        {
+            Add-Type -AssemblyName System.IO.Compression.ZipFile
+        }
+        else
+        {
+            Add-Type -AssemblyName System.IO.Compression.FileSystem
+        }
     }
 
     function CompressArchivePathParameterSetValidator {
@@ -113,7 +125,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             [int] $expectedEntryCount
         )
 
-        Add-Type -AssemblyName System.IO.Compression
+        Add-CompressionAssemblies
         try
         {
             $archiveFileStreamArgs = @($path, [System.IO.FileMode]::Open)
@@ -140,7 +152,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             [string] $expectedEntryFileContent
         )
         
-        Add-Type -AssemblyName System.IO.Compression
+        Add-CompressionAssemblies
         try
         {
             $destFile = "$TestDrive\ExpandedFile"+(New-Guid).ToString()+".txt"
@@ -661,7 +673,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             $files = @("Sample-1.txt", "Sample-2.txt")
 
             # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
-            $fileCreationTimeStamp = "6/13/2014 3:50:20 PM"
+            $fileCreationTimeStamp = Get-Date -Year 2014 -Month 6 -Day 13 -Hour 15 -Minute 50 -Second 20 -Millisecond 0
 
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
             foreach($currentFile in $files)
@@ -671,7 +683,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
 
                 # We are validating to make sure that time stamps are preserved in the 
                 # compressed archive are reflected back when the file is expanded. 
-                (dir $expandedFile).LastWriteTime.ToString() | Should Be $fileCreationTimeStamp
+                (dir $expandedFile).LastWriteTime.CompareTo($fileCreationTimeStamp) | Should Be 0
                 
                 Get-Content $expandedFile | Should Be $content
             }
@@ -719,7 +731,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             $files = @("Sample-1.txt", "Sample-2.txt")
 
             # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
-            $fileCreationTimeStamp = "6/13/2014 3:50:20 PM"
+            $fileCreationTimeStamp = Get-Date -Year 2014 -Month 6 -Day 13 -Hour 15 -Minute 50 -Second 20 -Millisecond 0
 
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
             foreach($currentFile in $files)
@@ -729,7 +741,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
 
                 # We are validating to make sure that time stamps are preserved in the 
                 # compressed archive are reflected back when the file is expanded. 
-                (dir -LiteralPath $expandedFile).LastWriteTime.ToString() | Should Be $fileCreationTimeStamp
+                (dir -LiteralPath $expandedFile).LastWriteTime.CompareTo($fileCreationTimeStamp) | Should Be 0
                 
                 Get-Content -LiteralPath $expandedFile | Should Be $content
             }
@@ -805,7 +817,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "Innerloop" 
             $destinationPath = "$TestDrive\FileAndDirTree"
             $sourceList = dir $sourcePath -Name
 
-            Add-Type -AssemblyName System.IO.Compression.FileSystem
+            Add-CompressionAssemblies
             [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcePath, $archivePath)
 
             Expand-Archive -Path $archivePath -DestinationPath $destinationPath
