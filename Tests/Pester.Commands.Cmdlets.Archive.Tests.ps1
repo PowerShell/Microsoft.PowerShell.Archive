@@ -155,7 +155,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         Add-CompressionAssemblies
         try
         {
-            $destFile = "$TestDrive\ExpandedFile"+(New-Guid).ToString()+".txt"
+            $destFile = "$TestDrive\ExpandedFile"+([System.Guid]::NewGuid().ToString())+".txt"
     
             $archiveFileStreamArgs = @($path, [System.IO.FileMode]::Open)
             $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
@@ -181,8 +181,14 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
         finally
         {
-            $zipArchive.Dispose()
-            $archiveFileStream.Dispose()
+            if ($zipArchive)
+            {
+                $zipArchive.Dispose()
+            }
+            if ($archiveFileStream)
+            {
+                $archiveFileStream.Dispose()
+            }
         }
     }
 
@@ -320,7 +326,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should Exist
         }
-        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter with Special Characters" {
+        # This test requires a fix in PS5 to support reading paths with square bracket
+        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter with Special Characters" -skip:($PSVersionTable.psversion -lt "5.0") {
             $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample[]File.txt"
             "Some Random Content" | Out-File -LiteralPath $sourcePath
             $destinationPath = "$TestDrive\SampleSingleFileWithSpecialCharacters.zip"
@@ -371,6 +378,22 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             finally
             {
                 Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+            }
+        }
+        # This test requires a fix in PS5 to support reading paths with square bracket
+        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter for a directory with Special Characters in the directory name" -skip:($PSVersionTable.psversion -lt "5.0") {
+            $sourcePath = "$TestDrive\Source[]Dir\ChildDir[]-1"
+            New-Item $sourcePath -Type Directory | Out-Null
+            "Some Random Content" | Out-File -LiteralPath "$sourcePath\Sample[]File.txt"
+            $destinationPath = "$TestDrive\SampleDirWithSpecialCharacters.zip"
+            try
+            {
+                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
+                $destinationPath | Should Exist
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $sourcePath -Force -Recurse
             }
         }
         It "Validate that Compress-Archive cmdlet can accept DestinationPath parameter with Special Characters" {
