@@ -621,6 +621,27 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 $ps.Dispose()
             }
         }
+
+        It "Validate that Compress-Archive returns nothing when -PassThru is not used" {
+            $sourcePath = @("$TestDrive\SourceDir")
+            $destinationPath = "$TestDrive\NoPassThruTest.zip"
+            $archive = Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $archive | Should Be $null
+        }
+
+        It "Validate that Compress-Archive returns nothing when -PassThru is used with a value of $false" {
+            $sourcePath = @("$TestDrive\SourceDir")
+            $destinationPath = "$TestDrive\FalsePassThruTest.zip"
+            $archive = Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -PassThru:$false
+            $archive | Should Be $null
+        }
+
+        It "Validate that Compress-Archive returns the archive when invoked with -PassThru" {
+            $sourcePath = @("$TestDrive\SourceDir")
+            $destinationPath = "$TestDrive\PassThruTest.zip"
+            $archive = Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -PassThru
+            $archive.FullName | Should Be $destinationPath
+        }
     }
 
     Context "Expand-Archive - Parameter validation test cases" {
@@ -946,6 +967,49 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             {
                 Pop-Location
             }
+        }
+
+        It "Validate that Expand-Archive returns nothing when -PassThru is not used" {
+            $sourcePath = "$TestDrive\SourceDir"
+            $archivePath = "$TestDrive\NoPassThruTestForExpand.zip"
+            $destinationPath = "$TestDrive\NoPassThruTest"
+            $sourceList = dir $sourcePath -Name
+
+            Add-CompressionAssemblies
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcePath, $archivePath)
+
+            $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath
+
+            $contents | Should Be $null
+        }
+
+        It "Validate that Expand-Archive returns nothing when -PassThru is used with a value of $false" {
+            $sourcePath = "$TestDrive\SourceDir"
+            $archivePath = "$TestDrive\FalsePassThruTestForExpand.zip"
+            $destinationPath = "$TestDrive\FalsePassThruTest"
+            $sourceList = dir $sourcePath -Name
+
+            Add-CompressionAssemblies
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcePath, $archivePath)
+
+            $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -PassThru:$false
+
+            $contents | Should Be $null
+        }
+
+        It "Validate that Expand-Archive returns the contents of the archive -PassThru" {
+            $sourcePath = "$TestDrive\SourceDir"
+            $archivePath = "$TestDrive\PassThruTestForExpand.zip"
+            $destinationPath = "$TestDrive\PassThruTest"
+            $sourceList = dir $sourcePath -Name
+
+            Add-CompressionAssemblies
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcePath, $archivePath)
+
+            $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -PassThru | Sort-Object -Property PSParentPath,PSIsDirectory,Name
+            $extractedList = Get-ChildItem -Recurse -LiteralPath $destinationPath
+
+            Compare-Object -ReferenceObject $extractedList -DifferenceObject $contents -PassThru | Should Be $null
         }
     }
 }
