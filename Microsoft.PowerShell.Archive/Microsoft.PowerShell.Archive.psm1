@@ -21,6 +21,7 @@
     InvalidDestinationPath=The destination path '{0}' does not contain a valid archive file name.
     PreparingToCompressVerboseMessage=Preparing to compress...
     PreparingToExpandVerboseMessage=Preparing to expand...
+    ItemDoesNotAppearToBeAValidZipArchive=File '{0}' does not appear to be a valid zip archive.
 '@
 }
 
@@ -79,7 +80,7 @@ function Compress-Archive
     )
 
     BEGIN 
-    {         
+    {
         $inputPaths = @()
         $destinationParentDir = [system.IO.Path]::GetDirectoryName($DestinationPath)
         if($null -eq $destinationParentDir)
@@ -93,7 +94,7 @@ function Compress-Archive
             $destinationParentDir = '.'
         }
 
-        $achiveFileName = [system.IO.Path]::GetFileName($DestinationPath)
+        $archiveFileName = [system.IO.Path]::GetFileName($DestinationPath)
         $destinationParentDir = GetResolvedPathHelper $destinationParentDir $false $PSCmdlet
         
         if($destinationParentDir.Count -gt 1)
@@ -103,27 +104,18 @@ function Compress-Archive
         }
 
         IsValidFileSystemPath $destinationParentDir | Out-Null
-        $DestinationPath = Join-Path -Path $destinationParentDir -ChildPath $achiveFileName
+        $DestinationPath = Join-Path -Path $destinationParentDir -ChildPath $archiveFileName
 
         # GetExtension API does not validate for the actual existance of the path.
         $extension = [system.IO.Path]::GetExtension($DestinationPath)
 
-        # If user does not specify .Zip extension, we append it.
+        # If user does not specify an extension, we append the .zip extension automatically.
         If($extension -eq [string]::Empty)
         {
             $DestinationPathWithOutExtension = $DestinationPath
             $DestinationPath = $DestinationPathWithOutExtension + $zipFileExtension   
             $appendArchiveFileExtensionMessage = ($LocalizedData.AppendArchiveFileExtensionMessage -f $DestinationPathWithOutExtension, $DestinationPath)
             Write-Verbose $appendArchiveFileExtensionMessage
-        }
-        else
-        {
-            # Invalid file extension is specified for the zip file to be created.
-            if($extension -ne $zipFileExtension)
-            {
-                $errorMessage = ($LocalizedData.InvalidZipFileExtensionError -f $extension, $zipFileExtension)
-                ThrowTerminatingErrorHelper "NotSupportedArchiveFileExtension" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $extension
-            }
         }
 
         $archiveFileExist = Test-Path -LiteralPath $DestinationPath -PathType Leaf
@@ -889,18 +881,7 @@ function ValidateArchivePathHelper
         [string] $archiveFile
     )
 
-    if([System.IO.File]::Exists($archiveFile))
-    {
-        $extension = [system.IO.Path]::GetExtension($archiveFile)
-
-        # Invalid file extension is specifed for the zip file.
-        if($extension -ne $zipFileExtension)
-        {
-            $errorMessage = ($LocalizedData.InvalidZipFileExtensionError -f $extension, $zipFileExtension)
-            ThrowTerminatingErrorHelper "NotSupportedArchiveFileExtension" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $extension
-        }
-    }
-    else
+    if(-not [System.IO.File]::Exists($archiveFile))
     {
         $errorMessage = ($LocalizedData.PathNotFoundError -f $archiveFile)
         ThrowTerminatingErrorHelper "PathNotFound" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $archiveFile
@@ -933,7 +914,28 @@ function ExpandArchiveHelper
         $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
 
         $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
-        $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
+        try
+        {
+            $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
+        }
+        catch [System.IO.InvalidDataException]
+        {
+            # Failed to open the file for reading as a zip archive. Wrap the exception
+            # and re-throw it indicating it does not appear to be a valid zip file.
+            $exception = $_.Exception
+            if($null -ne $_.Exception -and 
+               $null -ne $_.Exception.InnerException)
+            {
+                $exception = $_.Exception.InnerException
+            }
+            # Load the WindowsBase.dll assembly to get access to the System.IO.FileFormatException class
+            [System.Reflection.Assembly]::Load('WindowsBase,Version=4.0.0.0,Culture=neutral,PublicKeyToken=31bf3856ad364e35')
+            $invalidFileFormatException = New-Object -TypeName System.IO.FileFormatException -ArgumentList @(
+                ($LocalizedData.ItemDoesNotAppearToBeAValidZipArchive -f $archiveFile)
+                $exception
+            )
+            throw $invalidFileFormatException
+        }
 
         if($zipArchive.Entries.Count -eq 0)
         {

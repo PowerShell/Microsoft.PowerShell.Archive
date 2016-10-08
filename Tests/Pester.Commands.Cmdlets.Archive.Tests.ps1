@@ -261,11 +261,16 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             $path = @("$TestDrive", "HKLM:\SOFTWARE")
             CompressArchiveInValidPathValidator $path $TestDrive "HKLM:\SOFTWARE" "PathNotFound,Compress-Archive"
 
-            $invalidUnZipFileFormat = "$TestDrive\Sample.unzip"
-            CompressArchiveInValidArchiveFileExtensionValidator $TestDrive "$invalidUnZipFileFormat" ".unzip"
+            # The tests below are no longer valid. You can have zip files with non-zip extensions. Different archive
+            # formats should be added in a separate pull request, with a parameter to identify the archive format, and
+            # default formats associated with specific extensions. Until then, as long as these cmdlets only support
+            # Zip files, any file extension is supported.
+
+            #$invalidUnZipFileFormat = "$TestDrive\Sample.unzip"
+            #CompressArchiveInValidArchiveFileExtensionValidator $TestDrive "$invalidUnZipFileFormat" ".unzip"
             
-            $invalidcabZipFileFormat = "$TestDrive\Sample.cab"
-            CompressArchiveInValidArchiveFileExtensionValidator $TestDrive "$invalidcabZipFileFormat" ".cab"
+            #$invalidcabZipFileFormat = "$TestDrive\Sample.cab"
+            #CompressArchiveInValidArchiveFileExtensionValidator $TestDrive "$invalidcabZipFileFormat" ".cab"
         }
 
         It "Validate error from Compress-Archive when archive file already exists and -Update parameter is not specified" {
@@ -621,6 +626,13 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 $ps.Dispose()
             }
         }
+
+        It "Validate that Compress-Archive can create a zip archive that has a different extension" {
+            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
+            $destinationPath = "$TestDrive\DifferentZipExtension.dat"
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should Exist
+        }
     }
 
     Context "Expand-Archive - Parameter validation test cases" {
@@ -820,19 +832,23 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
 
-        It "Invoke Expand-Archive with unsupported archive format" {
-            $sourcePath = "$TestDrive\Sample.cab"
-            $destinationPath = "$TestDrive\UnsupportedArchiveFormatDir"
-            try
-            {
-                Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -Force
-                throw "Failed to detect unsupported archive format at $sourcePath"
-            }
-            catch
-            {
-                $_.FullyQualifiedErrorId | Should Be "NotSupportedArchiveFileExtension,Expand-Archive"
-            }
-        }
+        # The test below is no longer valid. You can have zip files with non-zip extensions. Different archive
+        # formats should be added in a separate pull request, with a parameter to identify the archive format, and
+        # default formats associated with specific extensions. Until then, as long as these cmdlets only support
+        # Zip files, any file extension is supported.
+        #It "Invoke Expand-Archive with unsupported archive format" {
+        #    $sourcePath = "$TestDrive\Sample.cab"
+        #    $destinationPath = "$TestDrive\UnsupportedArchiveFormatDir"
+        #    try
+        #    {
+        #        Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -Force
+        #        throw "Failed to detect unsupported archive format at $sourcePath"
+        #    }
+        #    catch
+        #    {
+        #        $_.FullyQualifiedErrorId | Should Be "NotSupportedArchiveFileExtension,Expand-Archive"
+        #    }
+        #}
 
         It "Invoke Expand-Archive with archive file containing multiple files, directories with subdirectories and empty directories" {
             $sourcePath = "$TestDrive\SourceDir"
@@ -947,5 +963,21 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 Pop-Location
             }
         }
+
+        It "Validate Expand-Archive works with zip files that have non-zip file extensions" {
+            $sourcePath = "$TestDrive\SourceDir"
+            $archivePath = "$TestDrive\NonZipFileExtension.dat"
+            $destinationPath = "$TestDrive\NonZipFileExtension"
+            $sourceList = dir $sourcePath -Name
+
+            Add-CompressionAssemblies
+            [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcePath, $archivePath)
+
+            Expand-Archive -Path $archivePath -DestinationPath $destinationPath
+            $extractedList = dir $destinationPath -Name
+
+            Compare-Object -ReferenceObject $extractedList -DifferenceObject $sourceList -PassThru | Should Be $null
+        }
+
     }
 }
