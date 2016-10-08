@@ -1007,7 +1007,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             [System.IO.Compression.ZipFile]::CreateFromDirectory($sourcePath, $archivePath)
 
             $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -PassThru | Sort-Object -Property PSParentPath,PSIsDirectory,Name
-            $extractedList = Get-ChildItem -Recurse -LiteralPath $destinationPath
+            # We pipe Get-ChildItem to Get-Item here because the ToString results are different between the two, and we
+            # need to compare with other Get-Item results
+            $extractedList = Get-ChildItem -Recurse -LiteralPath $destinationPath | Get-Item
 
             Compare-Object -ReferenceObject $extractedList -DifferenceObject $contents -PassThru | Should Be $null
         }
