@@ -79,162 +79,183 @@ function Compress-Archive
     )
 
     BEGIN 
-    {         
-        $inputPaths = @()
-        $destinationParentDir = [system.IO.Path]::GetDirectoryName($DestinationPath)
-        if($null -eq $destinationParentDir)
+    {
+        try
         {
-            $errorMessage = ($LocalizedData.InvalidDestinationPath -f $DestinationPath)
-            ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
-        }
+            $inputPaths = @()
+            $destinationParentDir = [system.IO.Path]::GetDirectoryName($DestinationPath)
+            if($null -eq $destinationParentDir)
+            {
+                $errorMessage = ($LocalizedData.InvalidDestinationPath -f $DestinationPath)
+                ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
+            }
 
-        if($destinationParentDir -eq [string]::Empty)
-        {
-            $destinationParentDir = '.'
-        }
+            if($destinationParentDir -eq [string]::Empty)
+            {
+                $destinationParentDir = '.'
+            }
 
-        $achiveFileName = [system.IO.Path]::GetFileName($DestinationPath)
-        $destinationParentDir = GetResolvedPathHelper $destinationParentDir $false $PSCmdlet
+            $achiveFileName = [system.IO.Path]::GetFileName($DestinationPath)
+            $destinationParentDir = GetResolvedPathHelper $destinationParentDir $false $PSCmdlet
         
-        if($destinationParentDir.Count -gt 1)
-        {
-            $errorMessage = ($LocalizedData.InvalidArchiveFilePathError -f $DestinationPath, "DestinationPath", "DestinationPath")
-            ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
-        }
-
-        IsValidFileSystemPath $destinationParentDir | Out-Null
-        $DestinationPath = Join-Path -Path $destinationParentDir -ChildPath $achiveFileName
-
-        # GetExtension API does not validate for the actual existance of the path.
-        $extension = [system.IO.Path]::GetExtension($DestinationPath)
-
-        # If user does not specify .Zip extension, we append it.
-        If($extension -eq [string]::Empty)
-        {
-            $DestinationPathWithOutExtension = $DestinationPath
-            $DestinationPath = $DestinationPathWithOutExtension + $zipFileExtension   
-            $appendArchiveFileExtensionMessage = ($LocalizedData.AppendArchiveFileExtensionMessage -f $DestinationPathWithOutExtension, $DestinationPath)
-            Write-Verbose $appendArchiveFileExtensionMessage
-        }
-        else
-        {
-            # Invalid file extension is specified for the zip file to be created.
-            if($extension -ne $zipFileExtension)
+            if($destinationParentDir.Count -gt 1)
             {
-                $errorMessage = ($LocalizedData.InvalidZipFileExtensionError -f $extension, $zipFileExtension)
-                ThrowTerminatingErrorHelper "NotSupportedArchiveFileExtension" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $extension
+                $errorMessage = ($LocalizedData.InvalidArchiveFilePathError -f $DestinationPath, "DestinationPath", "DestinationPath")
+                ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
+            }
+
+            IsValidFileSystemPath $destinationParentDir | Out-Null
+            $DestinationPath = Join-Path -Path $destinationParentDir -ChildPath $achiveFileName
+
+            # GetExtension API does not validate for the actual existance of the path.
+            $extension = [system.IO.Path]::GetExtension($DestinationPath)
+
+            # If user does not specify .Zip extension, we append it.
+            If($extension -eq [string]::Empty)
+            {
+                $DestinationPathWithOutExtension = $DestinationPath
+                $DestinationPath = $DestinationPathWithOutExtension + $zipFileExtension   
+                $appendArchiveFileExtensionMessage = ($LocalizedData.AppendArchiveFileExtensionMessage -f $DestinationPathWithOutExtension, $DestinationPath)
+                Write-Verbose $appendArchiveFileExtensionMessage
+            }
+            else
+            {
+                # Invalid file extension is specified for the zip file to be created.
+                if($extension -ne $zipFileExtension)
+                {
+                    $errorMessage = ($LocalizedData.InvalidZipFileExtensionError -f $extension, $zipFileExtension)
+                    ThrowTerminatingErrorHelper "NotSupportedArchiveFileExtension" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $extension
+                }
+            }
+
+            $archiveFileExist = Test-Path -LiteralPath $DestinationPath -PathType Leaf
+
+            if($archiveFileExist -and ($Update -eq $false -and $Force -eq $false))
+            {
+                $errorMessage = ($LocalizedData.ZipFileExistError -f $DestinationPath)
+                ThrowTerminatingErrorHelper "ArchiveFileExists" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
+            }
+
+            # If archive file already exists and if -Update is specified, then we check to see 
+            # if we have write access permission to update the existing archive file.
+            if($archiveFileExist -and $Update -eq $true)
+            {
+                $item = Get-Item -Path $DestinationPath
+                if($item.Attributes.ToString().Contains("ReadOnly"))
+                {
+                    $errorMessage = ($LocalizedData.ArchiveFileIsReadOnly -f $DestinationPath)
+                    ThrowTerminatingErrorHelper "ArchiveFileIsReadOnly" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidOperation) $DestinationPath
+                }
+            }
+
+            $isWhatIf = $psboundparameters.ContainsKey("WhatIf")
+            if(!$isWhatIf)
+            {
+                $preparingToCompressVerboseMessage = ($LocalizedData.PreparingToCompressVerboseMessage)
+                Write-Verbose $preparingToCompressVerboseMessage
+
+                $progressBarStatus = ($LocalizedData.CompressProgressBarText -f $DestinationPath)
+                ProgressBarHelper "Compress-Archive" $progressBarStatus 0 100 100 1
             }
         }
-
-        $archiveFileExist = Test-Path -LiteralPath $DestinationPath -PathType Leaf
-
-        if($archiveFileExist -and ($Update -eq $false -and $Force -eq $false))
+        catch
         {
-            $errorMessage = ($LocalizedData.ZipFileExistError -f $DestinationPath)
-            ThrowTerminatingErrorHelper "ArchiveFileExists" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
-        }
-
-        # If archive file already exists and if -Update is specified, then we check to see 
-        # if we have write access permission to update the existing archive file.
-        if($archiveFileExist -and $Update -eq $true)
-        {
-            $item = Get-Item -Path $DestinationPath
-            if($item.Attributes.ToString().Contains("ReadOnly"))
-            {
-                $errorMessage = ($LocalizedData.ArchiveFileIsReadOnly -f $DestinationPath)
-                ThrowTerminatingErrorHelper "ArchiveFileIsReadOnly" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidOperation) $DestinationPath
-            }
-        }
-
-        $isWhatIf = $psboundparameters.ContainsKey("WhatIf")
-        if(!$isWhatIf)
-        {
-            $preparingToCompressVerboseMessage = ($LocalizedData.PreparingToCompressVerboseMessage)
-            Write-Verbose $preparingToCompressVerboseMessage
-
-            $progressBarStatus = ($LocalizedData.CompressProgressBarText -f $DestinationPath)
-            ProgressBarHelper "Compress-Archive" $progressBarStatus 0 100 100 1
+            $PSCmdlet.ThrowTerminatingError($_)
         }
     }
     PROCESS 
     {
-        if($PsCmdlet.ParameterSetName -eq "Path" -or 
-        $PsCmdlet.ParameterSetName -eq "PathWithForce" -or 
-        $PsCmdlet.ParameterSetName -eq "PathWithUpdate")
+        try
         {
-            $inputPaths += $Path
-        }
+            if($PsCmdlet.ParameterSetName -eq "Path" -or 
+            $PsCmdlet.ParameterSetName -eq "PathWithForce" -or 
+            $PsCmdlet.ParameterSetName -eq "PathWithUpdate")
+            {
+                $inputPaths += $Path
+            }
 
-        if($PsCmdlet.ParameterSetName -eq "LiteralPath" -or 
-        $PsCmdlet.ParameterSetName -eq "LiteralPathWithForce" -or 
-        $PsCmdlet.ParameterSetName -eq "LiteralPathWithUpdate")
+            if($PsCmdlet.ParameterSetName -eq "LiteralPath" -or 
+            $PsCmdlet.ParameterSetName -eq "LiteralPathWithForce" -or 
+            $PsCmdlet.ParameterSetName -eq "LiteralPathWithUpdate")
+            {
+                $inputPaths += $LiteralPath
+            }
+        }
+        catch
         {
-            $inputPaths += $LiteralPath
+            $PSCmdlet.ThrowTerminatingError($_)
         }
     }
     END 
     {
-        # If archive file already exists and if -Force is specified, we delete the 
-        # existing artchive file and create a brand new one.
-        if(($PsCmdlet.ParameterSetName -eq "PathWithForce" -or 
-        $PsCmdlet.ParameterSetName -eq "LiteralPathWithForce") -and $archiveFileExist)
+        try
         {
-            Remove-Item -Path $DestinationPath -Force -ErrorAction Stop
-        }
-
-        # Validate Source Path depeding on parameter set being used.
-        # The specified source path conatins one or more files or directories that needs
-        # to be compressed.
-        $isLiteralPathUsed = $false
-        if($PsCmdlet.ParameterSetName -eq "LiteralPath" -or 
-        $PsCmdlet.ParameterSetName -eq "LiteralPathWithForce" -or 
-        $PsCmdlet.ParameterSetName -eq "LiteralPathWithUpdate")
-        {
-            $isLiteralPathUsed = $true
-        }
-
-        ValidateDuplicateFileSystemPath $PsCmdlet.ParameterSetName $inputPaths
-        $resolvedPaths = GetResolvedPathHelper $inputPaths $isLiteralPathUsed $PSCmdlet
-        IsValidFileSystemPath $resolvedPaths | Out-Null
-    
-        $sourcePath = $resolvedPaths;
-
-        # CSVHelper: This is a helper function used to append comma after each path specifid by
-        # the $sourcePath array. The comma saperated paths are displayed in the -WhatIf message.
-        $sourcePathInCsvFormat = CSVHelper $sourcePath
-        if($pscmdlet.ShouldProcess($sourcePathInCsvFormat))
-        {
-            try
+            # If archive file already exists and if -Force is specified, we delete the 
+            # existing artchive file and create a brand new one.
+            if(($PsCmdlet.ParameterSetName -eq "PathWithForce" -or 
+            $PsCmdlet.ParameterSetName -eq "LiteralPathWithForce") -and $archiveFileExist)
             {
-                # StopProcessing is not avaliable in Script cmdlets. However the pipleline execution
-                # is terminated when ever 'CTRL + C' is entered by user to terminate the cmdlet execution.
-                # The finally block is executed whenever pipleline is terminated. 
-                # $isArchiveFileProcessingComplete variable is used to track if 'CTRL + C' is entered by the
-                # user. 
-                $isArchiveFileProcessingComplete = $false
-
-                $numberOfItemsArchived = CompressArchiveHelper $sourcePath $DestinationPath $CompressionLevel $Update
-
-                $isArchiveFileProcessingComplete = $true
+                Remove-Item -Path $DestinationPath -Force -ErrorAction Stop
             }
-            finally
-            {
-                # The $isArchiveFileProcessingComplete would be set to $false if user has typed 'CTRL + C' to 
-                # terminate the cmdlet execution or if an unhandled exception is thrown.
-                # $numberOfItemsArchived contains the count of number of files or directories add to the archive file.
-                # If the newly created archive file is empty then we delete it as its not usable.
-                if(($isArchiveFileProcessingComplete -eq $false) -or 
-                ($numberOfItemsArchived -eq 0))
-                {
-                    $DeleteArchiveFileMessage = ($LocalizedData.DeleteArchiveFile -f $DestinationPath)
-                    Write-Verbose $DeleteArchiveFileMessage
 
-                    # delete the partial archive file created.
-                    if (Test-Path $DestinationPath) {
-                        Remove-Item -LiteralPath $DestinationPath -Force -Recurse -ErrorAction SilentlyContinue
+            # Validate Source Path depeding on parameter set being used.
+            # The specified source path conatins one or more files or directories that needs
+            # to be compressed.
+            $isLiteralPathUsed = $false
+            if($PsCmdlet.ParameterSetName -eq "LiteralPath" -or 
+            $PsCmdlet.ParameterSetName -eq "LiteralPathWithForce" -or 
+            $PsCmdlet.ParameterSetName -eq "LiteralPathWithUpdate")
+            {
+                $isLiteralPathUsed = $true
+            }
+
+            ValidateDuplicateFileSystemPath $PsCmdlet.ParameterSetName $inputPaths
+            $resolvedPaths = GetResolvedPathHelper $inputPaths $isLiteralPathUsed $PSCmdlet
+            IsValidFileSystemPath $resolvedPaths | Out-Null
+    
+            $sourcePath = $resolvedPaths;
+
+            # CSVHelper: This is a helper function used to append comma after each path specifid by
+            # the $sourcePath array. The comma saperated paths are displayed in the -WhatIf message.
+            $sourcePathInCsvFormat = CSVHelper $sourcePath
+            if($pscmdlet.ShouldProcess($sourcePathInCsvFormat))
+            {
+                try
+                {
+                    # StopProcessing is not avaliable in Script cmdlets. However the pipleline execution
+                    # is terminated when ever 'CTRL + C' is entered by user to terminate the cmdlet execution.
+                    # The finally block is executed whenever pipleline is terminated. 
+                    # $isArchiveFileProcessingComplete variable is used to track if 'CTRL + C' is entered by the
+                    # user. 
+                    $isArchiveFileProcessingComplete = $false
+
+                    $numberOfItemsArchived = CompressArchiveHelper $sourcePath $DestinationPath $CompressionLevel $Update
+
+                    $isArchiveFileProcessingComplete = $true
+                }
+                finally
+                {
+                    # The $isArchiveFileProcessingComplete would be set to $false if user has typed 'CTRL + C' to 
+                    # terminate the cmdlet execution or if an unhandled exception is thrown.
+                    # $numberOfItemsArchived contains the count of number of files or directories add to the archive file.
+                    # If the newly created archive file is empty then we delete it as its not usable.
+                    if(($isArchiveFileProcessingComplete -eq $false) -or 
+                    ($numberOfItemsArchived -eq 0))
+                    {
+                        $DeleteArchiveFileMessage = ($LocalizedData.DeleteArchiveFile -f $DestinationPath)
+                        Write-Verbose $DeleteArchiveFileMessage
+
+                        # delete the partial archive file created.
+                        if (Test-Path $DestinationPath) {
+                            Remove-Item -LiteralPath $DestinationPath -Force -Recurse -ErrorAction SilentlyContinue
+                        }
                     }
                 }
             }
+        }
+        catch
+        {
+            $PSCmdlet.ThrowTerminatingError($_)
         }
     }
 }
@@ -281,136 +302,150 @@ function Expand-Archive
     )
 
     BEGIN 
-    {   
-       $isVerbose = $psboundparameters.ContainsKey("Verbose")
-       $isConfirm = $psboundparameters.ContainsKey("Confirm")
+    {
+        try
+        {
+            $isVerbose = $psboundparameters.ContainsKey("Verbose")
+            $isConfirm = $psboundparameters.ContainsKey("Confirm")
 
-        $isDestinationPathProvided = $true
-        if($DestinationPath -eq [string]::Empty)
-        {
-            $resolvedDestinationPath = $pwd
-            $isDestinationPathProvided = $false
-        }
-        else
-        {
-            $destinationPathExists = Test-Path -Path $DestinationPath -PathType Container
-            if($destinationPathExists)
+            $isDestinationPathProvided = $true
+            if($DestinationPath -eq [string]::Empty)
             {
-                $resolvedDestinationPath = GetResolvedPathHelper $DestinationPath $false $PSCmdlet
-                if($resolvedDestinationPath.Count -gt 1)
-                {    
-                    $errorMessage = ($LocalizedData.InvalidExpandedDirPathError -f $DestinationPath)
-                    ThrowTerminatingErrorHelper "InvalidDestinationPath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
-                }
-
-                # At this point we are sure that the provided path resolves to a valid single path.
-                # Calling Resolve-Path again to get the underlying provider name.
-                $suppliedDestinationPath = Resolve-Path -Path $DestinationPath
-                if($suppliedDestinationPath.Provider.Name-ne "FileSystem")
-                {
-                    $errorMessage = ($LocalizedData.ExpandArchiveInValidDestinationPath -f $DestinationPath)
-                    ThrowTerminatingErrorHelper "InvalidDirectoryPath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
-                }
+                $resolvedDestinationPath = $pwd
+                $isDestinationPathProvided = $false
             }
             else
             {
-                $createdItem = New-Item -Path $DestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop
-                if($createdItem -ne $null -and $createdItem.PSProvider.Name -ne "FileSystem")
+                $destinationPathExists = Test-Path -Path $DestinationPath -PathType Container
+                if($destinationPathExists)
                 {
-                    Remove-Item "$DestinationPath" -Force -Recurse -ErrorAction SilentlyContinue
-                    $errorMessage = ($LocalizedData.ExpandArchiveInValidDestinationPath -f $DestinationPath)
-                    ThrowTerminatingErrorHelper "InvalidDirectoryPath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
+                    $resolvedDestinationPath = GetResolvedPathHelper $DestinationPath $false $PSCmdlet
+                    if($resolvedDestinationPath.Count -gt 1)
+                    {    
+                        $errorMessage = ($LocalizedData.InvalidExpandedDirPathError -f $DestinationPath)
+                        ThrowTerminatingErrorHelper "InvalidDestinationPath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
+                    }
+
+                    # At this point we are sure that the provided path resolves to a valid single path.
+                    # Calling Resolve-Path again to get the underlying provider name.
+                    $suppliedDestinationPath = Resolve-Path -Path $DestinationPath
+                    if($suppliedDestinationPath.Provider.Name-ne "FileSystem")
+                    {
+                        $errorMessage = ($LocalizedData.ExpandArchiveInValidDestinationPath -f $DestinationPath)
+                        ThrowTerminatingErrorHelper "InvalidDirectoryPath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
+                    }
                 }
+                else
+                {
+                    $createdItem = New-Item -Path $DestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop
+                    if($createdItem -ne $null -and $createdItem.PSProvider.Name -ne "FileSystem")
+                    {
+                        Remove-Item "$DestinationPath" -Force -Recurse -ErrorAction SilentlyContinue
+                        $errorMessage = ($LocalizedData.ExpandArchiveInValidDestinationPath -f $DestinationPath)
+                        ThrowTerminatingErrorHelper "InvalidDirectoryPath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $DestinationPath
+                    }
 
-                $resolvedDestinationPath = GetResolvedPathHelper $DestinationPath $true $PSCmdlet                
-            } 
-        }
+                    $resolvedDestinationPath = GetResolvedPathHelper $DestinationPath $true $PSCmdlet                
+                } 
+            }
         
-        $isWhatIf = $psboundparameters.ContainsKey("WhatIf")
-        if(!$isWhatIf)
-        {
-            $preparingToExpandVerboseMessage = ($LocalizedData.PreparingToExpandVerboseMessage)
-            Write-Verbose $preparingToExpandVerboseMessage
+            $isWhatIf = $psboundparameters.ContainsKey("WhatIf")
+            if(!$isWhatIf)
+            {
+                $preparingToExpandVerboseMessage = ($LocalizedData.PreparingToExpandVerboseMessage)
+                Write-Verbose $preparingToExpandVerboseMessage
 
-            $progressBarStatus = ($LocalizedData.ExpandProgressBarText -f $DestinationPath)
-            ProgressBarHelper "Expand-Archive" $progressBarStatus 0 100 100 1
+                $progressBarStatus = ($LocalizedData.ExpandProgressBarText -f $DestinationPath)
+                ProgressBarHelper "Expand-Archive" $progressBarStatus 0 100 100 1
+            }
+        }
+        catch
+        {
+            $PSCmdlet.ThrowTerminatingError($_)
         }
     }
     PROCESS 
     {
-        switch($PsCmdlet.ParameterSetName)
+        try
         {
-            "Path"
+            switch($PsCmdlet.ParameterSetName)
             {
-                $resolvedSourcePaths = GetResolvedPathHelper $Path $false $PSCmdlet
+                "Path"
+                {
+                    $resolvedSourcePaths = GetResolvedPathHelper $Path $false $PSCmdlet
 
-                if($resolvedSourcePaths.Count -gt 1)
-                {    
-                    $errorMessage = ($LocalizedData.InvalidArchiveFilePathError -f $Path, $PsCmdlet.ParameterSetName, $PsCmdlet.ParameterSetName)
-                    ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $Path
+                    if($resolvedSourcePaths.Count -gt 1)
+                    {    
+                        $errorMessage = ($LocalizedData.InvalidArchiveFilePathError -f $Path, $PsCmdlet.ParameterSetName, $PsCmdlet.ParameterSetName)
+                        ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $Path
+                    }
+                }
+                "LiteralPath" 
+                { 
+                    $resolvedSourcePaths = GetResolvedPathHelper $LiteralPath $true $PSCmdlet
+
+                    if($resolvedSourcePaths.Count -gt 1)
+                    {    
+                        $errorMessage = ($LocalizedData.InvalidArchiveFilePathError -f $LiteralPath, $PsCmdlet.ParameterSetName, $PsCmdlet.ParameterSetName)
+                        ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $LiteralPath
+                    }
                 }
             }
-            "LiteralPath" 
-            { 
-                $resolvedSourcePaths = GetResolvedPathHelper $LiteralPath $true $PSCmdlet
+         
+            ValidateArchivePathHelper $resolvedSourcePaths
+    
+            if($pscmdlet.ShouldProcess($resolvedSourcePaths))
+            {
+                $expandedItems = @()
 
-                if($resolvedSourcePaths.Count -gt 1)
-                {    
-                    $errorMessage = ($LocalizedData.InvalidArchiveFilePathError -f $LiteralPath, $PsCmdlet.ParameterSetName, $PsCmdlet.ParameterSetName)
-                    ThrowTerminatingErrorHelper "InvalidArchiveFilePath" $errorMessage ([System.Management.Automation.ErrorCategory]::InvalidArgument) $LiteralPath
+                try
+                {
+                    # StopProcessing is not avaliable in Script cmdlets. However the pipleline execution
+                    # is terminated when ever 'CTRL + C' is entered by user to terminate the cmdlet execution.
+                    # The finally block is executed whenever pipleline is terminated. 
+                    # $isArchiveFileProcessingComplete variable is used to track if 'CTRL + C' is entered by the
+                    # user. 
+                    $isArchiveFileProcessingComplete = $false
+
+                    # The User has not provided a destination path, hence we use '$pwd\ArchiveFileName' as the directory where the
+                    # archive file contents would be expanded. If the path '$pwd\ArchiveFileName' already exists then we use the
+                    # Windows default mechanism of appending a counter value at the end of the directory name where the contents
+                    # would be expanded.
+                    if(!$isDestinationPathProvided)
+                    {
+                        $archiveFile = New-Object System.IO.FileInfo $resolvedSourcePaths
+                        $resolvedDestinationPath = Join-Path -Path $resolvedDestinationPath -ChildPath $archiveFile.BaseName
+                        $destinationPathExists = Test-Path -LiteralPath $resolvedDestinationPath -PathType Container
+
+                        if(!$destinationPathExists)
+                        {
+                            New-Item -Path $resolvedDestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop | Out-Null
+                        }
+                    }
+
+                    ExpandArchiveHelper $resolvedSourcePaths $resolvedDestinationPath ([ref]$expandedItems) $Force $isVerbose $isConfirm
+
+                    $isArchiveFileProcessingComplete = $true
+                }
+                finally
+                {
+                    # The $isArchiveFileProcessingComplete would be set to $false if user has typed 'CTRL + C' to 
+                    # terminate the cmdlet execution or if an unhandled exception is thrown.
+                    if($isArchiveFileProcessingComplete -eq $false)
+                    {
+                        if($expandedItems.Count -gt 0)
+                        {
+                            # delete the expanded file/directory as the archive 
+                            # file was not completly expanded.
+                            $expandedItems | % { Remove-Item $_ -Force -Recurse }
+                        }
+                    }
                 }
             }
         }
-         
-        ValidateArchivePathHelper $resolvedSourcePaths
-    
-        if($pscmdlet.ShouldProcess($resolvedSourcePaths))
+        catch
         {
-            $expandedItems = @()
-
-            try
-            {
-                # StopProcessing is not avaliable in Script cmdlets. However the pipleline execution
-                # is terminated when ever 'CTRL + C' is entered by user to terminate the cmdlet execution.
-                # The finally block is executed whenever pipleline is terminated. 
-                # $isArchiveFileProcessingComplete variable is used to track if 'CTRL + C' is entered by the
-                # user. 
-                $isArchiveFileProcessingComplete = $false
-
-                # The User has not provided a destination path, hence we use '$pwd\ArchiveFileName' as the directory where the
-                # archive file contents would be expanded. If the path '$pwd\ArchiveFileName' already exists then we use the
-                # Windows default mechanism of appending a counter value at the end of the directory name where the contents
-                # would be expanded.
-                if(!$isDestinationPathProvided)
-                {
-                    $archiveFile = New-Object System.IO.FileInfo $resolvedSourcePaths
-                    $resolvedDestinationPath = Join-Path -Path $resolvedDestinationPath -ChildPath $archiveFile.BaseName
-                    $destinationPathExists = Test-Path -LiteralPath $resolvedDestinationPath -PathType Container
-
-                    if(!$destinationPathExists)
-                    {
-                        New-Item -Path $resolvedDestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop | Out-Null
-                    }
-                }
-
-                ExpandArchiveHelper $resolvedSourcePaths $resolvedDestinationPath ([ref]$expandedItems) $Force $isVerbose $isConfirm
-
-                $isArchiveFileProcessingComplete = $true
-            }
-            finally
-            {
-                # The $isArchiveFileProcessingComplete would be set to $false if user has typed 'CTRL + C' to 
-                # terminate the cmdlet execution or if an unhandled exception is thrown.
-                if($isArchiveFileProcessingComplete -eq $false)
-                {
-                    if($expandedItems.Count -gt 0)
-                    {
-                        # delete the expanded file/directory as the archive 
-                        # file was not completly expanded.
-                        $expandedItems | % { Remove-Item $_ -Force -Recurse }
-                    }
-                }
-            }
+            $PSCmdlet.ThrowTerminatingError($_)
         }
     }
 } 
