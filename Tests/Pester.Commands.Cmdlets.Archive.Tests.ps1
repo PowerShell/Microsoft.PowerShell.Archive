@@ -685,6 +685,19 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             try { Expand-Archive -Path $sourcePath -DestinationPath $destinationPath; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be "InvalidDirectoryPath,Expand-Archive" }
         }
+
+        It "Validate that you can compress an archive to a custom PSDrive using the Compress-Archive cmdlet" {
+            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
+            $destinationDriveName = 'CompressArchivePesterTest'
+            $destinationDrive = New-PSDrive -Name $destinationDriveName -PSProvider FileSystem -Root $TestDrive -Scope Global
+            $destinationPath = "${destinationDriveName}:\CompressToPSDrive.zip"
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                $destinationPath | Should Exist
+            } finally {
+                Remove-PSDrive -LiteralName $destinationDriveName
+            }
+        }
     }
 
     Context "Expand-Archive - functional test cases" {
