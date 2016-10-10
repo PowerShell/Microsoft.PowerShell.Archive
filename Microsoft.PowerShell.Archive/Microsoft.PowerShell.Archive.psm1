@@ -83,7 +83,10 @@ function Compress-Archive
     )
 
     BEGIN 
-    {         
+    {
+        # Ensure the destination path is in a non-PS-specific format
+        $DestinationPath = $PSCmdlet.GetUnresolvedProviderPathFromPSPath($DestinationPath)
+
         $inputPaths = @()
         $destinationParentDir = [system.IO.Path]::GetDirectoryName($DestinationPath)
         if($null -eq $destinationParentDir)
