@@ -37,6 +37,7 @@ function Compress-Archive
     DefaultParameterSetName="Path", 
     SupportsShouldProcess=$true,
     HelpUri="http://go.microsoft.com/fwlink/?LinkID=393252")]
+    [OutputType([System.IO.File])]
     param 
     (
         [parameter (mandatory=$true, Position=0, ParameterSetName="Path", ValueFromPipeline=$true, ValueFromPipelineByPropertyName=$true)]
@@ -75,7 +76,10 @@ function Compress-Archive
         [parameter(mandatory=$true, ParameterSetName="PathWithForce", ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
         [parameter(mandatory=$true, ParameterSetName="LiteralPathWithForce", ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$false)]
         [switch]
-        $Force = $false  
+        $Force = $false,
+
+        [switch]
+        $PassThru = $false
     )
 
     BEGIN 
@@ -234,6 +238,10 @@ function Compress-Archive
                         Remove-Item -LiteralPath $DestinationPath -Force -Recurse -ErrorAction SilentlyContinue
                     }
                 }
+                elseif ($PassThru)
+                {
+                    Get-Item -LiteralPath $DestinationPath
+                }
             }
         }
     }
@@ -248,6 +256,7 @@ function Expand-Archive
     DefaultParameterSetName="Path", 
     SupportsShouldProcess=$true,
     HelpUri="http://go.microsoft.com/fwlink/?LinkID=393253")]    
+    [OutputType([System.IO.FileSystemInfo])]
     param 
     (
         [parameter (
@@ -277,7 +286,10 @@ function Expand-Archive
         [parameter (mandatory=$false,
         ValueFromPipeline=$false, 
         ValueFromPipelineByPropertyName=$false)]
-        [switch] $Force
+        [switch] $Force,
+
+        [switch]
+        $PassThru = $false
     )
 
     BEGIN 
@@ -409,6 +421,12 @@ function Expand-Archive
                         # file was not completly expanded.
                         $expandedItems | % { Remove-Item $_ -Force -Recurse }
                     }
+                }
+                elseif ($PassThru -and $expandedItems.Count -gt 0)
+                {
+                    # Return the expanded items, being careful to remove trailing backslashes from
+                    # any folder paths for consistency
+                    Get-Item -LiteralPath ($expandedItems -replace '\\+$')
                 }
             }
         }
