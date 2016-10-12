@@ -2,8 +2,9 @@
 GUID="eb74e8da-9ae2-482a-a648-e96550fb8733"
 Author="Microsoft Corporation"
 CompanyName="Microsoft Corporation"
-Copyright="© Microsoft Corporation. All rights reserved."
-ModuleVersion="1.0.1.0"
+Copyright="ï¿½ Microsoft Corporation. All rights reserved."
+ModuleVersion="1.0.2.0"
+PowerShellVersion="3.0"
 FunctionsToExport = @('Compress-Archive', 'Expand-Archive')
 DotNetFrameworkVersion = 4.5
 CmdletsToExport = @()
