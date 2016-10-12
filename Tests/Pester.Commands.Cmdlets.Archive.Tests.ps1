@@ -1058,5 +1058,20 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
             Compare-Object -ReferenceObject $extractedList -DifferenceObject $sourceList -PassThru | Should Be $null
         }
+
+        It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" {
+            $archivePath = ".\TrailingSpacer.zip"
+            $destinationPath = "$TestDrive\TrailingSpacer"
+            # we can't just compare the output and the results as you only get one DirectoryInfo for directories that only contain directories
+            $expectedPaths = "$TestDrive\TrailingSpacer\Inner\TrailingSpace","$TestDrive\TrailingSpacer\Inner\TrailingSpace\test.txt"
+
+            $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -PassThru
+
+            $contents.Count | Should Be $expectedPaths.Count
+
+            for ($i = 0; $i -lt $expectedPaths.Count; $i++) {
+                $contents[$i].FullName | Should Be $expectedPaths[$i]
+            }
+        }
     }
 }
