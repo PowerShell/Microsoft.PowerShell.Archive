@@ -414,7 +414,7 @@ function Expand-Archive
                     {
                         # delete the expanded file/directory as the archive 
                         # file was not completly expanded.
-                        $expandedItems | % { Remove-Item $_ -Force -Recurse }
+                        $expandedItems | % { Remove-Item "$_" -Force -Recurse }
                     }
                 }
                 elseif ($PassThru -and $expandedItems.Count -gt 0)
@@ -1007,6 +1007,9 @@ function ExpandArchiveHelper
                     # If the Parent directory of the current entry in the archive file does not exist, then create it. 
                     if($parentDirExists -eq $false)
                     {
+                        # note that if any ancestor of this directory doesn't exist, we don't recursively create each one as New-Item
+                        # takes care of this already, so only one DirectoryInfo is returned instead of one for each parent directory 
+                        # that only contains directories
                         New-Item $currentArchiveEntryFileInfo.DirectoryName -Type Directory -Confirm:$isConfirm | Out-Null
 
                         if(!(Test-Path -LiteralPath $currentArchiveEntryFileInfo.DirectoryName -PathType Container))
@@ -1056,6 +1059,11 @@ function ExpandArchiveHelper
 
                     if(!$hasNonTerminatingError)
                     {
+                        # The ExtractToFile() method doesn't handle whitespace correctly, strip whitespace which is consistent with how Explorer handles archives
+                        # There is an edge case where an archive contains files whose only difference is whitespace, but this is uncommon and likely not legitimate
+                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | % { $_.Trim() }
+                        $currentArchiveEntryPath = [string]::Join([System.IO.Path]::DirectorySeparatorChar, $parts)
+
                         [System.IO.Compression.ZipFileExtensions]::ExtractToFile($currentArchiveEntry, $currentArchiveEntryPath, $false)
 
                         # Add the expanded file path to the $expandedItems array, 
