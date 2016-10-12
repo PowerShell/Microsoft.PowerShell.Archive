@@ -26,6 +26,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
         $preCreatedArchivePath = Join-Path $script:TestSourceRoot "SamplePreCreatedArchive.archive"
         Copy-Item $preCreatedArchivePath $TestDrive\SamplePreCreatedArchive.zip -Force
+
+        $preCreatedArchivePath = Join-Path $script:TestSourceRoot "TrailingSpacer.archive"
+        Copy-Item $preCreatedArchivePath $TestDrive\TrailingSpacer.zip -Force
     }
 
     function Add-CompressionAssemblies {
@@ -1060,7 +1063,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" {
-            $archivePath = ".\TrailingSpacer.zip"
+            $archivePath = "$TestDrive\TrailingSpacer.zip"
             $destinationPath = "$TestDrive\TrailingSpacer"
             # we can't just compare the output and the results as you only get one DirectoryInfo for directories that only contain directories
             $expectedPaths = "$TestDrive\TrailingSpacer\Inner\TrailingSpace","$TestDrive\TrailingSpacer\Inner\TrailingSpace\test.txt"
