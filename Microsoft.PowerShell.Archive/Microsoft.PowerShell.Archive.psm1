@@ -37,7 +37,7 @@ function Compress-Archive
     [CmdletBinding(
     DefaultParameterSetName="Path", 
     SupportsShouldProcess=$true,
-    HelpUri="http://go.microsoft.com/fwlink/?LinkID=393252")]
+    HelpUri="https://go.microsoft.com/fwlink/?LinkID=393252")]
     [OutputType([System.IO.File])]
     param 
     (
@@ -250,7 +250,7 @@ function Expand-Archive
     [CmdletBinding(
     DefaultParameterSetName="Path", 
     SupportsShouldProcess=$true,
-    HelpUri="http://go.microsoft.com/fwlink/?LinkID=393253")]    
+    HelpUri="https://go.microsoft.com/fwlink/?LinkID=393253")]    
     [OutputType([System.IO.FileSystemInfo])]
     param 
     (
