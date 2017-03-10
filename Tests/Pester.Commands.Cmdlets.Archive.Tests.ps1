@@ -4,31 +4,32 @@
  # used for validating Microsoft.PowerShell.Archive module.
  ############################################################################################>
 $script:TestSourceRoot = $PSScriptRoot
+$DS = [System.IO.Path]::DirectorySeparatorChar
 Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
     BeforeAll {
         
-        New-Item $TestDrive\SourceDir -Type Directory | Out-Null
-        New-Item $TestDrive\SourceDir\ChildDir-1 -Type Directory | Out-Null
-        New-Item $TestDrive\SourceDir\ChildDir-2 -Type Directory | Out-Null
-        New-Item $TestDrive\SourceDir\ChildEmptyDir -Type Directory | Out-Null
+        New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
+        New-Item $TestDrive$($DS)SourceDir$($DS)ChildDir-1 -Type Directory | Out-Null
+        New-Item $TestDrive$($DS)SourceDir$($DS)ChildDir-2 -Type Directory | Out-Null
+        New-Item $TestDrive$($DS)SourceDir$($DS)ChildEmptyDir -Type Directory | Out-Null
 
         $content = "Some Data"
-        $content | Out-File -FilePath $TestDrive\SourceDir\Sample-1.txt
-        $content | Out-File -FilePath $TestDrive\SourceDir\Sample-2.txt
-        $content | Out-File -FilePath $TestDrive\SourceDir\ChildDir-1\Sample-3.txt
-        $content | Out-File -FilePath $TestDrive\SourceDir\ChildDir-1\Sample-4.txt
-        $content | Out-File -FilePath $TestDrive\SourceDir\ChildDir-2\Sample-5.txt    
-        $content | Out-File -FilePath $TestDrive\SourceDir\ChildDir-2\Sample-6.txt
+        $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
+        $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-2.txt
+        $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt
+        $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-4.txt
+        $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-2$($DS)Sample-5.txt    
+        $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-2$($DS)Sample-6.txt
  
-        "Some Text" > $TestDrive\Sample.unzip
-        "Some Text" > $TestDrive\Sample.cab
+        "Some Text" > $TestDrive$($DS)Sample.unzip
+        "Some Text" > $TestDrive$($DS)Sample.cab
 
         $preCreatedArchivePath = Join-Path $script:TestSourceRoot "SamplePreCreatedArchive.archive"
-        Copy-Item $preCreatedArchivePath $TestDrive\SamplePreCreatedArchive.zip -Force
+        Copy-Item $preCreatedArchivePath $TestDrive$($DS)SamplePreCreatedArchive.zip -Force
 
         $preCreatedArchivePath = Join-Path $script:TestSourceRoot "TrailingSpacer.archive"
-        Copy-Item $preCreatedArchivePath $TestDrive\TrailingSpacer.zip -Force
+        Copy-Item $preCreatedArchivePath $TestDrive$($DS)TrailingSpacer.zip -Force
     }
 
     function Add-CompressionAssemblies {
@@ -158,7 +159,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         Add-CompressionAssemblies
         try
         {
-            $destFile = "$TestDrive\ExpandedFile"+([System.Guid]::NewGuid().ToString())+".txt"
+            $destFile = "$TestDrive$($DS)ExpandedFile"+([System.Guid]::NewGuid().ToString())+".txt"
     
             $archiveFileStreamArgs = @($path, [System.IO.FileMode]::Open)
             $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
@@ -226,8 +227,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
     Context "Compress-Archive - Parameter validation test cases" {
         
         It "Validate errors from Compress-Archive with NULL & EMPTY values for Path, LiteralPath, DestinationPath, CompressionLevel parameters" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $destinationPath = "$TestDrive\SampleSingleFile.zip"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)SampleSingleFile.zip"
 
             CompressArchivePathParameterSetValidator $null $destinationPath
             CompressArchivePathParameterSetValidator $sourcePath $null
@@ -254,12 +255,12 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
         
         It "Validate errors from Compress-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" {
-            CompressArchiveInValidPathValidator "$TestDrive\InvalidPath" $TestDrive "$TestDrive\InvalidPath" "ArchiveCmdletPathNotFound,Compress-Archive"
+            CompressArchiveInValidPathValidator "$TestDrive$($DS)InvalidPath" $TestDrive "$TestDrive$($DS)InvalidPath" "ArchiveCmdletPathNotFound,Compress-Archive"
             CompressArchiveInValidPathValidator "HKLM:\SOFTWARE" $TestDrive "HKLM:\SOFTWARE" "PathNotFound,Compress-Archive"
-            CompressArchiveInValidPathValidator "$TestDrive" "$TestDrive\NonExistingDirectory\sample.zip" "$TestDrive\NonExistingDirectory\sample.zip" "ArchiveCmdletPathNotFound,Compress-Archive"
+            CompressArchiveInValidPathValidator "$TestDrive" "$TestDrive$($DS)NonExistingDirectory$($DS)sample.zip" "$TestDrive$($DS)NonExistingDirectory$($DS)sample.zip" "ArchiveCmdletPathNotFound,Compress-Archive"
 
-            $path = @("$TestDrive", "$TestDrive\InvalidPath")
-            CompressArchiveInValidPathValidator $path $TestDrive "$TestDrive\InvalidPath" "ArchiveCmdletPathNotFound,Compress-Archive"
+            $path = @("$TestDrive", "$TestDrive$($DS)InvalidPath")
+            CompressArchiveInValidPathValidator $path $TestDrive "$TestDrive$($DS)InvalidPath" "ArchiveCmdletPathNotFound,Compress-Archive"
 
             $path = @("$TestDrive", "HKLM:\SOFTWARE")
             CompressArchiveInValidPathValidator $path $TestDrive "HKLM:\SOFTWARE" "PathNotFound,Compress-Archive"
@@ -269,16 +270,16 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             # default formats associated with specific extensions. Until then, as long as these cmdlets only support
             # Zip files, any file extension is supported.
 
-            #$invalidUnZipFileFormat = "$TestDrive\Sample.unzip"
+            #$invalidUnZipFileFormat = "$TestDrive$($DS)Sample.unzip"
             #CompressArchiveInValidArchiveFileExtensionValidator $TestDrive "$invalidUnZipFileFormat" ".unzip"
             
-            #$invalidcabZipFileFormat = "$TestDrive\Sample.cab"
+            #$invalidcabZipFileFormat = "$TestDrive$($DS)Sample.cab"
             #CompressArchiveInValidArchiveFileExtensionValidator $TestDrive "$invalidcabZipFileFormat" ".cab"
         }
 
         It "Validate error from Compress-Archive when archive file already exists and -Update parameter is not specified" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $destinationPath = "$TestDrive\ValidateErrorWhenUpdateNotSpecified.zip"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)ValidateErrorWhenUpdateNotSpecified.zip"
 
             try
             {
@@ -294,9 +295,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
         It "Validate error from Compress-Archive when duplicate paths are supplied as input to Path parameter" {
             $sourcePath = @(
-                "$TestDrive\SourceDir\Sample-1.txt", 
-                "$TestDrive\SourceDir\Sample-1.txt")
-            $destinationPath = "$TestDrive\DuplicatePaths.zip"
+                "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
+                "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt")
+            $destinationPath = "$TestDrive$($DS)DuplicatePaths.zip"
 
             try
             {
@@ -311,9 +312,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
         It "Validate error from Compress-Archive when duplicate paths are supplied as input to LiteralPath parameter" {
             $sourcePath = @(
-                "$TestDrive\SourceDir\Sample-1.txt", 
-                "$TestDrive\SourceDir\Sample-1.txt")
-            $destinationPath = "$TestDrive\DuplicatePaths.zip"
+                "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
+                "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt")
+            $destinationPath = "$TestDrive$($DS)DuplicatePaths.zip"
 
             try
             {
@@ -329,16 +330,16 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
     Context "Compress-Archive - functional test cases" {
         It "Validate that a single file can be compressed using Compress-Archive cmdlet" {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
-            $destinationPath = "$TestDrive\SampleSingleFile.zip"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
+            $destinationPath = "$TestDrive$($DS)SampleSingleFile.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should Exist
         }
         # This test requires a fix in PS5 to support reading paths with square bracket
         It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter with Special Characters" -skip:($PSVersionTable.psversion -lt "5.0") {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample[]File.txt"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample[]File.txt"
             "Some Random Content" | Out-File -LiteralPath $sourcePath
-            $destinationPath = "$TestDrive\SampleSingleFileWithSpecialCharacters.zip"
+            $destinationPath = "$TestDrive$($DS)SampleSingleFileWithSpecialCharacters.zip"
             try
             {
                 Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
@@ -351,12 +352,12 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
         It "Validate that Compress-Archive cmdlet errors out when DestinationPath resolves to multiple locations" {
 
-            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
-            New-Item $TestDrive\SampleDir\Child-2 -Type Directory -Force | Out-Null
-            New-Item $TestDrive\SampleDir\Test.txt -Type File -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-2 -Type Directory -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Test.txt -Type File -Force | Out-Null
 
-            $destinationPath = "$TestDrive\SampleDir\Child-*\SampleChidArchive.zip"
-            $sourcePath = "$TestDrive\SampleDir\Test.txt"
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*$($DS)SampleChidArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SampleDir$($DS)Test.txt"
             try
             {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -368,16 +369,16 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
             finally
             {
-                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
             }
         }
         It "Validate that Compress-Archive cmdlet works when DestinationPath has wild card pattern and resolves to a single valid path" {
 
-            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
-            New-Item $TestDrive\SampleDir\Test.txt -Type File -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Test.txt -Type File -Force | Out-Null
 
-            $destinationPath = "$TestDrive\SampleDir\Child-*\SampleChidArchive.zip"
-            $sourcePath = "$TestDrive\SampleDir\Test.txt"
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*$($DS)SampleChidArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SampleDir$($DS)Test.txt"
             try
             {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -385,15 +386,15 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
             finally
             {
-                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
             }
         }
         # This test requires a fix in PS5 to support reading paths with square bracket
         It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter for a directory with Special Characters in the directory name" -skip:($PSVersionTable.psversion -lt "5.0") {
-            $sourcePath = "$TestDrive\Source[]Dir\ChildDir[]-1"
+            $sourcePath = "$TestDrive$($DS)Source[]Dir$($DS)ChildDir[]-1"
             New-Item $sourcePath -Type Directory | Out-Null
-            "Some Random Content" | Out-File -LiteralPath "$sourcePath\Sample[]File.txt"
-            $destinationPath = "$TestDrive\SampleDirWithSpecialCharacters.zip"
+            "Some Random Content" | Out-File -LiteralPath "$sourcePath$($DS)Sample[]File.txt"
+            $destinationPath = "$TestDrive$($DS)SampleDirWithSpecialCharacters.zip"
             try
             {
                 Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
@@ -405,8 +406,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         It "Validate that Compress-Archive cmdlet can accept DestinationPath parameter with Special Characters" {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
-            $destinationPath = "$TestDrive\Sample[]SingleFile.zip"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
+            $destinationPath = "$TestDrive$($DS)Sample[]SingleFile.zip"
             try
             {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -418,10 +419,10 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         It "Validate that Source Path can be at SystemDrive location" {
-            $sourcePath = "$env:SystemDrive\SourceDir"
-            $destinationPath = "$TestDrive\SampleFromSystemDrive.zip"
+            $sourcePath = "$env:SystemDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)SampleFromSystemDrive.zip"
             New-Item $sourcePath -Type Directory | Out-Null
-            "Some Data" | Out-File -FilePath $sourcePath\SampleSourceFileForArchive.txt
+            "Some Data" | Out-File -FilePath $sourcePath$($DS)SampleSourceFileForArchive.txt
             try
             {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -434,55 +435,55 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
         It "Validate that multiple files can be compressed using Compress-Archive cmdlet" {
             $sourcePath = @(
-                "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt", 
-                "$TestDrive\SourceDir\ChildDir-1\Sample-4.txt", 
-                "$TestDrive\SourceDir\ChildDir-2\Sample-5.txt",
-                "$TestDrive\SourceDir\ChildDir-2\Sample-6.txt")
-            $destinationPath = "$TestDrive\SampleMultipleFiles.zip"
+                "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt", 
+                "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-4.txt", 
+                "$TestDrive$($DS)SourceDir$($DS)ChildDir-2$($DS)Sample-5.txt",
+                "$TestDrive$($DS)SourceDir$($DS)ChildDir-2$($DS)Sample-6.txt")
+            $destinationPath = "$TestDrive$($DS)SampleMultipleFiles.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
         }
         It "Validate that multiple files and directories can be compressed using Compress-Archive cmdlet" {
             $sourcePath = @(
-                "$TestDrive\SourceDir\Sample-1.txt", 
-                "$TestDrive\SourceDir\Sample-2.txt", 
-                "$TestDrive\SourceDir\ChildDir-1", 
-                "$TestDrive\SourceDir\ChildDir-2")
-            $destinationPath = "$TestDrive\SampleMultipleFilesAndDirs.zip"
+                "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
+                "$TestDrive$($DS)SourceDir$($DS)Sample-2.txt", 
+                "$TestDrive$($DS)SourceDir$($DS)ChildDir-1", 
+                "$TestDrive$($DS)SourceDir$($DS)ChildDir-2")
+            $destinationPath = "$TestDrive$($DS)SampleMultipleFilesAndDirs.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
         }
         It "Validate that a single directory can be compressed using Compress-Archive cmdlet" {
-            $sourcePath = @("$TestDrive\SourceDir\ChildDir-1")
-            $destinationPath = "$TestDrive\SampleSingleDir.zip"
+            $sourcePath = @("$TestDrive$($DS)SourceDir$($DS)ChildDir-1")
+            $destinationPath = "$TestDrive$($DS)SampleSingleDir.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
         }
         It "Validate that a single directory with multiple files and subdirectories can be compressed using Compress-Archive cmdlet" {
-            $sourcePath = @("$TestDrive\SourceDir")
-            $destinationPath = "$TestDrive\SampleSubTree.zip"
+            $sourcePath = @("$TestDrive$($DS)SourceDir")
+            $destinationPath = "$TestDrive$($DS)SampleSubTree.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
         }
         It "Validate that a single directory & multiple files can be compressed using Compress-Archive cmdlet" {
             $sourcePath = @(
-                "$TestDrive\SourceDir\ChildDir-1", 
-                "$TestDrive\SourceDir\Sample-1.txt", 
-                "$TestDrive\SourceDir\Sample-2.txt")
-            $destinationPath = "$TestDrive\SampleMultipleFilesAndSingleDir.zip"
+                "$TestDrive$($DS)SourceDir$($DS)ChildDir-1", 
+                "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
+                "$TestDrive$($DS)SourceDir$($DS)Sample-2.txt")
+            $destinationPath = "$TestDrive$($DS)SampleMultipleFilesAndSingleDir.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
         }
 
         It "Validate that if .zip extension is not supplied as input to DestinationPath parameter, then .zip extension is appended" {
-            $sourcePath = @("$TestDrive\SourceDir")
-            $destinationPath = "$TestDrive\SampleNoExtension.zip"
-            $destinationWithoutExtensionPath = "$TestDrive\SampleNoExtension"
+            $sourcePath = @("$TestDrive$($DS)SourceDir")
+            $destinationPath = "$TestDrive$($DS)SampleNoExtension.zip"
+            $destinationWithoutExtensionPath = "$TestDrive$($DS)SampleNoExtension"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationWithoutExtensionPath
         	Test-Path $destinationPath | Should Be $true
         }
         It "Validate that relative path can be specified as Path parameter of Compress-Archive cmdlet" {
-            $sourcePath = ".\SourceDir"
+            $sourcePath = ".$($DS)SourceDir"
             $destinationPath = "RelativePathForPathParameter.zip"
             try
             {
@@ -496,7 +497,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         It "Validate that relative path can be specified as LiteralPath parameter of Compress-Archive cmdlet" {
-            $sourcePath = ".\SourceDir"
+            $sourcePath = ".$($DS)SourceDir"
             $destinationPath = "RelativePathForLiteralPathParameter.zip"
             try
             {
@@ -510,8 +511,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         It "Validate that relative path can be specified as DestinationPath parameter of Compress-Archive cmdlet" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $destinationPath = ".\RelativePathForDestinationPathParameter.zip"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = ".$($DS)RelativePathForDestinationPathParameter.zip"
             try
             {
                 Push-Location $TestDrive
@@ -524,50 +525,50 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         It "Validate that -Update parameter makes Compress-Archive to not throw an error if archive file already exists" {
-            $sourcePath = @("$TestDrive\SourceDir")
-            $destinationPath = "$TestDrive\SampleUpdateTest.zip"
+            $sourcePath = @("$TestDrive$($DS)SourceDir")
+            $destinationPath = "$TestDrive$($DS)SampleUpdateTest.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
         	Test-Path $destinationPath | Should Be $true
         }
         It "Validate -Update parameter by adding a new file to an existing archive file" {
-            $sourcePath = @("$TestDrive\SourceDir\ChildDir-1")
-            $destinationPath = "$TestDrive\SampleUpdateAdd1File.zip"
+            $sourcePath = @("$TestDrive$($DS)SourceDir$($DS)ChildDir-1")
+            $destinationPath = "$TestDrive$($DS)SampleUpdateAdd1File.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
         	Test-Path $destinationPath | Should Be $true
-            New-Item $TestDrive\SourceDir\ChildDir-1\Sample-AddedNewFile.txt -Type File | Out-Null
+            New-Item $TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-AddedNewFile.txt -Type File | Out-Null
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
             Test-Path $destinationPath | Should Be $true
             Validate-ArchiveEntryCount -path $destinationPath -expectedEntryCount 3
         }
 
         It "Validate that all CompressionLevel values can be used with Compress-Archive cmdlet" {
-            $sourcePath = "$TestDrive\SourceDir\Sample-1.txt"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
             
-            $destinationPath = "$TestDrive\FastestCompressionLevel.zip"
+            $destinationPath = "$TestDrive$($DS)FastestCompressionLevel.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -CompressionLevel Fastest
             Test-Path $destinationPath | Should Be $true
 
-            $destinationPath = "$TestDrive\OptimalCompressionLevel.zip"
+            $destinationPath = "$TestDrive$($DS)OptimalCompressionLevel.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -CompressionLevel Optimal
             Test-Path $destinationPath | Should Be $true
 
-            $destinationPath = "$TestDrive\NoCompressionCompressionLevel.zip"
+            $destinationPath = "$TestDrive$($DS)NoCompressionCompressionLevel.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -CompressionLevel NoCompression
             Test-Path $destinationPath | Should Be $true
         }
 
         It "Validate that -Update parameter is modifying a file that already exists in the archive file" {
-            $filePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
+            $filePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
 
             $initialContent = "Initial Content"
             $modifiedContent = "Modified Content"
     
             $initialContent | Set-Content $filePath
     
-            $sourcePath = "$TestDrive\SourceDir"
-            $destinationPath = "$TestDrive\UpdatingModifiedFile.zip"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)UpdatingModifiedFile.zip"
                     
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             Test-Path $destinationPath | Should Be $True
@@ -577,28 +578,28 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
             Test-Path $destinationPath | Should Be $True
     
-            ArchiveFileEntryContentValidator "$destinationPath" "SourceDir\ChildDir-1\Sample-3.txt" $modifiedContent
+            ArchiveFileEntryContentValidator "$destinationPath" "SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt" $modifiedContent
         }
         
         It "Validate Compress-Archive cmdlet in pipleline scenario" {
-            $destinationPath = "$TestDrive\CompressArchiveFromPipeline.zip"
+            $destinationPath = "$TestDrive$($DS)CompressArchiveFromPipeline.zip"
 
             # Piping a single file path to Compress-Archive
-            dir -Path $TestDrive\SourceDir\Sample-1.txt | Compress-Archive -DestinationPath $destinationPath
+            dir -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt | Compress-Archive -DestinationPath $destinationPath
             Test-Path $destinationPath | Should Be $True
 
             # Piping a string directory path to Compress-Archive
-            "$TestDrive\SourceDir\ChildDir-2" | Compress-Archive -DestinationPath $destinationPath -Update
+            "$TestDrive$($DS)SourceDir$($DS)ChildDir-2" | Compress-Archive -DestinationPath $destinationPath -Update
             Test-Path $destinationPath | Should Be $True
 
             # Piping the output of Get-ChildItem to Compress-Archive
-            dir "$TestDrive\SourceDir" -Recurse | Compress-Archive -DestinationPath $destinationPath -Update
+            dir "$TestDrive$($DS)SourceDir" -Recurse | Compress-Archive -DestinationPath $destinationPath -Update
             Test-Path $destinationPath | Should Be $True
         }
 
         It "Validate that Compress-Archive works on ReadOnly files" {
-            $sourcePath = "$TestDrive\ReadOnlyFile.txt"
-            $destinationPath = "$TestDrive\TestForReadOnlyFile.zip"
+            $sourcePath = "$TestDrive$($DS)ReadOnlyFile.txt"
+            $destinationPath = "$TestDrive$($DS)TestForReadOnlyFile.zip"
 
             "Some Content" | Out-File -FilePath $sourcePath
             $createdItem = Get-Item $sourcePath
@@ -609,8 +610,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that Compress-Archive generates Verbose messages" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $destinationPath = "$TestDrive\Compress-Archive generates VerboseMessages.zip"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)Compress-Archive generates VerboseMessages.zip"
             
             try
             {   
@@ -631,29 +632,29 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that Compress-Archive returns nothing when -PassThru is not used" {
-            $sourcePath = @("$TestDrive\SourceDir")
-            $destinationPath = "$TestDrive\NoPassThruTest.zip"
+            $sourcePath = @("$TestDrive$($DS)SourceDir")
+            $destinationPath = "$TestDrive$($DS)NoPassThruTest.zip"
             $archive = Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $archive | Should Be $null
         }
 
         It "Validate that Compress-Archive returns nothing when -PassThru is used with a value of $false" {
-            $sourcePath = @("$TestDrive\SourceDir")
-            $destinationPath = "$TestDrive\FalsePassThruTest.zip"
+            $sourcePath = @("$TestDrive$($DS)SourceDir")
+            $destinationPath = "$TestDrive$($DS)FalsePassThruTest.zip"
             $archive = Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -PassThru:$false
             $archive | Should Be $null
         }
 
         It "Validate that Compress-Archive returns the archive when invoked with -PassThru" {
-            $sourcePath = @("$TestDrive\SourceDir")
-            $destinationPath = "$TestDrive\PassThruTest.zip"
+            $sourcePath = @("$TestDrive$($DS)SourceDir")
+            $destinationPath = "$TestDrive$($DS)PassThruTest.zip"
             $archive = Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -PassThru
             $archive.FullName | Should Be $destinationPath
         }
 
         It "Validate that Compress-Archive can create a zip archive that has a different extension" {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
-            $destinationPath = "$TestDrive\DifferentZipExtension.dat"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
+            $destinationPath = "$TestDrive$($DS)DifferentZipExtension.dat"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should Exist
         }
@@ -661,8 +662,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
     Context "Expand-Archive - Parameter validation test cases" {
         It "Validate non existing archive -Path trows expected error message" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $destinationPath = "$TestDrive\ExpandedArchive"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)ExpandedArchive"
             try
             {   
                 Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -675,47 +676,47 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate errors from Expand-Archive with NULL & EMPTY values for Path, LiteralPath, DestinationPath parameters" {
-            ExpandArchiveInvalidParameterValidator $false $null "$TestDrive\SourceDir" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $false $null "$TestDrive$($DS)SourceDir" "ParameterArgumentValidationError,Expand-Archive"
             ExpandArchiveInvalidParameterValidator $false $null $null "ParameterArgumentValidationError,Expand-Archive"
 
-            ExpandArchiveInvalidParameterValidator $false "$TestDrive\SourceDir" $null "ParameterArgumentTransformationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $false "" "$TestDrive\SourceDir" "ParameterArgumentTransformationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $false "$TestDrive\SourceDir" "" "ParameterArgumentTransformationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $false "$TestDrive$($DS)SourceDir" $null "ParameterArgumentTransformationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $false "" "$TestDrive$($DS)SourceDir" "ParameterArgumentTransformationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $false "$TestDrive$($DS)SourceDir" "" "ParameterArgumentTransformationError,Expand-Archive"
             ExpandArchiveInvalidParameterValidator $false "" "" "ParameterArgumentTransformationError,Expand-Archive"
 
-            ExpandArchiveInvalidParameterValidator $true $null "$TestDrive\SourceDir" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true $null "$TestDrive$($DS)SourceDir" "ParameterArgumentValidationError,Expand-Archive"
             ExpandArchiveInvalidParameterValidator $true $null $null "ParameterArgumentValidationError,Expand-Archive"
 
-            ExpandArchiveInvalidParameterValidator $true "$TestDrive\SourceDir" $null "ParameterArgumentValidationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $true "" "$TestDrive\SourceDir" "ParameterArgumentValidationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $true "$TestDrive\SourceDir" "" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true "$TestDrive$($DS)SourceDir" $null "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true "" "$TestDrive$($DS)SourceDir" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true "$TestDrive$($DS)SourceDir" "" "ParameterArgumentValidationError,Expand-Archive"
             ExpandArchiveInvalidParameterValidator $true "" "" "ParameterArgumentValidationError,Expand-Archive"
 
-            ExpandArchiveInvalidParameterValidator $true $null "$TestDrive\SourceDir" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true $null "$TestDrive$($DS)SourceDir" "ParameterArgumentValidationError,Expand-Archive"
             ExpandArchiveInvalidParameterValidator $true $null $null "ParameterArgumentValidationError,Expand-Archive"
 
-            ExpandArchiveInvalidParameterValidator $true "$TestDrive\SourceDir" $null "ParameterArgumentValidationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $true "" "$TestDrive\SourceDir" "ParameterArgumentValidationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $true "$TestDrive\SourceDir" "" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true "$TestDrive$($DS)SourceDir" $null "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true "" "$TestDrive$($DS)SourceDir" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $true "$TestDrive$($DS)SourceDir" "" "ParameterArgumentValidationError,Expand-Archive"
             ExpandArchiveInvalidParameterValidator $true "" "" "ParameterArgumentValidationError,Expand-Archive"
         }
 
         It "Validate errors from Expand-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" {
-            try { Expand-Archive -Path "$TestDrive\NonExistingArchive" -DestinationPath "$TestDrive\SourceDir"; throw "Expand-Archive did NOT throw expected error" }
+            try { Expand-Archive -Path "$TestDrive$($DS)NonExistingArchive" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be "ArchiveCmdletPathNotFound,Expand-Archive" }
 
-            try { Expand-Archive -Path "HKLM:\SOFTWARE" -DestinationPath "$TestDrive\SourceDir"; throw "Expand-Archive did NOT throw expected error" }
+            try { Expand-Archive -Path "HKLM:$($DS)SOFTWARE" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be "PathNotFound,Expand-Archive" }
 
-            try { Expand-Archive -LiteralPath "$TestDrive\NonExistingArchive" -DestinationPath "$TestDrive\SourceDir"; throw "Expand-Archive did NOT throw expected error" }
+            try { Expand-Archive -LiteralPath "$TestDrive$($DS)NonExistingArchive" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be "ArchiveCmdletPathNotFound,Expand-Archive" }
 
-            try { Expand-Archive -LiteralPath "HKLM:\SOFTWARE" -DestinationPath "$TestDrive\SourceDir"; throw "Expand-Archive did NOT throw expected error" }
+            try { Expand-Archive -LiteralPath "HKLM:\SOFTWARE" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be "PathNotFound,Expand-Archive" }
         }
 
         It "Validate error from Expand-Archive when invalid path (non-existing path / non-filesystem path) is supplied for DestinationPath parameter" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
             $destinationPath = "HKLM:\SOFTWARE"
 
             try { Expand-Archive -Path $sourcePath -DestinationPath $destinationPath; throw "Expand-Archive did NOT throw expected error" }
@@ -723,10 +724,10 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that you can compress an archive to a custom PSDrive using the Compress-Archive cmdlet" {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1\Sample-3.txt"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
             $destinationDriveName = 'CompressArchivePesterTest'
             $destinationDrive = New-PSDrive -Name $destinationDriveName -PSProvider FileSystem -Root $TestDrive -Scope Global
-            $destinationPath = "${destinationDriveName}:\CompressToPSDrive.zip"
+            $destinationPath = "${destinationDriveName}:$($DS)CompressToPSDrive.zip"
             try {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
                 $destinationPath | Should Exist
@@ -739,12 +740,12 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
     Context "Expand-Archive - functional test cases" {
         
         It "Validate basic Expand-Archive scenario" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
             $content = "Some Data"
-            $destinationPath = "$TestDrive\DestDirForBasicExpand"
+            $destinationPath = "$TestDrive$($DS)DestDirForBasicExpand"
             $files = @("Sample-1.txt", "Sample-2.txt")
 
-            # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
+            # The files in "$TestDrive$($DS)SamplePreCreatedArchive.zip" are precreated.
             $fileCreationTimeStamp = Get-Date -Year 2014 -Month 6 -Day 13 -Hour 15 -Minute 50 -Second 20 -Millisecond 0
 
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -761,11 +762,11 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         It "Validate that Expand-Archive cmdlet errors out when DestinationPath resolves to multiple locations" {
-            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
-            New-Item $TestDrive\SampleDir\Child-2 -Type Directory -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-2 -Type Directory -Force | Out-Null
 
-            $destinationPath = "$TestDrive\SampleDir\Child-*"
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
             try
             {
                 Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -777,14 +778,14 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
             finally
             {
-                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
             }
         }
         It "Validate that Expand-Archive cmdlet works when DestinationPath resolves has wild card pattern and resolves to a single valid path" {
-            New-Item $TestDrive\SampleDir\Child-1 -Type Directory -Force | Out-Null
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
 
-            $destinationPath = "$TestDrive\SampleDir\Child-*"
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
             try
             {
                 Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -793,16 +794,16 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
             finally
             {
-                Remove-Item -LiteralPath $TestDrive\SampleDir -Force -Recurse
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
             }
         }
         It "Validate Expand-Archive scenario where DestinationPath has Special Characters" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
             $content = "Some Data"
-            $destinationPath = "$TestDrive\DestDir[]Expand"
+            $destinationPath = "$TestDrive$($DS)DestDir[]Expand"
             $files = @("Sample-1.txt", "Sample-2.txt")
 
-            # The files in "$TestDrive\SamplePreCreatedArchive.zip" are precreated.
+            # The files in "$TestDrive$($DS)SamplePreCreatedArchive.zip" are precreated.
             $fileCreationTimeStamp = Get-Date -Year 2014 -Month 6 -Day 13 -Hour 15 -Minute 50 -Second 20 -Millisecond 0
 
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -819,8 +820,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         It "Invoke Expand-Archive with relative path in Path parameter and -Force parameter" {
-            $sourcePath = ".\SamplePreCreatedArchive.zip"
-            $destinationPath = "$TestDrive\SomeOtherNonExistingDir\Path"
+            $sourcePath = ".$($DS)SamplePreCreatedArchive.zip"
+            $destinationPath = "$TestDrive$($DS)SomeOtherNonExistingDir$($DS)Path"
             try
             {
                 Push-Location $TestDrive
@@ -836,8 +837,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Invoke Expand-Archive with relative path in LiteralPath parameter and -Force parameter" {
-            $sourcePath = ".\SamplePreCreatedArchive.zip"
-            $destinationPath = "$TestDrive\SomeOtherNonExistingDir\LiteralPath"
+            $sourcePath = ".$($DS)SamplePreCreatedArchive.zip"
+            $destinationPath = "$TestDrive$($DS)SomeOtherNonExistingDir$($DS)LiteralPath"
             try
             {
                 Push-Location $TestDrive
@@ -853,8 +854,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Invoke Expand-Archive with non-existing relative directory in DestinationPath parameter and -Force parameter" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
-            $destinationPath = ".\SomeOtherNonExistingDir\DestinationPath"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
+            $destinationPath = ".$($DS)SomeOtherNonExistingDir$($DS)DestinationPath"
             try
             {
                 Push-Location $TestDrive
@@ -874,8 +875,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         # default formats associated with specific extensions. Until then, as long as these cmdlets only support
         # Zip files, any file extension is supported.
         #It "Invoke Expand-Archive with unsupported archive format" {
-        #    $sourcePath = "$TestDrive\Sample.cab"
-        #    $destinationPath = "$TestDrive\UnsupportedArchiveFormatDir"
+        #    $sourcePath = "$TestDrive$($DS)Sample.cab"
+        #    $destinationPath = "$TestDrive$($DS)UnsupportedArchiveFormatDir"
         #    try
         #    {
         #        Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -Force
@@ -888,9 +889,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         #}
 
         It "Invoke Expand-Archive with archive file containing multiple files, directories with subdirectories and empty directories" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $archivePath = "$TestDrive\FileAndDirTreeForExpand.zip"
-            $destinationPath = "$TestDrive\FileAndDirTree"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $archivePath = "$TestDrive$($DS)FileAndDirTreeForExpand.zip"
+            $destinationPath = "$TestDrive$($DS)FileAndDirTree"
             $sourceList = dir $sourcePath -Name
 
             Add-CompressionAssemblies
@@ -903,8 +904,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate Expand-Archive cmdlet in pipleline scenario" {
-            $sourcePath = "$TestDrive\SamplePreCreated*.zip"
-            $destinationPath = "$TestDrive\PipeToExpandArchive"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreated*.zip"
+            $destinationPath = "$TestDrive$($DS)PipeToExpandArchive"
 
             $content = "Some Data"
             $files = @("Sample-1.txt", "Sample-2.txt")
@@ -920,8 +921,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that Expand-Archive generates Verbose messages" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
-            $destinationPath = "$TestDrive\VerboseMessagesInExpandArchive"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
+            $destinationPath = "$TestDrive$($DS)VerboseMessagesInExpandArchive"
             
             try
             {   
@@ -942,8 +943,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that without -Force parameter Expand-Archive generates non-terminating errors without overwriting existing files" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
-            $destinationPath = "$TestDrive\NoForceParameterExpandArchive"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
+            $destinationPath = "$TestDrive$($DS)NoForceParameterExpandArchive"
             
             try
             {   
@@ -963,9 +964,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that without DestinationPath parameter Expand-Archive cmdlet succeeds in expanding the archive" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
-            $archivePath = "$TestDrive\NoDestinationPathParameter.zip"
-            $destinationPath = "$TestDrive\NoDestinationPathParameter"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
+            $archivePath = "$TestDrive$($DS)NoDestinationPathParameter.zip"
+            $destinationPath = "$TestDrive$($DS)NoDestinationPathParameter"
             copy $sourcePath $archivePath -Force
             
             try
@@ -982,9 +983,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that without DestinationPath parameter Expand-Archive cmdlet succeeds in expanding the archive when destination directory exists" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
-            $archivePath = "$TestDrive\NoDestinationPathParameterDirExists.zip"
-            $destinationPath = "$TestDrive\NoDestinationPathParameterDirExists"
+            $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
+            $archivePath = "$TestDrive$($DS)NoDestinationPathParameterDirExists.zip"
+            $destinationPath = "$TestDrive$($DS)NoDestinationPathParameterDirExists"
             copy $sourcePath $archivePath -Force
             New-Item -Path $destinationPath -ItemType Directory | Out-Null
             
@@ -1002,9 +1003,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that Expand-Archive returns nothing when -PassThru is not used" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $archivePath = "$TestDrive\NoPassThruTestForExpand.zip"
-            $destinationPath = "$TestDrive\NoPassThruTest"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $archivePath = "$TestDrive$($DS)NoPassThruTestForExpand.zip"
+            $destinationPath = "$TestDrive$($DS)NoPassThruTest"
 
             $sourceList = dir $sourcePath -Name
 
@@ -1017,9 +1018,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that Expand-Archive returns nothing when -PassThru is used with a value of $false" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $archivePath = "$TestDrive\FalsePassThruTestForExpand.zip"
-            $destinationPath = "$TestDrive\FalsePassThruTest"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $archivePath = "$TestDrive$($DS)FalsePassThruTestForExpand.zip"
+            $destinationPath = "$TestDrive$($DS)FalsePassThruTest"
             $sourceList = dir $sourcePath -Name
 
             Add-CompressionAssemblies
@@ -1031,9 +1032,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate that Expand-Archive returns the contents of the archive -PassThru" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $archivePath = "$TestDrive\PassThruTestForExpand.zip"
-            $destinationPath = "$TestDrive\PassThruTest"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $archivePath = "$TestDrive$($DS)PassThruTestForExpand.zip"
+            $destinationPath = "$TestDrive$($DS)PassThruTest"
             $sourceList = dir $sourcePath -Name
 
             Add-CompressionAssemblies
@@ -1048,9 +1049,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate Expand-Archive works with zip files that have non-zip file extensions" {
-            $sourcePath = "$TestDrive\SourceDir"
-            $archivePath = "$TestDrive\NonZipFileExtension.dat"
-            $destinationPath = "$TestDrive\NonZipFileExtension"
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $archivePath = "$TestDrive$($DS)NonZipFileExtension.dat"
+            $destinationPath = "$TestDrive$($DS)NonZipFileExtension"
             $sourceList = dir $sourcePath -Name
 
             Add-CompressionAssemblies
@@ -1063,10 +1064,10 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" {
-            $archivePath = "$TestDrive\TrailingSpacer.zip"
-            $destinationPath = "$TestDrive\TrailingSpacer"
+            $archivePath = "$TestDrive$($DS)TrailingSpacer.zip"
+            $destinationPath = "$TestDrive$($DS)TrailingSpacer"
             # we can't just compare the output and the results as you only get one DirectoryInfo for directories that only contain directories
-            $expectedPaths = "$TestDrive\TrailingSpacer\Inner\TrailingSpace","$TestDrive\TrailingSpacer\Inner\TrailingSpace\test.txt"
+            $expectedPaths = "$TestDrive$($DS)TrailingSpacer$($DS)Inner$($DS)TrailingSpace","$TestDrive$($DS)TrailingSpacer$($DS)Inner$($DS)TrailingSpace$($DS)test.txt"
 
             $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -PassThru
 
