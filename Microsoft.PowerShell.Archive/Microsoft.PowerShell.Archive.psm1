@@ -421,7 +421,7 @@ function Expand-Archive
                 {
                     # Return the expanded items, being careful to remove trailing directory separators from
                     # any folder paths for consistency
-					$trailingDirSeparators = '\' + [System.IO.Path]::DirectorySeparatorChar + '+$'
+                    $trailingDirSeparators = '\' + [System.IO.Path]::DirectorySeparatorChar + '+$'
                     Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators)
                 }
             }
