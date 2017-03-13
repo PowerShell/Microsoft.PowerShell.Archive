@@ -19,3 +19,4 @@ install:
 
 script:
   - ulimit -n 4096
+  - powershell -File ./travis.ps1
