@@ -1,0 +1,21 @@
+language: cpp
+
+git:
+  depth: 1000
+
+os:
+  - linux
+sudo: required
+dist: trusty
+
+matrix:
+  fast_finish: true
+
+install:
+  - git clone https://github.com/PowerShell/PowerShell.git
+  - pushd PowerShell/tools
+  - ./download.sh
+  - popd
+
+script:
+  - ulimit -n 4096
