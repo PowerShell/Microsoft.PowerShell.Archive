@@ -419,9 +419,10 @@ function Expand-Archive
                 }
                 elseif ($PassThru -and $expandedItems.Count -gt 0)
                 {
-                    # Return the expanded items, being careful to remove trailing backslashes from
+                    # Return the expanded items, being careful to remove trailing directory separators from
                     # any folder paths for consistency
-                    Get-Item -LiteralPath ($expandedItems -replace '\\+$')
+                    $trailingDirSeparators = '\' + [System.IO.Path]::DirectorySeparatorChar + '+$'
+                    Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators)
                 }
             }
         }
@@ -669,22 +670,22 @@ function CompressSingleDirHelper
         $sourceDirInfo = New-Object -TypeName System.IO.DirectoryInfo -ArgumentList $sourceDirPath
         $sourceDirFullName = $sourceDirInfo.Parent.FullName
 
-        # If the directory is present at the drive level the DirectoryInfo.Parent include '\' example: C:\
+        # If the directory is present at the drive level the DirectoryInfo.Parent include directory separator. example: C:\
         # On the other hand if the directory exists at a deper level then DirectoryInfo.Parent 
-        # has just the path (without an ending '\'). example C:\source 
+        # has just the path (without an ending directory separator). example C:\source 
         if($sourceDirFullName.Length -eq 3)
         {
             $modifiedSourceDirFullName = $sourceDirFullName
         }
         else
         {
-            $modifiedSourceDirFullName = $sourceDirFullName + "\"
+            $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
         }
     }
     else
     {
         $sourceDirFullName = $sourceDirPath
-        $modifiedSourceDirFullName = $sourceDirFullName + "\"
+        $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
     }
 
     $dirContents = Get-ChildItem -LiteralPath $sourceDirPath -Recurse
@@ -704,7 +705,7 @@ function CompressSingleDirHelper
             $files = $currentContent.GetFiles()
             if($files.Count -eq 0)
             {
-                $subDirFiles.Add($currentContent.FullName + "\")
+                $subDirFiles.Add($currentContent.FullName + [System.IO.Path]::DirectorySeparatorChar)
             }
         }
     }
@@ -795,8 +796,8 @@ function ZipArchiveHelper
 
             # If a directory needs to be added to an archive file, 
             # by convention the .Net API's expect the path of the diretcory 
-            # to end with '\' to detect the path as an directory.
-            if(!$relativeFilePath.EndsWith("\", [StringComparison]::OrdinalIgnoreCase))
+            # to end with directory separator to detect the path as an directory.
+            if(!$relativeFilePath.EndsWith([System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
             {
                 try
                 {
@@ -975,9 +976,9 @@ function ExpandArchiveHelper
             $extension = [system.IO.Path]::GetExtension($currentArchiveEntryPath)
 
             # The current archive entry is an empty directory
-            # The FullName of the Archive Entry representing a directory would end with a trailing '\'.
+            # The FullName of the Archive Entry representing a directory would end with a trailing directory separator.
             if($extension -eq [string]::Empty -and 
-            $currentArchiveEntryPath.EndsWith("\", [StringComparison]::OrdinalIgnoreCase))
+            $currentArchiveEntryPath.EndsWith([System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
             {
                 $pathExists = Test-Path -LiteralPath $currentArchiveEntryPath
 
