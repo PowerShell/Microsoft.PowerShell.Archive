@@ -256,14 +256,10 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         
         It "Validate errors from Compress-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" {
             CompressArchiveInValidPathValidator "$TestDrive$($DS)InvalidPath" $TestDrive "$TestDrive$($DS)InvalidPath" "ArchiveCmdletPathNotFound,Compress-Archive"
-            CompressArchiveInValidPathValidator "HKLM:\SOFTWARE" $TestDrive "HKLM:\SOFTWARE" "PathNotFound,Compress-Archive"
             CompressArchiveInValidPathValidator "$TestDrive" "$TestDrive$($DS)NonExistingDirectory$($DS)sample.zip" "$TestDrive$($DS)NonExistingDirectory$($DS)sample.zip" "ArchiveCmdletPathNotFound,Compress-Archive"
 
             $path = @("$TestDrive", "$TestDrive$($DS)InvalidPath")
             CompressArchiveInValidPathValidator $path $TestDrive "$TestDrive$($DS)InvalidPath" "ArchiveCmdletPathNotFound,Compress-Archive"
-
-            $path = @("$TestDrive", "HKLM:\SOFTWARE")
-            CompressArchiveInValidPathValidator $path $TestDrive "HKLM:\SOFTWARE" "PathNotFound,Compress-Archive"
 
             # The tests below are no longer valid. You can have zip files with non-zip extensions. Different archive
             # formats should be added in a separate pull request, with a parameter to identify the archive format, and
@@ -336,7 +332,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             $destinationPath | Should Exist
         }
         # This test requires a fix in PS5 to support reading paths with square bracket
-        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter with Special Characters" -skip:($PSVersionTable.psversion -lt "5.0") {
+        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter with Special Characters" -skip:(($PSVersionTable.psversion.Major -lt 5) -and ($PSVersionTable.psversion.Minor -lt 0)) {
             $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample[]File.txt"
             "Some Random Content" | Out-File -LiteralPath $sourcePath
             $destinationPath = "$TestDrive$($DS)SampleSingleFileWithSpecialCharacters.zip"
@@ -390,7 +386,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
         # This test requires a fix in PS5 to support reading paths with square bracket
-        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter for a directory with Special Characters in the directory name" -skip:($PSVersionTable.psversion -lt "5.0") {
+        It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter for a directory with Special Characters in the directory name"  -skip:(($PSVersionTable.psversion.Major -lt 5) -and ($PSVersionTable.psversion.Minor -lt 0)) {
             $sourcePath = "$TestDrive$($DS)Source[]Dir$($DS)ChildDir[]-1"
             New-Item $sourcePath -Type Directory | Out-Null
             "Some Random Content" | Out-File -LiteralPath "$sourcePath$($DS)Sample[]File.txt"
@@ -418,10 +414,10 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 Remove-Item -LiteralPath $destinationPath -Force
             }
         }
-        It "Validate that Source Path can be at SystemDrive location" {
+        It "Validate that Source Path can be at SystemDrive location" -skip:($IsLinux){
             $sourcePath = "$env:SystemDrive$($DS)SourceDir"
             $destinationPath = "$TestDrive$($DS)SampleFromSystemDrive.zip"
-            New-Item $sourcePath -Type Directory | Out-Null
+            New-Item $sourcePath -Type Directory | Out-Null # not enough permissions to write to drive root on Linux
             "Some Data" | Out-File -FilePath $sourcePath$($DS)SampleSourceFileForArchive.txt
             try
             {
@@ -658,6 +654,20 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should Exist
         }
+
+        It "Validate that Compress-Archive cmdlet works with backslashes in paths" {
+            $sourcePath = "$TestDrive\SourceDir\ChildDir-1"
+            $destinationPath = "$TestDrive\SampleBackslashFile.zip"
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should Exist
+        }
+
+        It "Validate that Compress-Archive cmdlet works with forward slashes in paths" {
+            $sourcePath = "$TestDrive/SourceDir/ChildDir-1"
+            $destinationPath = "$TestDrive/SampleForwardslashFile.zip"
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should Exist
+        }
     }
 
     Context "Expand-Archive - Parameter validation test cases" {
@@ -704,23 +714,18 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         It "Validate errors from Expand-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" {
             try { Expand-Archive -Path "$TestDrive$($DS)NonExistingArchive" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be "ArchiveCmdletPathNotFound,Expand-Archive" }
-
-            try { Expand-Archive -Path "HKLM:$($DS)SOFTWARE" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
-            catch { $_.FullyQualifiedErrorId | Should Be "PathNotFound,Expand-Archive" }
-
+            
             try { Expand-Archive -LiteralPath "$TestDrive$($DS)NonExistingArchive" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be "ArchiveCmdletPathNotFound,Expand-Archive" }
-
-            try { Expand-Archive -LiteralPath "HKLM:\SOFTWARE" -DestinationPath "$TestDrive$($DS)SourceDir"; throw "Expand-Archive did NOT throw expected error" }
-            catch { $_.FullyQualifiedErrorId | Should Be "PathNotFound,Expand-Archive" }
         }
 
         It "Validate error from Expand-Archive when invalid path (non-existing path / non-filesystem path) is supplied for DestinationPath parameter" {
             $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
             $destinationPath = "HKLM:\SOFTWARE"
-
+            $expectedError = "InvalidDirectoryPath,Expand-Archive"
+            if (get-variable IsLinux -ErrorAction SilentlyContinue) { if ($IsLinux) {$expectedError = "DriveNotFound,Microsoft.PowerShell.Commands.NewItemCommand"} }
             try { Expand-Archive -Path $sourcePath -DestinationPath $destinationPath; throw "Expand-Archive did NOT throw expected error" }
-            catch { $_.FullyQualifiedErrorId | Should Be "InvalidDirectoryPath,Expand-Archive" }
+            catch { $_.FullyQualifiedErrorId | Should Be $expectedError }
         }
 
         It "Validate that you can compress an archive to a custom PSDrive using the Compress-Archive cmdlet" {
@@ -1063,7 +1068,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Compare-Object -ReferenceObject $extractedList -DifferenceObject $sourceList -PassThru | Should Be $null
         }
 
-        It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" {
+        # trailing spaces give this error on Linux: Exception calling "[System.IO.Compression.ZipFileExtensions]::ExtractToFile" with "3" argument(s): "Could not find a part of the path '/tmp/02132f1d-5b0c-4a99-b5bf-707cef7681a6/TrailingSpacer/Inner/TrailingSpace/test.txt'."
+        It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" -skip:($IsLinux){
             $archivePath = "$TestDrive$($DS)TrailingSpacer.zip"
             $destinationPath = "$TestDrive$($DS)TrailingSpacer"
             # we can't just compare the output and the results as you only get one DirectoryInfo for directories that only contain directories
@@ -1075,6 +1081,36 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
             for ($i = 0; $i -lt $expectedPaths.Count; $i++) {
                 $contents[$i].FullName | Should Be $expectedPaths[$i]
+            }
+        }
+
+        It "Validate that Expand-Archive cmdlet works with backslashes in paths" {
+            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
+            $content = "Some Data"
+            $destinationPath = "$TestDrive\DestDirForBackslashExpand"
+            $files = @("Sample-1.txt", "Sample-2.txt")
+
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            foreach($currentFile in $files)
+            {
+                $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
+                Test-Path $expandedFile | Should Be $True
+                Get-Content $expandedFile | Should Be $content
+            }
+        }
+
+        It "Validate that Expand-Archive cmdlet works with forward slashes in paths" {
+            $sourcePath = "$TestDrive/SamplePreCreatedArchive.zip"
+            $content = "Some Data"
+            $destinationPath = "$TestDrive/DestDirForForwardslashExpand"
+            $files = @("Sample-1.txt", "Sample-2.txt")
+
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            foreach($currentFile in $files)
+            {
+                $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
+                Test-Path $expandedFile | Should Be $True
+                Get-Content $expandedFile | Should Be $content
             }
         }
     }
