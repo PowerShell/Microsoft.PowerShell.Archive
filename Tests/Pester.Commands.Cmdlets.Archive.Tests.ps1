@@ -654,20 +654,6 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should Exist
         }
-
-        It "Validate that Compress-Archive cmdlet works with backslashes in paths" {
-            $sourcePath = "$TestDrive\SourceDir\ChildDir-1"
-            $destinationPath = "$TestDrive\SampleBackslashFile.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should Exist
-        }
-
-        It "Validate that Compress-Archive cmdlet works with forward slashes in paths" {
-            $sourcePath = "$TestDrive/SourceDir/ChildDir-1"
-            $destinationPath = "$TestDrive/SampleForwardslashFile.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should Exist
-        }
     }
 
     Context "Expand-Archive - Parameter validation test cases" {
@@ -1084,31 +1070,21 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             }
         }
 
-        It "Validate that Expand-Archive cmdlet works with backslashes in paths" {
-            $sourcePath = "$TestDrive\SamplePreCreatedArchive.zip"
-            $content = "Some Data"
-            $destinationPath = "$TestDrive\DestDirForBackslashExpand"
-            $files = @("Sample-1.txt", "Sample-2.txt")
+        It "Validate that Compress-Archive/Expand-Archive work with backslashes and forward slashes in paths" {
+            $sourcePath = "$TestDrive\SourceDir/ChildDir-2"
+            $archivePath = "$TestDrive\MixedSlashesDir1/MixedSlashesDir2/SampleMixedslashFile.zip"
+            $expandPath = "$TestDrive\MixedSlashesExpandDir/DirA\DirB/DirC"
 
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            New-Item -Path (Split-Path $archivePath) -Type Directory | Out-Null
+            Compress-Archive -Path $sourcePath -DestinationPath $archivePath
+            $archivePath | Should Exist
+            
+            $content = "Some Data"
+            $files = @("ChildDir-2$($DS)Sample-5.txt", "ChildDir-2$($DS)Sample-6.txt")
+            Expand-Archive -Path $archivePath -DestinationPath $expandPath
             foreach($currentFile in $files)
             {
-                $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
-                Test-Path $expandedFile | Should Be $True
-                Get-Content $expandedFile | Should Be $content
-            }
-        }
-
-        It "Validate that Expand-Archive cmdlet works with forward slashes in paths" {
-            $sourcePath = "$TestDrive/SamplePreCreatedArchive.zip"
-            $content = "Some Data"
-            $destinationPath = "$TestDrive/DestDirForForwardslashExpand"
-            $files = @("Sample-1.txt", "Sample-2.txt")
-
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
-            foreach($currentFile in $files)
-            {
-                $expandedFile = Join-Path $destinationPath -ChildPath $currentFile
+                $expandedFile = Join-Path $expandPath -ChildPath $currentFile
                 Test-Path $expandedFile | Should Be $True
                 Get-Content $expandedFile | Should Be $content
             }
