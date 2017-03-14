@@ -1,4 +1,4 @@
-language: cpp
+language: csharp
 
 git:
   depth: 1000
