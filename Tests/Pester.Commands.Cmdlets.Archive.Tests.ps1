@@ -5,6 +5,9 @@
  ############################################################################################>
 $script:TestSourceRoot = $PSScriptRoot
 $DS = [System.IO.Path]::DirectorySeparatorChar
+if ($IsWindows -eq $null) {
+    $IsWindows = $PSVersionTable.PSEdition -eq "Desktop"
+}
 Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
     BeforeAll {
@@ -414,7 +417,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 Remove-Item -LiteralPath $destinationPath -Force
             }
         }
-        It "Validate that Source Path can be at SystemDrive location" -skip:($IsLinux){
+        It "Validate that Source Path can be at SystemDrive location" -skip:(!$IsWindows) {
             $sourcePath = "$env:SystemDrive$($DS)SourceDir"
             $destinationPath = "$TestDrive$($DS)SampleFromSystemDrive.zip"
             New-Item $sourcePath -Type Directory | Out-Null # not enough permissions to write to drive root on Linux
@@ -708,8 +711,12 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         It "Validate error from Expand-Archive when invalid path (non-existing path / non-filesystem path) is supplied for DestinationPath parameter" {
             $sourcePath = "$TestDrive$($DS)SamplePreCreatedArchive.zip"
             $destinationPath = "HKLM:\SOFTWARE"
-            $expectedError = "InvalidDirectoryPath,Expand-Archive"
-            if (get-variable IsLinux -ErrorAction SilentlyContinue) { if ($IsLinux) {$expectedError = "DriveNotFound,Microsoft.PowerShell.Commands.NewItemCommand"} }
+            if ($IsWindows) {
+                $expectedError = "InvalidDirectoryPath,Expand-Archive"
+            }
+            else {
+                $expectedError = "DriveNotFound,Microsoft.PowerShell.Commands.NewItemCommand"
+            }
             try { Expand-Archive -Path $sourcePath -DestinationPath $destinationPath; throw "Expand-Archive did NOT throw expected error" }
             catch { $_.FullyQualifiedErrorId | Should Be $expectedError }
         }
@@ -1055,7 +1062,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         }
 
         # trailing spaces give this error on Linux: Exception calling "[System.IO.Compression.ZipFileExtensions]::ExtractToFile" with "3" argument(s): "Could not find a part of the path '/tmp/02132f1d-5b0c-4a99-b5bf-707cef7681a6/TrailingSpacer/Inner/TrailingSpace/test.txt'."
-        It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" -skip:($IsLinux){
+        It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" -skip:(!$IsWindows) {
             $archivePath = "$TestDrive$($DS)TrailingSpacer.zip"
             $destinationPath = "$TestDrive$($DS)TrailingSpacer"
             # we can't just compare the output and the results as you only get one DirectoryInfo for directories that only contain directories
@@ -1087,6 +1094,17 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 $expandedFile = Join-Path $expandPath -ChildPath $currentFile
                 Test-Path $expandedFile | Should Be $True
                 Get-Content $expandedFile | Should Be $content
+            }
+        }
+
+        It "Validate module can be imported when current language is not en-US" {
+            $currentCulture = [System.Threading.Thread]::CurrentThread.CurrentUICulture
+            try {
+                [System.Threading.Thread]::CurrentThread.CurrentUICulture = [CultureInfo]::new("he-IL")
+                { Import-Module Microsoft.PowerShell.Archive -Force -ErrorAction Stop } | Should Not Throw
+            }
+            finally {
+                [System.Threading.Thread]::CurrentThread.CurrentUICulture = $currentCulture
             }
         }
     }
