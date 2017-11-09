@@ -25,7 +25,7 @@
 '@
 }
 
-Import-LocalizedData LocalizedData -filename ArchiveResources -UICulture "en-US"
+Import-LocalizedData LocalizedData -filename ArchiveResources -ErrorAction SilentlyContinue
 
 $zipFileExtension = ".zip"
 
