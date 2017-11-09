@@ -14,9 +14,9 @@ matrix:
 install:
   - git clone https://github.com/PowerShell/PowerShell.git
   - pushd PowerShell/tools
-  - ./download.sh
+  - ./install-powershell.sh
   - popd
 
 script:
   - ulimit -n 4096
-  - powershell -File ./TravisCI.ps1
+  - pwsh -File ./TravisCI.ps1
