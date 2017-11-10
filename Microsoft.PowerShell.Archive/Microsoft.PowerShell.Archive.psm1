@@ -25,7 +25,7 @@
 '@
 }
 
-Import-LocalizedData  LocalizedData -filename ArchiveResources
+Import-LocalizedData LocalizedData -filename ArchiveResources -ErrorAction Ignore
 
 $zipFileExtension = ".zip"
 
