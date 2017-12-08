@@ -1,0 +1,9 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<SignConfigXML>
+    <!-- ****Begin**** Authenticode - Authenticode SHA256 ************* -->
+    <!-- PowerShell script files cannot be dual signed, so we will sign them only with a SHA256 cert -->
+    <file src="__INPATHROOT__\Microsoft.PowerShell.Archive.psd1" signType="Authenticode" dest="__OUTPATHROOT__\Microsoft.PowerShell.Archive.psd1" />
+    <file src="__INPATHROOT__\Microsoft.PowerShell.Archive.psm1" signType="Authenticode" dest="__OUTPATHROOT__\Microsoft.PowerShell.Archive.psm1" />
+    <file src="__INPATHROOT__\en-US\ArchiveResources.psd1" signType="Authenticode" dest="__OUTPATHROOT__\en-US\ArchiveResources.psd1" />
+  </job>
+</SignConfigXML>
