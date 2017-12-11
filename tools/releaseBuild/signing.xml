@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <SignConfigXML>
+  <job platform="" configuration="" dest="__OUTPATHROOT__\signed" jobname="Microsoft.PowerShell.Archive" approvers="vigarg;gstolt">
     <!-- ****Begin**** Authenticode - Authenticode SHA256 ************* -->
     <!-- PowerShell script files cannot be dual signed, so we will sign them only with a SHA256 cert -->
     <file src="__INPATHROOT__\Microsoft.PowerShell.Archive.psd1" signType="Authenticode" dest="__OUTPATHROOT__\Microsoft.PowerShell.Archive.psd1" />
