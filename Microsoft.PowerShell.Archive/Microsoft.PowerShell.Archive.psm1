@@ -827,7 +827,14 @@ function ZipArchiveHelper
 
                         # Updating  the File Creation time so that the same timestamp would be retained after expanding the compressed file.
                         # At this point we are sure that Get-ChildItem would succeed.
-                        $currentArchiveEntry.LastWriteTime = (Get-Item -LiteralPath $currentFilePath).LastWriteTime
+                        $lastWriteTime = (Get-Item -LiteralPath $currentFilePath).LastWriteTime
+                        if ($lastWriteTime.Year -lt 1980)
+                        {
+                            Write-Warning "$currentFilePath has LastWriteTime earlier than 1980." 
+                            $lastWriteTime = $lastWriteTime.AddYears(1980 - $lastWriteTime.Year)
+                        }
+
+                        $currentArchiveEntry.LastWriteTime = $lastWriteTime
 
                         $destStream = New-Object System.IO.BinaryWriter $currentArchiveEntry.Open()
 
