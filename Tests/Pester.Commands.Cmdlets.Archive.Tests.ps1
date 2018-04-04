@@ -68,7 +68,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         try
         {
             Compress-Archive -Path $path -DestinationPath $destinationPath -CompressionLevel $compressionLevel
-            trow "ValidateNotNullOrEmpty attribute is missing on one of parameters belonging to Path parameterset."
+            throw "ValidateNotNullOrEmpty attribute is missing on one of parameters belonging to Path parameterset."
         }
         catch
         {
@@ -398,6 +398,47 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
             }
         }
+        It "Validate that Compress-Archive cmdlet works when it ecounters LastWriteTimeValues earlier than 1980" {
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
+            $file = New-Item $TestDrive$($DS)SampleDir$($DS)Test.txt -Type File -Force
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*$($DS)SampleChidArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SampleDir$($DS)Test.txt"
+
+            $file.LastWriteTime = [DateTime]::Parse('1967-03-04T06:00:00')
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningAction SilentlyContinue
+                $destinationPath | Should Exist
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
+            }
+        }
+
+        It "Validate that Compress-Archive cmdlet warns when updating the LastWriteTime for files earlier than 1980" {
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
+            $file = New-Item $TestDrive$($DS)SampleDir$($DS)Test.txt -Type File -Force
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*$($DS)SampleChidArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SampleDir$($DS)Test.txt"
+
+            $file.LastWriteTime = [DateTime]::Parse('1967-03-04T06:00:00')
+            try
+            {
+                $ps=[PowerShell]::Create()
+                $ps.Streams.Warning.Clear()
+                $script = "Import-Module Microsoft.PowerShell.Archive; Compress-Archive -Path $sourcePath -DestinationPath `"$destinationPath`" -CompressionLevel Fastest -Verbose"
+                $ps.AddScript($script)
+                $ps.Invoke()
+
+                $ps.Streams.Warning.Count -gt 0 | Should Be $True
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
+            }
+        }
+
         # This test requires a fix in PS5 to support reading paths with square bracket
         It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter for a directory with Special Characters in the directory name"  -skip:(($PSVersionTable.psversion.Major -lt 5) -and ($PSVersionTable.psversion.Minor -lt 0)) {
             $sourcePath = "$TestDrive$($DS)Source[]Dir$($DS)ChildDir[]-1"
