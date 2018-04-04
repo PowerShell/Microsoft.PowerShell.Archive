@@ -830,7 +830,7 @@ function ZipArchiveHelper
                         $lastWriteTime = (Get-Item -LiteralPath $currentFilePath).LastWriteTime
                         if ($lastWriteTime.Year -lt 1980)
                         {
-                            Write-Warning "'$currentFilePath' has LastWriteTime earlier than 1980. Any files with LastWriteTime values earlier than 1980 will be stored in the archive with a LastWriteTime of 1980-01-01T00:00:00."
+                            Write-Warning "'$currentFilePath' has LastWriteTime earlier than 1980. Compress-Archive will store any files with LastWriteTime values earlier than 1980 as 1/1/1980 00:00."
                             $lastWriteTime = [DateTime]::Parse('1980-01-01T00:00:00')
                         }
 
