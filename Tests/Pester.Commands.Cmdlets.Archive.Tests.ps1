@@ -1155,6 +1155,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             $expectedFile1 = "$expandPath$($DS)EarlierThan1980.txt"
             $expectedFile2 = "$expandPath$($DS)Sample-1.txt"
             $archivePath = "$TestDrive$($DS)EarlyYear.zip"
+        
+            Write-Output "$expectedFile1"
 
             try
             {
@@ -1166,8 +1168,8 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 $expectedFile1 | Should Exist
                 (Get-Item $expectedFile1).LastWriteTime | Should Be $([DateTime]::Parse('1980-01-01T00:00'))
                 $expectedFile2 | Should Exist
-                $expectedFile2Time = $expectedFile2.LastWriteTime
-                (Get-Item $expectedFile2).LastWriteTime. | Should Be $file2.LastWriteTime.ToString()
+                (Get-Item $expectedFile2).LastWriteTime | Should Not Be $([DateTime]::Parse('1980-01-01T00:00'))
+                
             }
             finally
             {
