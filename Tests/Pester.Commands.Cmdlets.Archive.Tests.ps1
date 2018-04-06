@@ -68,7 +68,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         try
         {
             Compress-Archive -Path $path -DestinationPath $destinationPath -CompressionLevel $compressionLevel
-            trow "ValidateNotNullOrEmpty attribute is missing on one of parameters belonging to Path parameterset."
+            throw "ValidateNotNullOrEmpty attribute is missing on one of parameters belonging to Path parameterset."
         }
         catch
         {
@@ -398,6 +398,46 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
             }
         }
+        It "Validate that Compress-Archive cmdlet works when it ecounters LastWriteTimeValues earlier than 1980" {
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
+            $file = New-Item $TestDrive$($DS)SampleDir$($DS)Test.txt -Type File -Force
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*$($DS)SampleChidArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SampleDir$($DS)Test.txt"
+
+            $file.LastWriteTime = [DateTime]::Parse('1967-03-04T06:00:00')
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningAction SilentlyContinue
+                $destinationPath | Should Exist
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
+            }
+        }
+        It "Validate that Compress-Archive cmdlet warns when updating the LastWriteTime for files earlier than 1980" {
+            New-Item $TestDrive$($DS)SampleDir$($DS)Child-1 -Type Directory -Force | Out-Null
+            $file = New-Item $TestDrive$($DS)SampleDir$($DS)Test.txt -Type File -Force
+            $destinationPath = "$TestDrive$($DS)SampleDir$($DS)Child-*$($DS)SampleChidArchive.zip"
+            $sourcePath = "$TestDrive$($DS)SampleDir$($DS)Test.txt"
+
+            $file.LastWriteTime = [DateTime]::Parse('1967-03-04T06:00:00')
+            try
+            {
+                $ps=[PowerShell]::Create()
+                $ps.Streams.Warning.Clear()
+                $script = "Import-Module Microsoft.PowerShell.Archive; Compress-Archive -Path $sourcePath -DestinationPath `"$destinationPath`" -CompressionLevel Fastest -Verbose"
+                $ps.AddScript($script)
+                $ps.Invoke()
+
+                $ps.Streams.Warning.Count -gt 0 | Should Be $True
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $TestDrive$($DS)SampleDir -Force -Recurse
+            }
+        }
+
         # This test requires a fix in PS5 to support reading paths with square bracket
         It "Validate that Compress-Archive cmdlet can accept LiteralPath parameter for a directory with Special Characters in the directory name"  -skip:(($PSVersionTable.psversion.Major -lt 5) -and ($PSVersionTable.psversion.Minor -lt 0)) {
             $sourcePath = "$TestDrive$($DS)Source[]Dir$($DS)ChildDir[]-1"
@@ -1104,6 +1144,34 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
                 $expandedFile = Join-Path $expandPath -ChildPath $currentFile
                 Test-Path $expandedFile | Should Be $True
                 Get-Content $expandedFile | Should Be $content
+            }
+        }
+
+        It "Validate that Compress-Archive/Expand-Archive work with dates earlier than 1980" {
+            $file1 = New-Item $TestDrive$($DS)SourceDir$($DS)EarlierThan1980.txt -Type File -Force   
+            $file1.LastWriteTime = [DateTime]::Parse('1974-10-03T04:30:00')
+            $file2 = Get-Item "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
+            $expandPath = "$TestDrive$($DS)EarlyYearDir"
+            $expectedFile1 = "$expandPath$($DS)EarlierThan1980.txt"
+            $expectedFile2 = "$expandPath$($DS)Sample-1.txt"
+            $archivePath = "$TestDrive$($DS)EarlyYear.zip"
+
+            try
+            {
+                Compress-Archive -Path @($file1, $file2) -DestinationPath $archivePath -WarningAction SilentlyContinue
+                $archivePath | Should Exist
+                
+                Expand-Archive -Path $archivePath -DestinationPath $expandPath
+
+                $expectedFile1 | Should Exist
+                (Get-Item $expectedFile1).LastWriteTime | Should Be $([DateTime]::Parse('1980-01-01T00:00'))
+                $expectedFile2 | Should Exist
+                (Get-Item $expectedFile2).LastWriteTime | Should Not Be $([DateTime]::Parse('1980-01-01T00:00'))
+                
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $archivePath -Force -Recurse
             }
         }
 
