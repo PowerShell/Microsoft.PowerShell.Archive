@@ -1155,8 +1155,6 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             $expectedFile1 = "$expandPath$($DS)EarlierThan1980.txt"
             $expectedFile2 = "$expandPath$($DS)Sample-1.txt"
             $archivePath = "$TestDrive$($DS)EarlyYear.zip"
-        
-            Write-Output "$expectedFile1"
 
             try
             {
