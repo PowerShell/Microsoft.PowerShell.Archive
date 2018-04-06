@@ -1150,24 +1150,24 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         It "Validate that Compress-Archive/Expand-Archive work with dates earlier than 1980" {
             $file1 = New-Item $TestDrive$($DS)SourceDir$($DS)EarlierThan1980.txt -Type File -Force   
             $file1.LastWriteTime = [DateTime]::Parse('1974-10-03T04:30:00')
-            $file2 = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
+            $file2 = Get-Item "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
             $expandPath = "$TestDrive$($DS)EarlyYearDir"
             $expectedFile1 = "$expandPath$($DS)EarlierThan1980.txt"
             $expectedFile2 = "$expandPath$($DS)Sample-1.txt"
             $archivePath = "$TestDrive$($DS)EarlyYear.zip"
-        
-            Write-Output "$expectedFile1"
 
             try
             {
                 Compress-Archive -Path @($file1, $file2) -DestinationPath $archivePath -WarningAction SilentlyContinue
                 $archivePath | Should Exist
+                
                 Expand-Archive -Path $archivePath -DestinationPath $expandPath
 
                 $expectedFile1 | Should Exist
                 (Get-Item $expectedFile1).LastWriteTime | Should Be $([DateTime]::Parse('1980-01-01T00:00'))
                 $expectedFile2 | Should Exist
-                (Get-Item $expectedFile2).LastWriteTime | Should Not Be $([DateTime]::Parse('1980-01-01T00:00'))
+                $expectedFile2Time = $expectedFile2.LastWriteTime
+                (Get-Item $expectedFile2).LastWriteTime. | Should Be $file2.LastWriteTime.ToString()
             }
             finally
             {
