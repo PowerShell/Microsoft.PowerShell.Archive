@@ -1,4 +1,4 @@
-﻿data LocalizedData
+data LocalizedData
 {
     # culture="en-US"
     ConvertFrom-StringData @'
@@ -422,7 +422,7 @@ function Expand-Archive
                 {
                     # Return the expanded items, being careful to remove trailing directory separators from
                     # any folder paths for consistency
-                    $trailingDirSeparators = '\' + [System.IO.Path]::DirectorySeparatorChar + '+$'
+                    $trailingDirSeparators = '[\/]+$'
                     Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators)
                 }
             }
@@ -680,13 +680,13 @@ function CompressSingleDirHelper
         }
         else
         {
-            $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
+            $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::AltDirectorySeparatorChar
         }
     }
     else
     {
         $sourceDirFullName = $sourceDirPath
-        $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
+        $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::AltDirectorySeparatorChar
     }
 
     $dirContents = Get-ChildItem -LiteralPath $sourceDirPath -Recurse
@@ -706,7 +706,7 @@ function CompressSingleDirHelper
             $files = $currentContent.GetFiles()
             if($files.Count -eq 0)
             {
-                $subDirFiles.Add($currentContent.FullName + [System.IO.Path]::DirectorySeparatorChar)
+                $subDirFiles.Add($currentContent.FullName + [System.IO.Path]::AltDirectorySeparatorChar)
             }
         }
     }
@@ -798,7 +798,7 @@ function ZipArchiveHelper
             # If a directory needs to be added to an archive file,
             # by convention the .Net API's expect the path of the directory
             # to end with directory separator to detect the path as an directory.
-            if(!$relativeFilePath.EndsWith([System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
+            if(!$relativeFilePath.EndsWith([System.IO.Path]::AltDirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
             {
                 try
                 {
@@ -1010,7 +1010,7 @@ function ExpandArchiveHelper
             # The current archive entry is an empty directory
             # The FullName of the Archive Entry representing a directory would end with a trailing directory separator.
             if($extension -eq [string]::Empty -and
-            $currentArchiveEntryPath.EndsWith([System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
+            $currentArchiveEntryPath.EndsWith([System.IO.Path]::AltDirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
             {
                 $pathExists = Test-Path -LiteralPath $currentArchiveEntryPath
 
@@ -1094,8 +1094,8 @@ function ExpandArchiveHelper
                     {
                         # The ExtractToFile() method doesn't handle whitespace correctly, strip whitespace which is consistent with how Explorer handles archives
                         # There is an edge case where an archive contains files whose only difference is whitespace, but this is uncommon and likely not legitimate
-                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | % { $_.Trim() }
-                        $currentArchiveEntryPath = [string]::Join([System.IO.Path]::DirectorySeparatorChar, $parts)
+                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::AltDirectorySeparatorChar) | % { $_.Trim() }
+                        $currentArchiveEntryPath = [string]::Join([System.IO.Path]::AltDirectorySeparatorChar, $parts)
 
                         [System.IO.Compression.ZipFileExtensions]::ExtractToFile($currentArchiveEntry, $currentArchiveEntryPath, $false)
 
