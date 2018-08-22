@@ -422,7 +422,7 @@ function Expand-Archive
                 {
                     # Return the expanded items, being careful to remove trailing directory separators from
                     # any folder paths for consistency
-                    $trailingDirSeparators = '[\/]+$'
+                    $trailingDirSeparators = '\' + [System.IO.Path]::DirectorySeparatorChar + '+$'
                     Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators)
                 }
             }
@@ -752,14 +752,9 @@ function ZipArchiveHelper
         $progressBarStatus = ($LocalizedData.CompressProgressBarText -f $destinationPath)
         $bufferSize = 4kb
         $buffer = New-Object Byte[] $bufferSize
-        
-        # Normalize separator to AltDirectorySeparatorChar for building valid cross platform zips
-        $modifiedSourceDirFullName = $modifiedSourceDirFullName.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
 
         foreach($currentFilePath in $sourcePaths)
         {
-            $currentFilePath = $currentFilePath.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
-
             if($modifiedSourceDirFullName -ne $null -and $modifiedSourceDirFullName.Length -gt 0)
             {
                 $index = $currentFilePath.IndexOf($modifiedSourceDirFullName, [System.StringComparison]::OrdinalIgnoreCase)
@@ -784,7 +779,7 @@ function ZipArchiveHelper
 
                 foreach($currentArchiveEntry in $zipArchive.Entries)
                 {
-                    if($currentArchiveEntry.FullName -eq $relativeFilePath)
+                    if(ArchivePathCompareHelper $currentArchiveEntry.FullName $relativeFilePath)
                     {
                         $entryToBeUpdated = $currentArchiveEntry
                         break
@@ -803,7 +798,7 @@ function ZipArchiveHelper
             # If a directory needs to be added to an archive file,
             # by convention the .Net API's expect the path of the directory
             # to end with directory separator to detect the path as an directory.
-            if(!$relativeFilePath.EndsWith([System.IO.Path]::AltDirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
+            if(!$relativeFilePath.EndsWith([System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
             {
                 try
                 {
@@ -829,7 +824,8 @@ function ZipArchiveHelper
                     {
                         $srcStream = New-Object System.IO.BinaryReader $currentFileStream
 
-                        $currentArchiveEntry = $zipArchive.CreateEntry($relativeFilePath, $compression)
+                        $entryPath = DirectorySeparatorNormalizeHelper $relativeFilePath
+                        $currentArchiveEntry = $zipArchive.CreateEntry($entryPath, $compression)
 
                         # Updating  the File Creation time so that the same timestamp would be retained after expanding the compressed file.
                         # At this point we are sure that Get-ChildItem would succeed.
@@ -872,7 +868,8 @@ function ZipArchiveHelper
             }
             else
             {
-                $currentArchiveEntry = $zipArchive.CreateEntry("$relativeFilePath", $compression)
+                $entryPath = DirectorySeparatorNormalizeHelper $relativeFilePath
+                $currentArchiveEntry = $zipArchive.CreateEntry($entryPath, $compression)
                 $numberOfItemsArchived += 1
                 $addItemtoArchiveFileMessage = ($LocalizedData.AddItemtoArchiveFile -f $currentFilePath)
             }
@@ -1267,4 +1264,41 @@ function CreateErrorRecordHelper
 
     $errorRecord = New-Object System.Management.Automation.ErrorRecord $exception, $errorId, $errorCategory, $targetObject
     return $errorRecord
+}
+
+<############################################################################################
+# DirectorySeparatorNormalizeHelper: This is a helper function used to normalize separators
+# when compressing archives. This helper function is used to create cross platform archives
+############################################################################################>
+function DirectorySeparatorNormalizeHelper
+{
+    param
+    (
+        [string] $archivePath
+    )
+
+    if($null -eq $archivePath)
+    {
+        return $archivePath
+    }
+
+    return $archivePath.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+}
+
+<############################################################################################
+# ArchivePathCompareHelper: This is a helper function used to compare with normalized 
+# separators.
+############################################################################################>
+function ArchivePathCompareHelper
+{
+    param
+    (
+        [string] $pathArgA,
+        [string] $pathArgB
+    )
+
+    $normalizedPathArgA = DirectorySeparatorNormalizeHelper $pathArgA
+    $normalizedPathArgB = DirectorySeparatorNormalizeHelper $pathArgB
+
+    return $normalizedPathArgA -eq $normalizedPathArgB
 }
