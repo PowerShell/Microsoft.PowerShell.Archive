@@ -680,13 +680,13 @@ function CompressSingleDirHelper
         }
         else
         {
-            $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::AltDirectorySeparatorChar
+            $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
         }
     }
     else
     {
         $sourceDirFullName = $sourceDirPath
-        $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::AltDirectorySeparatorChar
+        $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
     }
 
     $dirContents = Get-ChildItem -LiteralPath $sourceDirPath -Recurse
@@ -706,7 +706,7 @@ function CompressSingleDirHelper
             $files = $currentContent.GetFiles()
             if($files.Count -eq 0)
             {
-                $subDirFiles.Add($currentContent.FullName + [System.IO.Path]::AltDirectorySeparatorChar)
+                $subDirFiles.Add($currentContent.FullName + [System.IO.Path]::DirectorySeparatorChar)
             }
         }
     }
@@ -751,13 +751,14 @@ function ZipArchiveHelper
         $currentEntryCount = 0
         $progressBarStatus = ($LocalizedData.CompressProgressBarText -f $destinationPath)
         $bufferSize = 4kb
-		$buffer = New-Object Byte[] $bufferSize
-		
-		$modifiedSourceDirFullName = $modifiedSourceDirFullName.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+        $buffer = New-Object Byte[] $bufferSize
+        
+        # Normalize separator to AltDirectorySeparatorChar for building valid cross platform zips
+        $modifiedSourceDirFullName = $modifiedSourceDirFullName.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
 
         foreach($currentFilePath in $sourcePaths)
         {
-			$currentFilePath = $currentFilePath.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+            $currentFilePath = $currentFilePath.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
 
             if($modifiedSourceDirFullName -ne $null -and $modifiedSourceDirFullName.Length -gt 0)
             {
@@ -1014,7 +1015,7 @@ function ExpandArchiveHelper
             # The current archive entry is an empty directory
             # The FullName of the Archive Entry representing a directory would end with a trailing directory separator.
             if($extension -eq [string]::Empty -and
-            $currentArchiveEntryPath.EndsWith([System.IO.Path]::AltDirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
+            $currentArchiveEntryPath.EndsWith([System.IO.Path]::DirectorySeparatorChar, [StringComparison]::OrdinalIgnoreCase))
             {
                 $pathExists = Test-Path -LiteralPath $currentArchiveEntryPath
 
@@ -1098,8 +1099,8 @@ function ExpandArchiveHelper
                     {
                         # The ExtractToFile() method doesn't handle whitespace correctly, strip whitespace which is consistent with how Explorer handles archives
                         # There is an edge case where an archive contains files whose only difference is whitespace, but this is uncommon and likely not legitimate
-                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::AltDirectorySeparatorChar) | % { $_.Trim() }
-                        $currentArchiveEntryPath = [string]::Join([System.IO.Path]::AltDirectorySeparatorChar, $parts)
+                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | % { $_.Trim() }
+                        $currentArchiveEntryPath = [string]::Join([System.IO.Path]::DirectorySeparatorChar, $parts)
 
                         [System.IO.Compression.ZipFileExtensions]::ExtractToFile($currentArchiveEntry, $currentArchiveEntryPath, $false)
 
