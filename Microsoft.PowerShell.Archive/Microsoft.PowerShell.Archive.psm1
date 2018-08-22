@@ -751,10 +751,14 @@ function ZipArchiveHelper
         $currentEntryCount = 0
         $progressBarStatus = ($LocalizedData.CompressProgressBarText -f $destinationPath)
         $bufferSize = 4kb
-        $buffer = New-Object Byte[] $bufferSize
+		$buffer = New-Object Byte[] $bufferSize
+		
+		$modifiedSourceDirFullName = $modifiedSourceDirFullName.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
 
         foreach($currentFilePath in $sourcePaths)
         {
+			$currentFilePath = $currentFilePath.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+
             if($modifiedSourceDirFullName -ne $null -and $modifiedSourceDirFullName.Length -gt 0)
             {
                 $index = $currentFilePath.IndexOf($modifiedSourceDirFullName, [System.StringComparison]::OrdinalIgnoreCase)
