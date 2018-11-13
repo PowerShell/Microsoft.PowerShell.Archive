@@ -13,6 +13,7 @@ CompressProgressBarText=The archive file '{0}' creation is in progress...
 ExpandProgressBarText=The archive file '{0}' expansion is in progress...
 AppendArchiveFileExtensionMessage=The archive file path '{0}' supplied to the DestinationPath parameter does not include .zip extension. Hence .zip is appended to the supplied DestinationPath path and the archive file would be created at '{1}'.
 AddItemtoArchiveFile=Adding '{0}'.
+BadArchiveEntry=Can not process invalid archive entry '{0}'.
 CreateFileAtExpandedPath=Created '{0}'.
 InvalidArchiveFilePathError=The archive file path '{0}' specified as input to the {1} parameter is resolving to multiple file system paths. Provide a unique path to the {2} parameter where the archive file has to be created.
 InvalidExpandedDirPathError=The directory path '{0}' specified as input to the DestinationPath parameter is resolving to multiple file system paths. Provide a unique path to the Destination parameter where the archive file contents have to be expanded.
