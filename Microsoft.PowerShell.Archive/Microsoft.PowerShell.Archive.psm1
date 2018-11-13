@@ -13,6 +13,7 @@
     ExpandProgressBarText=The archive file '{0}' expansion is in progress...
     AppendArchiveFileExtensionMessage=The archive file path '{0}' supplied to the DestinationPath parameter does not include .zip extension. Hence .zip is appended to the supplied DestinationPath path and the archive file would be created at '{1}'.
     AddItemtoArchiveFile=Adding '{0}'.
+    BadArchiveEntry=Can not process invalid archive entry '{0}'.
     CreateFileAtExpandedPath=Created '{0}'.
     InvalidArchiveFilePathError=The archive file path '{0}' specified as input to the {1} parameter is resolving to multiple file system paths. Provide a unique path to the {2} parameter where the archive file has to be created.
     InvalidExpandedDirPathError=The directory path '{0}' specified as input to the DestinationPath parameter is resolving to multiple file system paths. Provide a unique path to the Destination parameter where the archive file contents have to be expanded.
@@ -295,7 +296,7 @@ function Expand-Archive
         $isDestinationPathProvided = $true
         if($DestinationPath -eq [string]::Empty)
         {
-            $resolvedDestinationPath = $pwd
+            $resolvedDestinationPath = (Get-Location).ProviderPath
             $isDestinationPathProvided = $false
         }
         else
@@ -976,10 +977,34 @@ function ExpandArchiveHelper
         $currentEntryCount = 0
         $progressBarStatus = ($LocalizedData.ExpandProgressBarText -f $archiveFile)
 
+        # Ensures that the last character on the extraction path is the directory separator char.
+        # Without this, a bad zip file could try to traverse outside of the expected extraction path.
+        # At this point $expandedDir is a fully qualified path without any relative segments.
+        if (-not $expandedDir.EndsWith([System.IO.Path]::DirectorySeparatorChar))
+        {
+	        $expandedDir += [System.IO.Path]::DirectorySeparatorChar
+        }
+
         # The archive entries can either be empty directories or files.
         foreach($currentArchiveEntry in $zipArchive.Entries)
         {
             $currentArchiveEntryPath = Join-Path -Path $expandedDir -ChildPath $currentArchiveEntry.FullName
+
+            # Remove possible relative segments from target
+            # This is similar to [System.IO.Path]::GetFullPath($currentArchiveEntryPath) but uses PS current dir instead of process-wide current dir
+            $currentArchiveEntryPath = $PSCmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath($currentArchiveEntryPath)
+            
+            # Check that expanded relative paths and absolute paths from the archive are Not going outside of target directory
+            # Ordinal match is safest, case-sensitive volumes can be mounted within volumes that are case-insensitive.
+            if (-not ($currentArchiveEntryPath.StartsWith($expandedDir, [System.StringComparison]::Ordinal)))
+            {
+                $BadArchiveEntryMessage = ($LocalizedData.BadArchiveEntry -f $currentArchiveEntry.FullName)
+                # notify user of bad archive entry
+                Write-Error $BadArchiveEntryMessage
+                # move on to the next entry in the archive
+                continue
+            }
+
             $extension = [system.IO.Path]::GetExtension($currentArchiveEntryPath)
 
             # The current archive entry is an empty directory
