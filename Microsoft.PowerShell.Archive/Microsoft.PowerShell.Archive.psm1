@@ -272,7 +272,7 @@ function Expand-Archive
         [Alias("PSPath")]
         [string] $LiteralPath,
 
-        [parameter (mandatory=$false,
+        [parameter (mandatory=$true,
         Position=1,
         ValueFromPipeline=$false,
         ValueFromPipelineByPropertyName=$false)]
