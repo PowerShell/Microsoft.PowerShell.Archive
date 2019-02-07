@@ -990,6 +990,7 @@ function ExpandArchiveHelper
         # The archive entries can either be empty directories or files.
         foreach($currentArchiveEntry in $zipArchive.Entries)
         {
+            # Windows filesystem provider will internally convert from `/` to `\`
             $currentArchiveEntryPath = Join-Path -Path $expandedDir -ChildPath $currentArchiveEntry.FullName
 
             # Remove possible relative segments from target
@@ -1268,7 +1269,14 @@ function CreateErrorRecordHelper
 
 <############################################################################################
 # DirectorySeparatorNormalizeHelper: This is a helper function used to normalize separators
-# when compressing archives. This helper function is used to create cross platform archives
+# when compressing archives, creating cross platform archives. 
+# 
+# The approach taken is leveraging the fact that .net on Windows all the way back to 
+# Framework 1.1 specifies `\` as DirectoryPathSeparatorChar and `/` as
+# AltDirectoryPathSeparatorChar, while other platforms in .net Core use `/` for
+# DirectoryPathSeparatorChar and AltDirectoryPathSeparatorChar. When using a *nix platform,
+# the replacements will be no-ops, while Windows will convert all `\` to `/` for the
+# purposes of the ZipEntry FullName.
 ############################################################################################>
 function DirectorySeparatorNormalizeHelper
 {
