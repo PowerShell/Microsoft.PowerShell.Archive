@@ -138,7 +138,7 @@ function Compress-Archive
         # if we have write access permission to update the existing archive file.
         if($archiveFileExist -and $Update -eq $true)
         {
-            $item = Get-Item -Path $DestinationPath -Force
+            $item = Get-Item -Path $DestinationPath
             if($item.Attributes.ToString().Contains("ReadOnly"))
             {
                 $errorMessage = ($LocalizedData.ArchiveFileIsReadOnly -f $DestinationPath)
@@ -236,7 +236,7 @@ function Compress-Archive
                 }
                 elseif ($PassThru)
                 {
-                    Get-Item -LiteralPath $DestinationPath -Force
+                    Get-Item -LiteralPath $DestinationPath
                 }
             }
         }
@@ -423,7 +423,7 @@ function Expand-Archive
                     # Return the expanded items, being careful to remove trailing directory separators from
                     # any folder paths for consistency
                     $trailingDirSeparators = '\' + [System.IO.Path]::DirectorySeparatorChar + '+$'
-                    Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators) -Force
+                    Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators)
                 }
             }
         }
@@ -734,7 +734,7 @@ function ZipArchiveHelper
     $result = Test-Path -LiteralPath $DestinationPath -Type Leaf
     if($result -eq $true)
     {
-        $fileMode = [System.IO.FileMode]::OpenOrCreate
+        $fileMode = [System.IO.FileMode]::Open
     }
 
     Add-CompressionAssemblies
@@ -744,10 +744,10 @@ function ZipArchiveHelper
         # At this point we are sure that the archive file has write access.
         $archiveFileStreamArgs = @($destinationPath, $fileMode)
         $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
-
+        
         $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Update, $false)
         $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
-
+        
         $currentEntryCount = 0
         $progressBarStatus = ($LocalizedData.CompressProgressBarText -f $destinationPath)
         $bufferSize = 4kb
@@ -765,7 +765,6 @@ function ZipArchiveHelper
             {
                 $relativeFilePath = [System.IO.Path]::GetFileName($currentFilePath)
             }
-
             # Update mode is selected.
             # Check to see if archive file already contains one or more zip files in it.
             if($isUpdateMode -eq $true -and $zipArchive.Entries.Count -gt 0)
@@ -804,7 +803,7 @@ function ZipArchiveHelper
                 {
                     try
                     {
-                        $currentFileStream = [System.IO.File]::Open($currentFilePath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::Read)
+                        $currentFileStream = [System.IO.File]::Open($currentFilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
                     }
                     catch
                     {
@@ -825,7 +824,7 @@ function ZipArchiveHelper
                         $srcStream = New-Object System.IO.BinaryReader $currentFileStream
 
                         $currentArchiveEntry = $zipArchive.CreateEntry($relativeFilePath, $compression)
-
+                        
                         # Updating  the File Creation time so that the same timestamp would be retained after expanding the compressed file.
                         # At this point we are sure that Get-ChildItem would succeed.
                         $lastWriteTime = (Get-Item -LiteralPath $currentFilePath -Force).LastWriteTime
@@ -841,7 +840,7 @@ function ZipArchiveHelper
 
                         while($numberOfBytesRead = $srcStream.Read($buffer, 0, $bufferSize))
                         {
-                            $destStream.Write($buffer, 0, $numberOfBytesRead)
+                            $destStream.Write($buffer, 0, $numberOfBytesRead) # can file attributes be specified here
                             $destStream.Flush()
                         }
 
@@ -940,7 +939,7 @@ function ExpandArchiveHelper
     {
         # The existence of archive file has already been validated by ValidateArchivePathHelper
         # before calling this helper function.
-        $archiveFileStreamArgs = @($archiveFile, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::Read)
+        $archiveFileStreamArgs = @($archiveFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
         $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
 
         $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
