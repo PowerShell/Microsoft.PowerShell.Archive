@@ -734,7 +734,7 @@ function ZipArchiveHelper
     $result = Test-Path -LiteralPath $DestinationPath -Type Leaf
     if($result -eq $true)
     {
-        $fileMode = [System.IO.FileMode]::Open
+        $fileMode = [System.IO.FileMode]::OpenOrCreate
     }
 
     Add-CompressionAssemblies
@@ -804,7 +804,7 @@ function ZipArchiveHelper
                 {
                     try
                     {
-                        $currentFileStream = [System.IO.File]::Open($currentFilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
+                        $currentFileStream = [System.IO.File]::Open($currentFilePath, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::Read)
                     }
                     catch
                     {
@@ -940,7 +940,7 @@ function ExpandArchiveHelper
     {
         # The existence of archive file has already been validated by ValidateArchivePathHelper
         # before calling this helper function.
-        $archiveFileStreamArgs = @($archiveFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
+        $archiveFileStreamArgs = @($archiveFile, [System.IO.FileMode]::OpenOrCreate, [System.IO.FileAccess]::Read)
         $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
 
         $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
