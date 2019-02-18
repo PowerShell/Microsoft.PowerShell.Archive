@@ -138,7 +138,7 @@ function Compress-Archive
         # if we have write access permission to update the existing archive file.
         if($archiveFileExist -and $Update -eq $true)
         {
-            $item = Get-Item -Path $DestinationPath
+            $item = Get-Item -Path $DestinationPath -Force
             if($item.Attributes.ToString().Contains("ReadOnly"))
             {
                 $errorMessage = ($LocalizedData.ArchiveFileIsReadOnly -f $DestinationPath)
@@ -236,7 +236,7 @@ function Compress-Archive
                 }
                 elseif ($PassThru)
                 {
-                    Get-Item -LiteralPath $DestinationPath
+                    Get-Item -LiteralPath $DestinationPath -Force
                 }
             }
         }
@@ -423,7 +423,7 @@ function Expand-Archive
                     # Return the expanded items, being careful to remove trailing directory separators from
                     # any folder paths for consistency
                     $trailingDirSeparators = '\' + [System.IO.Path]::DirectorySeparatorChar + '+$'
-                    Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators)
+                    Get-Item -LiteralPath ($expandedItems -replace $trailingDirSeparators) -Force
                 }
             }
         }
@@ -689,7 +689,7 @@ function CompressSingleDirHelper
         $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
     }
 
-    $dirContents = Get-ChildItem -LiteralPath $sourceDirPath -Recurse
+    $dirContents = Get-ChildItem -LiteralPath $sourceDirPath -Recurse -Force
     foreach($currentContent in $dirContents)
     {
         $isContainer = $currentContent -is [System.IO.DirectoryInfo]
@@ -828,7 +828,7 @@ function ZipArchiveHelper
 
                         # Updating  the File Creation time so that the same timestamp would be retained after expanding the compressed file.
                         # At this point we are sure that Get-ChildItem would succeed.
-                        $lastWriteTime = (Get-Item -LiteralPath $currentFilePath).LastWriteTime
+                        $lastWriteTime = (Get-Item -LiteralPath $currentFilePath -Force).LastWriteTime
                         if ($lastWriteTime.Year -lt 1980)
                         {
                             Write-Warning "'$currentFilePath' has LastWriteTime earlier than 1980. Compress-Archive will store any files with LastWriteTime values earlier than 1980 as 1/1/1980 00:00."
