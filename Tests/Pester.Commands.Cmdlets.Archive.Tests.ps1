@@ -180,7 +180,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
             $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
 
-            $entryToBeUpdated = $zipArchive.Entries | ? {$_.FullName -eq $entryFileName}
+            $entryToBeUpdated = $zipArchive.Entries | ? {$_.FullName -eq $entryFileName.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)}
 
             if($entryToBeUpdated -ne $null)
             {
@@ -195,6 +195,40 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             {
                 throw "Failed to find the file $entryFileName in the archive file $path"
             }
+        }
+        finally
+        {
+            if ($zipArchive)
+            {
+                $zipArchive.Dispose()
+            }
+            if ($archiveFileStream)
+            {
+                $archiveFileStream.Dispose()
+            }
+        }
+    }
+
+    function ArchiveFileEntrySeparatorValidator {
+        param
+        (
+            [string] $path
+        )
+
+        Add-CompressionAssemblies
+        try
+        {
+            $destFile = "$TestDrive$($DS)ExpandedFile"+([System.Guid]::NewGuid().ToString())+".txt"
+
+            $archiveFileStreamArgs = @($path, [System.IO.FileMode]::Open)
+            $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
+
+            $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
+            $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
+
+            $badEntries = $zipArchive.Entries | Where-Object {$_.FullName.Contains('\')}
+
+            $badEntries.Count | Should Be 0
         }
         finally
         {
@@ -628,6 +662,23 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Test-Path $destinationPath | Should Be $True
 
             ArchiveFileEntryContentValidator "$destinationPath" "SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt" $modifiedContent
+        }
+
+        It "Validate that only / separators are used as archive directory separators" {
+            $filePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
+
+            $initialContent = "Initial Content"
+            $modifiedContent = "Modified Content"
+
+            $initialContent | Set-Content $filePath
+
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)VerifyingSeparators.zip"
+
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Test-Path $destinationPath | Should Be $True
+
+            ArchiveFileEntrySeparatorValidator "$destinationPath"
         }
 
         It "Validate Compress-Archive cmdlet in pipleline scenario" {

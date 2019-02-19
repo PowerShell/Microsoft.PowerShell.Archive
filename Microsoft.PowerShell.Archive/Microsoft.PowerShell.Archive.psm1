@@ -1,4 +1,4 @@
-﻿data LocalizedData
+data LocalizedData
 {
     # culture="en-US"
     ConvertFrom-StringData @'
@@ -779,7 +779,7 @@ function ZipArchiveHelper
 
                 foreach($currentArchiveEntry in $zipArchive.Entries)
                 {
-                    if($currentArchiveEntry.FullName -eq $relativeFilePath)
+                    if(ArchivePathCompareHelper $currentArchiveEntry.FullName $relativeFilePath)
                     {
                         $entryToBeUpdated = $currentArchiveEntry
                         break
@@ -824,7 +824,8 @@ function ZipArchiveHelper
                     {
                         $srcStream = New-Object System.IO.BinaryReader $currentFileStream
 
-                        $currentArchiveEntry = $zipArchive.CreateEntry($relativeFilePath, $compression)
+                        $entryPath = DirectorySeparatorNormalizeHelper $relativeFilePath
+                        $currentArchiveEntry = $zipArchive.CreateEntry($entryPath, $compression)
 
                         # Updating  the File Creation time so that the same timestamp would be retained after expanding the compressed file.
                         # At this point we are sure that Get-ChildItem would succeed.
@@ -867,7 +868,8 @@ function ZipArchiveHelper
             }
             else
             {
-                $currentArchiveEntry = $zipArchive.CreateEntry("$relativeFilePath", $compression)
+                $entryPath = DirectorySeparatorNormalizeHelper $relativeFilePath
+                $currentArchiveEntry = $zipArchive.CreateEntry($entryPath, $compression)
                 $numberOfItemsArchived += 1
                 $addItemtoArchiveFileMessage = ($LocalizedData.AddItemtoArchiveFile -f $currentFilePath)
             }
@@ -988,6 +990,7 @@ function ExpandArchiveHelper
         # The archive entries can either be empty directories or files.
         foreach($currentArchiveEntry in $zipArchive.Entries)
         {
+            # Windows filesystem provider will internally convert from `/` to `\`
             $currentArchiveEntryPath = Join-Path -Path $expandedDir -ChildPath $currentArchiveEntry.FullName
 
             # Remove possible relative segments from target
@@ -1262,4 +1265,48 @@ function CreateErrorRecordHelper
 
     $errorRecord = New-Object System.Management.Automation.ErrorRecord $exception, $errorId, $errorCategory, $targetObject
     return $errorRecord
+}
+
+<############################################################################################
+# DirectorySeparatorNormalizeHelper: This is a helper function used to normalize separators
+# when compressing archives, creating cross platform archives. 
+# 
+# The approach taken is leveraging the fact that .net on Windows all the way back to 
+# Framework 1.1 specifies `\` as DirectoryPathSeparatorChar and `/` as
+# AltDirectoryPathSeparatorChar, while other platforms in .net Core use `/` for
+# DirectoryPathSeparatorChar and AltDirectoryPathSeparatorChar. When using a *nix platform,
+# the replacements will be no-ops, while Windows will convert all `\` to `/` for the
+# purposes of the ZipEntry FullName.
+############################################################################################>
+function DirectorySeparatorNormalizeHelper
+{
+    param
+    (
+        [string] $archivePath
+    )
+
+    if($null -eq $archivePath)
+    {
+        return $archivePath
+    }
+
+    return $archivePath.replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+}
+
+<############################################################################################
+# ArchivePathCompareHelper: This is a helper function used to compare with normalized 
+# separators.
+############################################################################################>
+function ArchivePathCompareHelper
+{
+    param
+    (
+        [string] $pathArgA,
+        [string] $pathArgB
+    )
+
+    $normalizedPathArgA = DirectorySeparatorNormalizeHelper $pathArgA
+    $normalizedPathArgB = DirectorySeparatorNormalizeHelper $pathArgB
+
+    return $normalizedPathArgA -eq $normalizedPathArgB
 }
