@@ -804,7 +804,7 @@ function ZipArchiveHelper
                 {
                     try
                     {
-                        $currentFileStream = [System.IO.File]::Open($currentFilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, 1)
+                        $currentFileStream = [System.IO.File]::Open($currentFilePath, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read, [System.IO.FileShare]::Read)
                     }
                     catch
                     {
