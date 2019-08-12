@@ -767,10 +767,13 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Get-Content $sourcePath
             $TestFile = [System.IO.File]::Open($sourcePath, 'Open', 'Read', 'Read')
 
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            Test-Path $destinationPath | Should Be $true
-            
-            $TestFile.Close()
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                Test-Path $destinationPath | Should Be $true
+            }
+            finally {
+                $TestFile.Close()
+            }
         }
     }
 
