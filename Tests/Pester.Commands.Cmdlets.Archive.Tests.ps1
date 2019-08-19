@@ -758,6 +758,23 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should Exist
         }
+
+        It "Validate that Compress-Archive can create a zip archive when the source is in use" {
+            $sourcePath = "$TestDrive$($DS)InUseFile.txt"
+            $destinationPath = "$TestDrive$($DS)TestForinUseFile.zip"
+
+            "Some Content" | Out-File -FilePath $sourcePath
+            Get-Content $sourcePath
+            $TestFile = [System.IO.File]::Open($sourcePath, 'Open', 'Read', 'Read')
+
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                Test-Path $destinationPath | Should Be $true
+            }
+            finally {
+                $TestFile.Close()
+            }
+        }
     }
 
     Context "Expand-Archive - Parameter validation test cases" {
