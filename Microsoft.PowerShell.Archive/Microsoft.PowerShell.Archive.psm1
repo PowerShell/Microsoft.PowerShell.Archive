@@ -818,6 +818,10 @@ function ZipArchiveHelper
                         }
                         $errorRecord = CreateErrorRecordHelper "CompressArchiveUnauthorizedAccessError" $null ([System.Management.Automation.ErrorCategory]::PermissionDenied) $exception $currentFilePath
                         Write-Error -ErrorRecord $errorRecord
+			
+			# Set $currentFileStream to null to prevent incorrectly entering the next
+			# block if this is not the first file
+			$currentFileStream = $null;
                     }
 
                     if($null -ne $currentFileStream)
