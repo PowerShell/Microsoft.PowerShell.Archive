@@ -282,7 +282,7 @@ namespace Microsoft.PowerShell.Archive
                 }
                 else
                 {
-                    string error = StringUtil.Format(ArchiveProviderStrings.ItemNotFound, path);
+                    string error = String.Format(ArchiveProviderStrings.ItemNotFound, path);
                     Exception e = new IOException(error);
                     WriteError(new ErrorRecord(
                         e,
@@ -327,7 +327,7 @@ namespace Microsoft.PowerShell.Archive
 
             string action = ArchiveProviderStrings.InvokeItemAction;
 
-            string resource = StringUtil.Format(ArchiveProviderStrings.InvokeItemResourceFileTemplate, path);
+            string resource = String.Format(ArchiveProviderStrings.InvokeItemResourceFileTemplate, path);
 
             if (ShouldProcess(resource, action))
             {
@@ -588,7 +588,7 @@ namespace Microsoft.PowerShell.Archive
                 Console.WriteLine("Please help me out. Submit an issue with what you did in order to get this to trigger");
                 Console.WriteLine("https://github.com/romero126/PS1C");
 
-                String error = StringUtil.Format(ArchiveProviderStrings.ItemDoesNotExist, path);
+                String error = String.Format(ArchiveProviderStrings.ItemDoesNotExist, path);
                 Exception e = new IOException(error);
                 WriteError(new ErrorRecord(
                     e,
@@ -678,7 +678,7 @@ namespace Microsoft.PowerShell.Archive
 
                 string action = ArchiveProviderStrings.RenameItemActionFile;
 
-                string resource = StringUtil.Format(ArchiveProviderStrings.RenameItemResourceFileTemplate, file.FullName, newName);
+                string resource = String.Format(ArchiveProviderStrings.RenameItemResourceFileTemplate, file.FullName, newName);
 
 
                 if (ShouldProcess(resource, action))
@@ -797,7 +797,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     string action = ArchiveProviderStrings.NewItemActionDirectory;
 
-                    string resource = StringUtil.Format(ArchiveProviderStrings.NewItemActionTemplate, path);
+                    string resource = String.Format(ArchiveProviderStrings.NewItemActionTemplate, path);
 
                     if (!ShouldProcess(resource, action))
                     {
@@ -816,7 +816,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     string action = ArchiveProviderStrings.NewItemActionFile;
 
-                    string resource = StringUtil.Format(ArchiveProviderStrings.NewItemActionTemplate, path);
+                    string resource = String.Format(ArchiveProviderStrings.NewItemActionTemplate, path);
 
                     if (!ShouldProcess(resource, action))
                     {
@@ -1063,7 +1063,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     // File ZipFile Open and ArchiveItem Open throws the same errors, need to validate
                     // ArchiveItem existance.
-                    if (ioException.Message != StringUtil.Format(ArchiveProviderStrings.ItemNotFound, path))
+                    if (ioException.Message != String.Format(ArchiveProviderStrings.ItemNotFound, path))
                     {
                         throw ioException;
                     }
@@ -1246,7 +1246,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     string driveName = (file.Drive.Name + Path.VolumeSeparatorChar + Path.DirectorySeparatorChar);
 
-                    string resource = StringUtil.Format(ArchiveProviderStrings.CopyItemResourceFileTemplate, file.FullName, destinationPath);
+                    string resource = String.Format(ArchiveProviderStrings.CopyItemResourceFileTemplate, file.FullName, destinationPath);
                     if (ShouldProcess(resource, action))
                     {
                         // If pathIsDirectory
@@ -1396,20 +1396,20 @@ namespace Microsoft.PowerShell.Archive
     //     private const string definitionToken = "Definition";
         #region PSCopyToSessionHelper
     //     private static string s_driveMaxSizeErrorFormatString = FileSystemProviderStrings.DriveMaxSizeError;
-    //     private static string s_PSCopyToSessionHelperDefinition = StringUtil.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateNotNullOrEmpty()]", s_driveMaxSizeErrorFormatString);
-    //     private static string s_PSCopyToSessionHelperDefinitionRestricted = StringUtil.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateUserDrive()]", s_driveMaxSizeErrorFormatString);
+    //     private static string s_PSCopyToSessionHelperDefinition = String.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateNotNullOrEmpty()]", s_driveMaxSizeErrorFormatString);
+    //     private static string s_PSCopyToSessionHelperDefinitionRestricted = String.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateUserDrive()]", s_driveMaxSizeErrorFormatString);
     //     private const string PSCopyToSessionHelperDefinitionFormat = @"
     //     private static string s_PSCopyToSessionHelper = functionToken + PSCopyToSessionHelperName + @"
     //     private static Hashtable s_PSCopyToSessionHelperFunction = new Hashtable() {
         #endregion
         #region PSCopyFromSessionHelper
-    //     private static string s_PSCopyFromSessionHelperDefinition = StringUtil.Format(PSCopyFromSessionHelperDefinitionFormat, @"[ValidateNotNullOrEmpty()]");
-    //     private static string s_PSCopyFromSessionHelperDefinitionRestricted = StringUtil.Format(PSCopyFromSessionHelperDefinitionFormat, @"[ValidateUserDrive()]");
+    //     private static string s_PSCopyFromSessionHelperDefinition = String.Format(PSCopyFromSessionHelperDefinitionFormat, @"[ValidateNotNullOrEmpty()]");
+    //     private static string s_PSCopyFromSessionHelperDefinitionRestricted = String.Format(PSCopyFromSessionHelperDefinitionFormat, @"[ValidateUserDrive()]");
     //     private const string PSCopyFromSessionHelperDefinitionFormat = @"
     //     private static Hashtable s_PSCopyFromSessionHelperFunction = new Hashtable() {
         #endregion
         #region PSCopyRemoteUtils
-    //     private static string s_PSCopyRemoteUtilsDefinitionRestricted = StringUtil.Format(PSCopyRemoteUtilsDefinitionFormat, @"[ValidateUserDrive()]", PSValidatePathFunction);
+    //     private static string s_PSCopyRemoteUtilsDefinitionRestricted = String.Format(PSCopyRemoteUtilsDefinitionFormat, @"[ValidateUserDrive()]", PSValidatePathFunction);
     //     private const string PSCopyRemoteUtilsDefinitionFormat = @"
     //     private const string PSValidatePathFunction = functionToken + "PSValidatePath" + @"
         #endregion

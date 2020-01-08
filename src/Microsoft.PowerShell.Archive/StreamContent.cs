@@ -1084,7 +1084,7 @@ namespace Microsoft.PowerShell.Archive
                 // indicated by a character that is not in Modified Base64 set.
                 // For these encodings, we cannot detect a starting byte with confidence when
                 // reading bytes backward. Throw out exception in these cases.
-                string errMsg = StringUtil.Format(
+                string errMsg = String.Format(
                     FileSystemProviderStrings.ReadBackward_Encoding_NotSupport,
                     _currentEncoding.EncodingName);
                 throw new BackReaderEncodingNotSupportedException(errMsg, _currentEncoding.EncodingName);

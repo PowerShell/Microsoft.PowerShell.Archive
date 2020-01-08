@@ -206,7 +206,7 @@ namespace Microsoft.PowerShell.Archive
                     }
                     else
                     {
-                        string error = StringUtil.Format(ArchiveProviderStrings.ItemNotFound, path);
+                        string error = String.Format(ArchiveProviderStrings.ItemNotFound, path);
                         throw new FileNotFoundException(error);
                     }
 
