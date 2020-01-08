@@ -684,7 +684,7 @@ namespace Microsoft.PowerShell.Archive
                 }
                 catch (InvalidCastException)
                 {
-                    throw PSTraceSource.NewArgumentException("content", FileSystemProviderStrings.ByteEncodingError);
+                    throw PSTraceSource.NewArgumentException("content", ArchiveProviderStrings.ByteEncodingError);
                 }
             }
             else
@@ -1085,7 +1085,7 @@ namespace Microsoft.PowerShell.Archive
                 // For these encodings, we cannot detect a starting byte with confidence when
                 // reading bytes backward. Throw out exception in these cases.
                 string errMsg = String.Format(
-                    FileSystemProviderStrings.ReadBackward_Encoding_NotSupport,
+                    ArchiveProviderStrings.ReadBackward_Encoding_NotSupport,
                     _currentEncoding.EncodingName);
                 throw new BackReaderEncodingNotSupportedException(errMsg, _currentEncoding.EncodingName);
             }

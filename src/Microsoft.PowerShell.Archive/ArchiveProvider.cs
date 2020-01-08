@@ -1395,7 +1395,7 @@ namespace Microsoft.PowerShell.Archive
     //     private const string nameToken = "Name";
     //     private const string definitionToken = "Definition";
         #region PSCopyToSessionHelper
-    //     private static string s_driveMaxSizeErrorFormatString = FileSystemProviderStrings.DriveMaxSizeError;
+    //     private static string s_driveMaxSizeErrorFormatString = ArchiveProviderStrings.DriveMaxSizeError;
     //     private static string s_PSCopyToSessionHelperDefinition = String.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateNotNullOrEmpty()]", s_driveMaxSizeErrorFormatString);
     //     private static string s_PSCopyToSessionHelperDefinitionRestricted = String.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateUserDrive()]", s_driveMaxSizeErrorFormatString);
     //     private const string PSCopyToSessionHelperDefinitionFormat = @"
