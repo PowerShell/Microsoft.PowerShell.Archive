@@ -90,7 +90,7 @@ namespace Microsoft.PowerShell.Archive
 
             if (path.IndexOfAny(Path.GetInvalidPathChars()) != -1)
             {
-                PSTraceSource.NewArgumentException(ArchiveProviderStrings.PathContainsInvalidCharacters);
+                TraceSource.NewArgumentException(ArchiveProviderStrings.PathContainsInvalidCharacters);
             }
 
             if (path.StartsWith($"{ArchiveDriveInfo.Root}"))
@@ -145,12 +145,12 @@ namespace Microsoft.PowerShell.Archive
 
             if (drive == null)
             {
-                throw PSTraceSource.NewArgumentNullException("drive");
+                throw TraceSource.NewArgumentNullException("drive");
             }
 
             if (String.IsNullOrEmpty(drive.Root))
             {
-                throw PSTraceSource.NewArgumentException("drive.Root");
+                throw TraceSource.NewArgumentException("drive.Root");
             }
 
             FileInfo archiveInfo = new FileInfo(drive.Root);
@@ -263,7 +263,7 @@ namespace Microsoft.PowerShell.Archive
             if (string.IsNullOrEmpty(path))
             {
                 // The parameter was null, throw an exception
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             try
@@ -320,7 +320,7 @@ namespace Microsoft.PowerShell.Archive
         {
             if (String.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             path = NormalizePath(path);
@@ -505,7 +505,7 @@ namespace Microsoft.PowerShell.Archive
             // Verify parameters
             if (String.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             bool isDirectory = IsItemContainer(path);
@@ -630,14 +630,14 @@ namespace Microsoft.PowerShell.Archive
             // Check the parameters
             if (String.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             path = NormalizePath(path);
 
             if (String.IsNullOrEmpty(newName))
             {
-                throw PSTraceSource.NewArgumentException("newName");
+                throw TraceSource.NewArgumentException("newName");
             }
 
             // newName = NormalizePath(newName);
@@ -659,13 +659,13 @@ namespace Microsoft.PowerShell.Archive
             //If a path is specified for the newName then we flag that as an error.
             // if (String.Compare(Path.GetFileName(newName), newName, StringComparison.OrdinalIgnoreCase) != 0)
             // {
-            //     throw PSTraceSource.NewArgumentException("newName", ArchiveProviderStrings.RenameError);
+            //     throw TraceSource.NewArgumentException("newName", ArchiveProviderStrings.RenameError);
             // }
 
             // Check to see if the target specified exists. 
             if (ItemExists(newName))
             {
-                throw PSTraceSource.NewArgumentException("newName", ArchiveProviderStrings.RenameError);
+                throw TraceSource.NewArgumentException("newName", ArchiveProviderStrings.RenameError);
             }
             
             try
@@ -745,7 +745,7 @@ namespace Microsoft.PowerShell.Archive
             // Verify parameters
             if (string.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             if (String.IsNullOrEmpty(type))
@@ -912,7 +912,7 @@ namespace Microsoft.PowerShell.Archive
         {
             if (string.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             path = NormalizePath(path);
@@ -1036,7 +1036,7 @@ namespace Microsoft.PowerShell.Archive
 
             if (String.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             bool result = false;
@@ -1139,7 +1139,7 @@ namespace Microsoft.PowerShell.Archive
             // verify parameters
             if (string.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             path = NormalizePath(path);
@@ -1181,12 +1181,12 @@ namespace Microsoft.PowerShell.Archive
         {
             if (String.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentException("path");
+                throw TraceSource.NewArgumentException("path");
             }
 
             if (String.IsNullOrEmpty(destinationPath))
             {
-                throw PSTraceSource.NewArgumentException("destinationPath");
+                throw TraceSource.NewArgumentException("destinationPath");
             }
 
             path = NormalizePath(path);

@@ -170,7 +170,7 @@ namespace Microsoft.PowerShell.Archive
 
             if (String.IsNullOrEmpty(path))
             {
-                throw PSTraceSource.NewArgumentNullException("path");
+                throw TraceSource.NewArgumentNullException("path");
             }
 
             Drive = drive;
@@ -182,7 +182,7 @@ namespace Microsoft.PowerShell.Archive
             // Path.VolumeSeparatorChar defaults to a / in ubuntu
             if (path.Contains( ":" ))
             {
-                throw PSTraceSource.NewArgumentException(path);
+                throw TraceSource.NewArgumentException(path);
             }
 
             path = path.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);

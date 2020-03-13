@@ -30,21 +30,6 @@ namespace Microsoft.PowerShell.Archive
     /// </remarks>
     public class StreamContentReaderWriter : IContentReader, IContentWriter
     {
-        #region tracer
-
-        /// <summary>
-        /// An instance of the PSTraceSource class used for trace output
-        /// using "StreamContentStream" as the category.
-        /// </summary>
-        //[Dbg.TraceSourceAttribute(
-        //    "StreamContentStream",
-        //    "The provider content reader and writer for System.IO.Stream")]
-        //private static Dbg.PSTraceSource s_tracer =
-        //    Dbg.PSTraceSource.GetTracer("StreamContentStream",
-        //    "The provider content reader and writer for System.IO.Stream");
-
-        #endregion tracer
-
         private Encoding _encoding;
         private CmdletProvider _provider;
         private Stream _stream;
@@ -253,7 +238,7 @@ namespace Microsoft.PowerShell.Archive
             if (backCount < 0)
             {
                 // The caller needs to guarantee that 'backCount' is greater or equals to 0
-                throw PSTraceSource.NewArgumentException("backCount");
+                throw TraceSource.NewArgumentException("backCount");
             }
 
             //s_tracer.WriteLine("blocks seek backwards = {0}", backCount);
@@ -684,7 +669,7 @@ namespace Microsoft.PowerShell.Archive
                 }
                 catch (InvalidCastException)
                 {
-                    throw PSTraceSource.NewArgumentException("content", ArchiveProviderStrings.ByteEncodingError);
+                    throw TraceSource.NewArgumentException("content", ArchiveProviderStrings.ByteEncodingError);
                 }
             }
             else
@@ -800,7 +785,7 @@ namespace Microsoft.PowerShell.Archive
         public override int ReadBlock(char[] buffer, int index, int count)
         {
             // This method is not supposed to be used
-            throw PSTraceSource.NewNotSupportedException();
+            throw TraceSource.NewNotSupportedException();
         }
 
         /// <summary>
@@ -810,7 +795,7 @@ namespace Microsoft.PowerShell.Archive
         public override string ReadToEnd()
         {
             // This method is not supposed to be used
-            throw PSTraceSource.NewNotSupportedException();
+            throw TraceSource.NewNotSupportedException();
         }
 
         /// <summary>
