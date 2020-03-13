@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Management.Automation;
 using System.Management.Automation.Provider;
 using System.Linq;
+
+using Microsoft.PowerShell.Commands;
 
 namespace Microsoft.PowerShell.Archive
 {
@@ -207,7 +210,7 @@ namespace Microsoft.PowerShell.Archive
             // path = EnsureDriveIsRooted(path);
 
             // Make sure the path is either drive rooted or UNC Path
-            if (!IsAbsolutePath(path) && !Utils.PathIsUnc(path))
+            if (!IsAbsolutePath(path) && !PathIsUnc(path))
             {
                 return false;
             }
@@ -1061,7 +1064,7 @@ namespace Microsoft.PowerShell.Archive
                 }
                 catch (IOException ioException)
                 {
-                    // File ZipFile Open and ArchiveItem Open throws the same errors, need to validate
+                    // File Archive Open and ArchiveItem Open throws the same errors, need to validate
                     // ArchiveItem existance.
                     if (ioException.Message != String.Format(ArchiveProviderStrings.ItemNotFound, path))
                     {
@@ -1299,8 +1302,26 @@ namespace Microsoft.PowerShell.Archive
         #endregion ContainerCmdletProvider members
         #region NavigationCmdletProvider members
         // Todo: protected override string GetParentPath(string path, string root)
-        // Todo: private static bool IsAbsolutePath(string path)
+
+        // Note: we don't use IO.Path.IsPathRooted as this deals with "invalid" i.e. unnormalized paths
+        private static bool IsAbsolutePath(string path)
+        {
+            Console.WriteLine($"IsAbsolutePath: {path}");
+            return false;
+        }
+
+        internal static bool PathIsUnc(string path)
+        {
+#if UNIX
+            return false;
+#else
+            Uri uri;
+            return !string.IsNullOrEmpty(path) && Uri.TryCreate(path, UriKind.Absolute, out uri) && uri.IsUnc;
+#endif
+        }
+
         // Todo: private static bool IsUNCPath(string path)
+
         // Todo: private static bool IsUNCRoot(string path)
         // Todo: private static bool IsPathRoot(string path)
         // Todo: protected override string NormalizeRelativePath(
@@ -1312,7 +1333,43 @@ namespace Microsoft.PowerShell.Archive
         // Todo: private string CreateNormalizedRelativePathFromStack(Stack<string> normalizedPathStack)
         // Todo: protected override string GetChildName(string path)
         // Todo: private static string EnsureDriveIsRooted(string path)
-        // Todo: protected override bool IsItemContainer(string path)
+
+        protected bool IsItemContainerContainsItems(string path)
+        {
+            bool result = false;
+
+            if (!PathUtils.EndsInDirectorySeparator(path))
+            {
+                path += Path.DirectorySeparatorChar;
+            }
+            path += "*";
+            
+            ArchiveItemInfo[] items = ArchiveDriveInfo.GetItem(path).ToArray();
+
+            if (items.Length > 0)
+            {
+                result = true;
+            }
+
+            return result;
+        }
+
+		protected override bool IsItemContainer(string path)
+		{
+            path = NormalizePath(path);
+            
+            if ( String.IsNullOrEmpty(path) )
+            {
+                return true;
+            }
+            else if ( path == "\\" || path == "/")
+            {
+                return true;
+            }
+
+            return ArchiveDriveInfo.IsItemContainer(path);
+		}
+
         #region MoveItem
         // Todo: protected override void MoveItem(
         // Todo: private void MoveFileInfoItem(

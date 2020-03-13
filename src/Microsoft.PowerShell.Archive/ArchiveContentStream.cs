@@ -50,4 +50,5 @@ namespace Microsoft.PowerShell.Archive
     #endregion ZipFileContentStream
 
     #endregion StreamContent
+
 }

@@ -65,7 +65,7 @@ namespace Microsoft.PowerShell.Archive
 
             // error condition: unknown encoding value
             string validEncodingValues = string.Join(", ", TabCompletionResults);
-            string msg = String.Format(PathUtilsStrings.OutFile_WriteToFileEncodingUnknown, encoding, validEncodingValues);
+            string msg = String.Format(Exceptions.OutFile_WriteToFileEncodingUnknown, encoding, validEncodingValues);
 
             ErrorRecord errorRecord = new ErrorRecord(
                 TraceSource.NewArgumentException("Encoding"),

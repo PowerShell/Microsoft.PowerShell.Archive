@@ -96,5 +96,41 @@ internal class Exceptions {
         }
     }
 
+
+    /// <summary>
+    ///   Looks up a localized string similar to 
+    ///    Cannot detect the encoding of the file. The specified encoding {0} is not supported when the content is read in reverse.
+    ///  
+    /// </summary>
+    internal static string ReadBackward_Encoding_NotSupport {
+        get {
+            return ResourceManager.GetString("ReadBackward_Encoding_NotSupport", resourceCulture);
+        }
+    }
+
+
+    /// <summary>
+    ///   Looks up a localized string similar to 
+    ///    Cannot proceed with byte encoding. When using byte encoding the content must be of type byte.
+    ///  
+    /// </summary>
+    internal static string ByteEncodingError {
+        get {
+            return ResourceManager.GetString("ByteEncodingError", resourceCulture);
+        }
+    }
+
+
+    /// <summary>
+    ///   Looks up a localized string similar to 
+    ///    Unknown encoding {0}; valid values are {1}.
+    ///  
+    /// </summary>
+    internal static string OutFile_WriteToFileEncodingUnknown {
+        get {
+            return ResourceManager.GetString("OutFile_WriteToFileEncodingUnknown", resourceCulture);
+        }
+    }
+
 }
 

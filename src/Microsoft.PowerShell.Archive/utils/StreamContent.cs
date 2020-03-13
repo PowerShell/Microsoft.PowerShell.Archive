@@ -322,7 +322,7 @@ namespace Microsoft.PowerShell.Archive
                     {
                         if (currentBlock == backCount)
                         {
-                            Dbg.Diagnostics.Assert(lastDelimiterMatch != null, "lastDelimiterMatch should not be null when currentBlock == backCount");
+                            Diagnostics.Assert(lastDelimiterMatch != null, "lastDelimiterMatch should not be null when currentBlock == backCount");
                             if (lastDelimiterMatch.EndsWith(actualDelimiter, StringComparison.Ordinal))
                             {
                                 curStreamPosition += _backReader.GetByteCount(_delimiter);
@@ -669,7 +669,7 @@ namespace Microsoft.PowerShell.Archive
                 }
                 catch (InvalidCastException)
                 {
-                    throw TraceSource.NewArgumentException("content", ArchiveProviderStrings.ByteEncodingError);
+                    throw TraceSource.NewArgumentException("content", Exceptions.ByteEncodingError);
                 }
             }
             else
@@ -1070,7 +1070,7 @@ namespace Microsoft.PowerShell.Archive
                 // For these encodings, we cannot detect a starting byte with confidence when
                 // reading bytes backward. Throw out exception in these cases.
                 string errMsg = String.Format(
-                    ArchiveProviderStrings.ReadBackward_Encoding_NotSupport,
+                    Exceptions.ReadBackward_Encoding_NotSupport,
                     _currentEncoding.EncodingName);
                 throw new BackReaderEncodingNotSupportedException(errMsg, _currentEncoding.EncodingName);
             }
@@ -1105,6 +1105,28 @@ namespace Microsoft.PowerShell.Archive
             [DllImport(PinvokeDllNames.GetCPInfoDllName, CharSet = CharSet.Unicode, SetLastError = true)]
             [return: MarshalAs(UnmanagedType.Bool)]
             internal static extern bool GetCPInfo(uint codePage, out CPINFO lpCpInfo);
+        }
+
+        /// <summary>
+        /// The exception that indicates the encoding is not supported when reading backward.
+        /// </summary>
+        internal sealed class BackReaderEncodingNotSupportedException : NotSupportedException
+        {
+            internal BackReaderEncodingNotSupportedException(string message, string encodingName)
+                : base(message)
+            {
+                EncodingName = encodingName;
+            }
+
+            internal BackReaderEncodingNotSupportedException(string encodingName)
+            {
+                EncodingName = encodingName;
+            }
+
+            /// <summary>
+            /// Get the encoding name.
+            /// </summary>
+            internal string EncodingName { get; }
         }
     }
 

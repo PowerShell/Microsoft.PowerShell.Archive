@@ -207,4 +207,13 @@
     <value>Cannot get the value of the Using expression '{0}' in the specified variable dictionary. When creating a PowerShell instance from a script block, the Using expression cannot contain an indexing operation or member-accessing operation.</value>
   </data>
   -->
+  <data name="ReadBackward_Encoding_NotSupport" xml:space="preserve">
+    <value>Cannot detect the encoding of the file. The specified encoding {0} is not supported when the content is read in reverse.</value>
+  </data>
+  <data name="ByteEncodingError" xml:space="preserve">
+    <value>Cannot proceed with byte encoding. When using byte encoding the content must be of type byte.</value>
+  </data>
+  <data name="OutFile_WriteToFileEncodingUnknown" xml:space="preserve">
+    <value>Unknown encoding {0}; valid values are {1}.</value>
+  </data>
 </root>
