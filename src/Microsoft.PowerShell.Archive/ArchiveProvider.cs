@@ -5,6 +5,7 @@ using System.IO;
 using System.Management.Automation;
 using System.Management.Automation.Provider;
 using System.Linq;
+using System.Text;
 
 using Microsoft.PowerShell.Commands;
 
@@ -12,13 +13,20 @@ namespace Microsoft.PowerShell.Archive
 {
     #region ArchiveProvider : IContentReader, IContentWriter
     [CmdletProvider(ArchiveProvider.ProviderName, ProviderCapabilities.ShouldProcess | ProviderCapabilities.ExpandWildcards )]
-    public class ArchiveProvider :  NavigationCmdletProvider
+    public class ArchiveProvider :  NavigationCmdletProvider, IContentCmdletProvider
     {
 
         /// <summary>
         /// Gets the name of the provider.
         /// </summary>
         public const string ProviderName = "Archive";
+
+        // Workaround for internal class objects
+        internal InvocationInfo Context_MyInvocation {
+            get {
+                return (InvocationInfo)SessionState.PSVariable.Get("MyInvocation").Value;
+            }
+        }
 
         internal ArchivePSDriveInfo ArchiveDriveInfo {
             get {
@@ -241,6 +249,26 @@ namespace Microsoft.PowerShell.Archive
 			return false;
 		}
 
+        /// <summary>
+        /// Expand a provider path that contains wildcards to a list of provider paths that the
+        /// path represents. Only called for providers that declare the ExpandWildcards capability.
+        /// </summary>
+        ///
+        /// <param name="path">
+        /// The path to expand. Expansion must be consistent with the wildcarding rules of PowerShell's WildcardPattern class.
+        /// </param>
+        /// 
+        /// <returns>
+        /// A list of provider paths that this path expands to. They must all exist.
+        /// </returns>
+        ///
+        protected override string[] ExpandPath(string path)
+        {
+            path = NormalizePath(path);
+            IEnumerable<ArchiveItemInfo> ArchiveItemInfoList = ArchiveDriveInfo.GetItem(path, true, true);
+            return ArchiveItemInfoList.Select(i => i.FullName).ToArray();
+        }
+        
         /// <summary>
         /// Gets the item at the specified path.
         /// </summary>
@@ -513,11 +541,8 @@ namespace Microsoft.PowerShell.Archive
 
             bool isDirectory = IsItemContainer(path);
             bool exists = ItemExists(path);
-
             
             path = NormalizePath(path);
-
-
 
             if (IsItemContainer(path))
             {
@@ -1387,14 +1412,383 @@ namespace Microsoft.PowerShell.Archive
         // Todo: public object ClearPropertyDynamicParameters(
         #endregion IPropertyCmdletProvider
         #region IContentCmdletProvider
-        // Todo: public IContentReader GetContentReader(string path)
-        // Todo: public object GetContentReaderDynamicParameters(string path)
-        // Todo: public IContentWriter GetContentWriter(string path)
-        // Todo: public object GetContentWriterDynamicParameters(string path)
-        // Todo: public void ClearContent(string path)
-        // Todo: public object ClearContentDynamicParameters(string path)
+
+        /// <summary>
+        /// Creates an instance of the FileSystemContentStream class, opens
+        /// the specified file for reading, and returns the IContentReader interface
+        /// to it.
+        /// </summary>
+        /// <param name="path">
+        /// The path of the file to be opened for reading.
+        /// </param>
+        /// <returns>
+        /// An IContentReader for the specified file.
+        /// </returns>
+        /// <exception cref="System.ArgumentException">
+        ///     path is null or empty.
+        /// </exception>
+        public IContentReader GetContentReader(string path)
+        {
+            if (string.IsNullOrEmpty(path))
+            {
+                throw TraceSource.NewArgumentException("path");
+            }
+
+            path = NormalizePath(path);
+
+            if (IsItemContainer(path))
+            {
+                throw new Exception("You cannot read the contents of a folder");
+            }
+
+            // Defaults for the file read operation
+            string delimiter = "\n";
+
+            Encoding encoding = Encoding.Default;
+            // Encoding encoding = new Encoding.Default();
+
+            bool streamTypeSpecified = false;
+            bool usingByteEncoding = false;
+            bool delimiterSpecified = false;
+            bool isRawStream = false;
+
+            // Get the dynamic parameters.
+            // They override the defaults specified above.
+            if (DynamicParameters != null)
+            {
+                StreamContentReaderDynamicParameters dynParams = DynamicParameters as StreamContentReaderDynamicParameters;
+                if (dynParams != null)
+                {
+                    // -raw is not allowed when -first,-last or -wait is specified
+                    // this call will validate that and throws.
+                    ValidateParameters(dynParams.Raw);
+
+                    isRawStream = dynParams.Raw;
+
+                    // Get the delimiter
+                    delimiterSpecified = dynParams.DelimiterSpecified;
+                    if (delimiterSpecified)
+                        delimiter = dynParams.Delimiter;
+
+                    // Get the stream type
+                    usingByteEncoding = dynParams.AsByteStream;
+                    streamTypeSpecified = dynParams.WasStreamTypeSpecified;
+
+                    if (usingByteEncoding && streamTypeSpecified)
+                    {
+                        WriteWarning(ArchiveProviderStrings.EncodingNotUsed);
+                    }
+
+                    if (streamTypeSpecified)
+                    {
+                        encoding = dynParams.Encoding;
+                    }
+
+                }
+            }
+            StreamContentReaderWriter stream = null;
+
+            ArchiveItemInfo archiveFile = new ArchiveItemInfo(ArchiveDriveInfo, path);
+
+            try
+            {
+                // Users can't both read as bytes, and specify a delimiter
+                if (delimiterSpecified)
+                {
+                    if (usingByteEncoding)
+                    {
+                        Exception e =
+                            new ArgumentException(ArchiveProviderStrings.DelimiterError, "delimiter");
+                        WriteError(new ErrorRecord(
+                            e,
+                            "GetContentReaderArgumentError",
+                            ErrorCategory.InvalidArgument,
+                            path));
+                    }
+                    else
+                    {
+                        stream = new ArchiveContentStream(archiveFile, FileMode.Append, delimiter, encoding, usingByteEncoding, this, isRawStream);
+                    }
+                }
+                else
+                {
+                    stream = new ArchiveContentStream(archiveFile, FileMode.Append, encoding, usingByteEncoding, this, isRawStream);
+                }
+            }
+            catch (PathTooLongException pathTooLong)
+            {
+                WriteError(new ErrorRecord(pathTooLong, "GetContentReaderPathTooLongError", ErrorCategory.InvalidArgument, path));
+            }
+            catch (FileNotFoundException fileNotFound)
+            {
+                WriteError(new ErrorRecord(fileNotFound, "GetContentReaderFileNotFoundError", ErrorCategory.ObjectNotFound, path));
+            }
+            catch (DirectoryNotFoundException directoryNotFound)
+            {
+                WriteError(new ErrorRecord(directoryNotFound, "GetContentReaderDirectoryNotFoundError", ErrorCategory.ObjectNotFound, path));
+            }
+            catch (ArgumentException argException)
+            {
+                WriteError(new ErrorRecord(argException, "GetContentReaderArgumentError", ErrorCategory.InvalidArgument, path));
+            }
+            catch (IOException ioException)
+            {
+                // IOException contains specific message about the error occured and so no need for errordetails.
+                WriteError(new ErrorRecord(ioException, "GetContentReaderIOError", ErrorCategory.ReadError, path));
+            }
+            catch (System.Security.SecurityException securityException)
+            {
+                WriteError(new ErrorRecord(securityException, "GetContentReaderSecurityError", ErrorCategory.PermissionDenied, path));
+            }
+            catch (UnauthorizedAccessException unauthorizedAccess)
+            {
+                WriteError(new ErrorRecord(unauthorizedAccess, "GetContentReaderUnauthorizedAccessError", ErrorCategory.PermissionDenied, path));
+            }
+            catch (Exception e)
+            {
+                WriteError(
+                    new ErrorRecord(e, "Unhandled Error", ErrorCategory.InvalidArgument , path)
+                );
+            }
+
+            if (stream == null)
+            {
+                throw new Exception("Invalid stream");
+            }
+
+            return stream;
+        }
+
+        public object GetContentReaderDynamicParameters(string path)
+		{
+            return new StreamContentReaderDynamicParameters();
+		}
+
+        /// <summary>
+        /// Creates an instance of the FileSystemContentStream class, opens
+        /// the specified file for writing, and returns the IContentReader interface
+        /// to it.
+        /// </summary>
+        /// <param name="path">
+        /// The path of the file to be opened for writing.
+        /// </param>
+        /// <returns>
+        /// An IContentWriter for the specified file.
+        /// </returns>
+        /// <exception cref="System.ArgumentException">
+        ///     path is null or empty.
+        /// </exception>
+        public IContentWriter GetContentWriter(string path)
+        {
+
+            if (string.IsNullOrEmpty(path))
+            {
+                throw TraceSource.NewArgumentException("path");
+            }
+
+            path = NormalizePath(path);
+
+            // If this is true, then the content will be read as bytes
+            bool usingByteEncoding = false;
+            bool streamTypeSpecified = false;
+            
+            //Encoding encoding = ClrFacade.GetDefaultEncoding();
+            Encoding encoding = Encoding.Default;
+
+            FileMode filemode = FileMode.OpenOrCreate;
+            bool suppressNewline = false;
+
+            // Get the dynamic parameters
+            if (DynamicParameters != null)
+            {
+
+                // [BUG] Regardless of override DynamicParameters is of type FileSystemContentWriterDynamicParameters
+                // StreamContentWriterDynamicParameters dynParams = DynamicParameters as StreamContentWriterDynamicParameters;
+
+                FileSystemContentWriterDynamicParameters dynParams = DynamicParameters as FileSystemContentWriterDynamicParameters;
+
+                if (dynParams != null)
+                {
+                    usingByteEncoding = dynParams.AsByteStream;
+                    streamTypeSpecified = dynParams.WasStreamTypeSpecified;
+
+                    if (usingByteEncoding && streamTypeSpecified)
+                    {
+                        WriteWarning(ArchiveProviderStrings.EncodingNotUsed);
+                    }
+
+                    if (streamTypeSpecified)
+                    {
+                        encoding = dynParams.Encoding;
+                    }
+
+                    suppressNewline = dynParams.NoNewline.IsPresent;
+                }
+            }
+
+            StreamContentReaderWriter stream = null;
+
+            // Validate Parent Directory does not exist
+            if (!IsItemContainer(Path.GetDirectoryName(path)))
+            {
+                throw new Exception("Parent directory does not exist");
+            }
+            if (IsItemContainer(path))
+            {
+                throw new Exception("You cannot write to a folder");
+            }
+
+            ArchiveItemInfo archiveFile = new ArchiveItemInfo(ArchiveDriveInfo, path, true);
+
+            try
+            {
+                stream = new ArchiveContentStream(archiveFile, FileMode.Append, encoding, usingByteEncoding, this, false, suppressNewline);
+            }
+            catch (PathTooLongException pathTooLong)
+            {
+                WriteError(new ErrorRecord(pathTooLong, "GetContentWriterPathTooLongError", ErrorCategory.InvalidArgument, path));
+            }
+            catch (FileNotFoundException fileNotFound)
+            {
+                WriteError(new ErrorRecord(fileNotFound, "GetContentWriterFileNotFoundError", ErrorCategory.ObjectNotFound, path));
+            }
+            catch (DirectoryNotFoundException directoryNotFound)
+            {
+                WriteError(new ErrorRecord(directoryNotFound, "GetContentWriterDirectoryNotFoundError", ErrorCategory.ObjectNotFound, path));
+            }
+            catch (ArgumentException argException)
+            {
+                WriteError(new ErrorRecord(argException, "GetContentWriterArgumentError", ErrorCategory.InvalidArgument, path));
+            }
+            catch (IOException ioException)
+            {
+                // IOException contains specific message about the error occured and so no need for errordetails.
+                WriteError(new ErrorRecord(ioException, "GetContentWriterIOError", ErrorCategory.WriteError, path));
+            }
+            catch (System.Security.SecurityException securityException)
+            {
+                WriteError(new ErrorRecord(securityException, "GetContentWriterSecurityError", ErrorCategory.PermissionDenied, path));
+            }
+            catch (UnauthorizedAccessException unauthorizedAccess)
+            {
+                WriteError(new ErrorRecord(unauthorizedAccess, "GetContentWriterUnauthorizedAccessError", ErrorCategory.PermissionDenied, path));
+            }
+
+            return stream;
+        }
+
+        public object GetContentWriterDynamicParameters(string path)
+		{
+			return new StreamContentWriterDynamicParameters();
+		}
+
+        /// <summary>
+        /// Clears the content of the specified file.
+        /// </summary>
+        ///
+        /// <param name="path">
+        /// The path to the file of which to clear the contents.
+        /// </param>
+        ///
+        /// <exception cref="System.ArgumentException">
+        ///     path is null or empty.
+        /// </exception>
+		public void ClearContent(string path)
+		{
+
+            if (String.IsNullOrEmpty(path))
+            {
+                throw TraceSource.NewArgumentException("path");
+            }
+
+            path = NormalizePath(path);
+
+            try
+            {
+                bool clearStream = false;
+                string streamName = null;
+                FileSystemClearContentDynamicParameters dynamicParameters = null;
+                FileSystemContentWriterDynamicParameters writerDynamicParameters = null;
+
+                // We get called during:
+                //     - Clear-Content
+                //     - Set-Content, in the phase that clears the path first.
+                if (DynamicParameters != null)
+                {
+                    dynamicParameters = DynamicParameters as FileSystemClearContentDynamicParameters;
+                    writerDynamicParameters = DynamicParameters as FileSystemContentWriterDynamicParameters;
+                }
+
+                string action = ArchiveProviderStrings.ClearContentActionFile;
+                string resource = String.Format(ArchiveProviderStrings.ClearContentesourceTemplate, path);
+
+                if (!ShouldProcess(resource, action))
+                    return;
+
+                // Validate Parent Directory does not exist
+                if (!IsItemContainer(Path.GetDirectoryName(path)))
+                {
+                    throw new Exception("Parent directory does not exist");
+                }
+
+                path = NormalizePath(path);
+
+                ArchiveItemInfo archiveFile = new ArchiveItemInfo(ArchiveDriveInfo, path, Force.ToBool());
+                archiveFile.ClearContent();
+
+                // For filesystem once content is cleared
+                WriteItemObject("", path, false);
+            }
+            catch (ArgumentException argException)
+            {
+                WriteError(new ErrorRecord(argException, "ClearContentArgumentError", ErrorCategory.InvalidArgument, path));
+            }
+            catch (FileNotFoundException fileNotFoundException)
+            {
+                WriteError(new ErrorRecord(fileNotFoundException, "PathNotFound", ErrorCategory.ObjectNotFound, path));
+            }
+            catch (IOException ioException)
+            {
+                //IOException contains specific message about the error occured and so no need for errordetails.
+                WriteError(new ErrorRecord(ioException, "ClearContentIOError", ErrorCategory.WriteError, path));
+            }
+		}
+        
+        public object ClearContentDynamicParameters(string path)
+		{
+            return new StreamContentClearContentDynamicParameters();
+		}
         #endregion IContentCmdletProvider
-        // Todo: private void ValidateParameters(bool isRawSpecified)
+
+        /// <summary>
+        /// -raw is not allowed when -first,-last or -wait is specified
+        /// this call will validate that and throws.
+        /// </summary>
+        private void ValidateParameters(bool isRawSpecified)
+        {
+            if (isRawSpecified)
+            {
+                if (this.Context_MyInvocation.BoundParameters.ContainsKey("TotalCount"))
+                {
+                    string message = String.Format(ArchiveProviderStrings.NoFirstLastWaitForRaw, "Raw", "TotalCount");
+                    throw new PSInvalidOperationException(message);
+                }
+            
+
+                if (this.Context_MyInvocation.BoundParameters.ContainsKey("Tail"))
+                {
+                    string message = String.Format(ArchiveProviderStrings.NoFirstLastWaitForRaw, "Raw", "Tail");
+                    throw new PSInvalidOperationException(message);
+                }
+
+                if (this.Context_MyInvocation.BoundParameters.ContainsKey("Delimiter"))
+                {
+                    string message = String.Format(ArchiveProviderStrings.NoFirstLastWaitForRaw, "Raw", "Delimiter");
+                    throw new PSInvalidOperationException(message);
+                }
+            }
+        }
+
         // Todo: private static class NativeMethods
         // Todo: private struct NetResource
         // Todo:     public int Scope;

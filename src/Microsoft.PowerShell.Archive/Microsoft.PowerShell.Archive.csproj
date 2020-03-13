@@ -1,13 +1,33 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk" DefaultTargets="InvokeTest">
 
   <PropertyGroup>
-    <TargetFramework>netcoreapp3.0</TargetFramework>
+    <TargetFramework>netcoreapp3.1</TargetFramework>
     <RuntimeIdentifiers>linux-x64;osx-x64;win;</RuntimeIdentifiers>
     <Description>Microsoft.PowerShell.Archive</Description>
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.PowerShell.SDK" Version="6.2.3" />
+    <PackageReference Include="Microsoft.PowerShell.SDK" Version="7.0.0" />
   </ItemGroup>
+
+  <PropertyGroup>
+    <ResGenPath>$([System.IO.Path]::GetFullPath(`$(MSBuildProjectDirectory)\..\ResGen`))</ResGenPath>
+  </PropertyGroup>
+
+
+  <Target Name="GenerateResources">
+    <Exec Command="echo Generating Resources" />
+    <Exec Command="dotnet run" WorkingDirectory="$(ResGenPath)" />
+  </Target>
+
+  <Target Name="InvokeBuild" DependsOnTargets="Clean;GenerateResources;Build" />
+
   
+  <Target Name="InvokeTest" DependsOnTargets="InvokeBuild">
+    <Exec Command="echo Launching Tests" />
+
+    <Exec Command="powershell Invoke-Pester .\Tests.Archive\" />
+  </Target>
+
+  <Target Name="InvokeInteractive" />
 </Project>

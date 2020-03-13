@@ -11,8 +11,8 @@ namespace Microsoft.PowerShell.Archive
 {
     #region StreamContent
 
-    #region ZipFileContentStream
-    public class ZipFileContentStream : StreamContentReaderWriter
+    #region ArchiveContentStream
+    public class ArchiveContentStream : StreamContentReaderWriter
     {
 
         private ArchiveItemInfo _archiveFileInfo;
@@ -22,32 +22,32 @@ namespace Microsoft.PowerShell.Archive
         private CmdletProvider _provider;
 
 
-        public ZipFileContentStream(ArchiveItemInfo archiveFileInfo, FileMode mode, Encoding encoding, bool usingByteEncoding, CmdletProvider provider, bool isRawStream)
+        public ArchiveContentStream(ArchiveItemInfo archiveFileInfo, FileMode mode, Encoding encoding, bool usingByteEncoding, CmdletProvider provider, bool isRawStream)
         : base( archiveFileInfo.Open(mode), encoding, usingByteEncoding, provider, isRawStream)
         {
             _provider = provider;
         }
 
-        public ZipFileContentStream(ArchiveItemInfo archiveFileInfo, FileMode mode, Encoding encoding, bool usingByteEncoding, CmdletProvider provider, bool isRawStream, bool suppressNewline)
+        public ArchiveContentStream(ArchiveItemInfo archiveFileInfo, FileMode mode, Encoding encoding, bool usingByteEncoding, CmdletProvider provider, bool isRawStream, bool suppressNewline)
         : base(archiveFileInfo.Open(mode), encoding, usingByteEncoding, provider, isRawStream, suppressNewline)
         {
             _provider = provider;
         }
 
-        public ZipFileContentStream(ArchiveItemInfo archiveFileInfo, FileMode mode, string delimiter, Encoding encoding, bool usingByteEncoding, CmdletProvider provider, bool isRawStream)
+        public ArchiveContentStream(ArchiveItemInfo archiveFileInfo, FileMode mode, string delimiter, Encoding encoding, bool usingByteEncoding, CmdletProvider provider, bool isRawStream)
         : base(archiveFileInfo.Open(mode), delimiter, encoding, provider, isRawStream)
         {
             _provider = provider;
         }
 
 
-        ~ZipFileContentStream()
+        ~ArchiveContentStream()
         {
 
         }
 
     }
-    #endregion ZipFileContentStream
+    #endregion ArchiveContentStream
 
     #endregion StreamContent
 
