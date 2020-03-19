@@ -323,7 +323,7 @@ function Expand-Archive
             else
             {
                 $createdItem = New-Item -Path $DestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop
-                if($createdItem -ne $null -and $createdItem.PSProvider.Name -ne "FileSystem")
+                if($null -ne $createdItem -and $createdItem.PSProvider.Name -ne "FileSystem")
                 {
                     Remove-Item "$DestinationPath" -Force -Recurse -ErrorAction SilentlyContinue
                     $errorMessage = ($LocalizedData.ExpandArchiveInValidDestinationPath -f $DestinationPath)
@@ -392,6 +392,9 @@ function Expand-Archive
                 if(!$isDestinationPathProvided)
                 {
                     $archiveFile = New-Object System.IO.FileInfo $resolvedSourcePaths
+                    # When expanding multiple zip files via the pipeline, a deep hierarchy is created
+                    # Resetting it here prevents that and the intuitive outcome then occurs
+                    $resolvedDestinationPath = (Get-Location).ProviderPath
                     $resolvedDestinationPath = Join-Path -Path $resolvedDestinationPath -ChildPath $archiveFile.BaseName
                     $destinationPathExists = Test-Path -LiteralPath $resolvedDestinationPath -PathType Container
 
@@ -415,7 +418,7 @@ function Expand-Archive
                     {
                         # delete the expanded file/directory as the archive
                         # file was not completely expanded.
-                        $expandedItems | % { Remove-Item "$_" -Force -Recurse }
+                        $expandedItems | ForEach-Object { Remove-Item "$_" -Force -Recurse }
                     }
                 }
                 elseif ($PassThru -and $expandedItems.Count -gt 0)
@@ -786,7 +789,7 @@ function ZipArchiveHelper
                     }
                 }
 
-                if($entryToBeUpdated -ne $null)
+                if($null -ne $entryToBeUpdated)
                 {
                     $addItemtoArchiveFileMessage = ($LocalizedData.AddItemtoArchiveFile -f $currentFilePath)
                     $entryToBeUpdated.Delete()
@@ -1097,7 +1100,7 @@ function ExpandArchiveHelper
                     {
                         # The ExtractToFile() method doesn't handle whitespace correctly, strip whitespace which is consistent with how Explorer handles archives
                         # There is an edge case where an archive contains files whose only difference is whitespace, but this is uncommon and likely not legitimate
-                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | % { $_.Trim() }
+                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | ForEach-Object { $_.Trim() }
                         $currentArchiveEntryPath = [string]::Join([System.IO.Path]::DirectorySeparatorChar, $parts)
 
                         [System.IO.Compression.ZipFileExtensions]::ExtractToFile($currentArchiveEntry, $currentArchiveEntryPath, $false)
