@@ -8,6 +8,7 @@ using System.Management.Automation;
 using System.Management.Automation.Provider;
 using System.Management.Automation.Runspaces;
 using System.Management.Automation.Internal;
+using Microsoft.PowerShell.Commands;
 
 namespace Microsoft.PowerShell.Archive
 {
@@ -15,15 +16,15 @@ namespace Microsoft.PowerShell.Archive
     /// <summary>
     /// Defines the dynamic parameters used by both the content reader and writer.
     /// </summary>
-    public class StreamContentDynamicParameterBase
+    public class StreamContentDynamicParameterBase : FileSystemContentDynamicParametersBase
     {
         /// <summary>
         /// Gets or sets the encoding method used when
         /// reading data from the file.
         /// </summary>
         [Parameter]
-        [ArgumentToEncodingTransformationAttribute()]
-        [ArgumentEncodingCompletionsAttribute]
+        //[ArgumentToEncodingTransformationAttribute()]
+        //[ArgumentEncodingCompletionsAttribute]
         [ValidateNotNullOrEmpty]
         public Encoding Encoding
         {

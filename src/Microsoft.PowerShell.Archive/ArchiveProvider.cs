@@ -1603,9 +1603,10 @@ namespace Microsoft.PowerShell.Archive
             {
 
                 // [BUG] Regardless of override DynamicParameters is of type FileSystemContentWriterDynamicParameters
-                // StreamContentWriterDynamicParameters dynParams = DynamicParameters as StreamContentWriterDynamicParameters;
+                StreamContentWriterDynamicParameters dynParams = DynamicParameters as StreamContentWriterDynamicParameters;
 
-                FileSystemContentWriterDynamicParameters dynParams = DynamicParameters as FileSystemContentWriterDynamicParameters;
+                //FileSystemContentWriterDynamicParameters dynParams = DynamicParameters as FileSystemContentWriterDynamicParameters;
+                //ArchiveContentWriterDynamicParameters dynParams = DynamicParameters as ArchiveContentWriterDynamicParameters;
 
                 if (dynParams != null)
                 {
@@ -1811,8 +1812,8 @@ namespace Microsoft.PowerShell.Archive
         // Todo: internal sealed class GetChildDynamicParameters
         // Todo: public class FileSystemContentDynamicParametersBase
         // Todo: public class FileSystemClearContentDynamicParameters        
-        // Todo: public class FileSystemContentWriterDynamicParameters : FileSystemContentDynamicParametersBase
-        // Todo: public class FileSystemContentReaderDynamicParameters : FileSystemContentDynamicParametersBase
+        // Todo: public class FileSystemContentWriterDynamicParameters
+        // Todo: public class FileSystemContentReaderDynamicParameters
         // Todo: public class FileSystemItemProviderDynamicParameters
         // Todo: public class FileSystemProviderGetItemDynamicParameters
         // Todo: public class FileSystemProviderRemoveItemDynamicParameters

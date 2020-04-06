@@ -79,7 +79,7 @@ namespace Microsoft.PowerShell.Archive
             return null;
         }
     }
-
+    /*
     /// <summary>
     /// To make it easier to specify -Encoding parameter, we add an ArgumentTransformationAttribute here.
     /// When the input data is of type string and is valid to be converted to System.Text.Encoding, we do
@@ -111,7 +111,7 @@ namespace Microsoft.PowerShell.Archive
     /// <summary>
     /// Provides the set of Encoding values for tab completion of an Encoding parameter.
     /// </summary>
-    internal sealed class ArgumentEncodingCompletionsAttribute : ArgumentCompletionsAttribute
+    internal sealed class ArgumentEncodingCompletionsAttribute // : System.Attribute.ArgumentCompletionsAttribute
     {
         public ArgumentEncodingCompletionsAttribute() : base(
             EncodingConversion.Ascii,
@@ -126,5 +126,6 @@ namespace Microsoft.PowerShell.Archive
         )
         { }
     }
+    */
 
 }
