@@ -19,7 +19,7 @@ namespace Microsoft.PowerShell.Archive
         /// <summary>
         /// Gets the name of the provider.
         /// </summary>
-        public const string ProviderName = "Archive";
+        public const string ProviderName = "Microsoft.PowerShell.Archive";
 
         // Workaround for internal class objects
         internal InvocationInfo Context_MyInvocation {
