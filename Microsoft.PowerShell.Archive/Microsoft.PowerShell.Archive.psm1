@@ -291,7 +291,7 @@ function Expand-Archive
     BEGIN
     {
        $isVerbose = $psboundparameters.ContainsKey("Verbose")
-       $isConfirm = $psboundparameters.ContainsKey("Confirm")
+       $isConfirm = $psboundparameters.ContainsKey("Confirm") -and $psboundparameters['Confirm']
 
         $isDestinationPathProvided = $true
         if($DestinationPath -eq [string]::Empty)
