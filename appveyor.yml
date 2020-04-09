@@ -13,6 +13,7 @@ build: false
 # Run Pester tests and store the results
 test_script:
     - ps: |
+        dotnet build
         $testResultsFile = ".\ArchiveTestResults.xml"
         Import-Module "C:\projects\Archive-Module\Microsoft.PowerShell.Archive" -Force
         $testResults = Invoke-Pester -Script "C:\projects\Archive-Module\Tests" -OutputFormat NUnitXml -OutputFile $testResultsFile -PassThru
