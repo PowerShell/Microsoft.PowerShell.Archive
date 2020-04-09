@@ -1310,3 +1310,13 @@ function ArchivePathCompareHelper
 
     return $normalizedPathArgA -eq $normalizedPathArgB
 }
+
+
+
+if ($PSVersionTable.PSEdition -eq "Core") {
+    Write-Host -Object "Microsoft.PowerShell.Archive PSProvider is now Available in pwsh Core" -ForegroundColor Cyan
+    Import-Module "$PSScriptRoot\bin\Microsoft.PowerShell.Archive.dll"
+}
+else {
+    Write-Host -Object "Microsoft.PowerShell.Archive PSProvider is now Available in pwsh Core" -ForegroundColor Cyan
+}
