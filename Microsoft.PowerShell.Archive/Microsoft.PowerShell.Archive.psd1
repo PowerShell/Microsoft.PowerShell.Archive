@@ -12,7 +12,5 @@ CmdletsToExport = @()
 AliasesToExport = @()
 NestedModules="Microsoft.PowerShell.Archive.psm1"
 HelpInfoURI = 'https://go.microsoft.com/fwlink/?LinkId=393254'
-    FormatsToProcess = @(
-        'Microsoft.PowerShell.Archive.ArchiveItemInfo.Format.ps1xml'
-    )
+FormatsToProcess = @('Microsoft.PowerShell.Archive.ArchiveItemInfo.Format.ps1xml')
 }
