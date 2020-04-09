@@ -4,6 +4,7 @@
     <TargetFramework>netcoreapp3.1</TargetFramework>
     <RuntimeIdentifiers>linux-x64;osx-x64;win;</RuntimeIdentifiers>
     <Description>Microsoft.PowerShell.Archive</Description>
+    <UseNETCoreGenerator>true</UseNETCoreGenerator>
   </PropertyGroup>
 
   <ItemGroup>
@@ -12,41 +13,22 @@
   </ItemGroup>
 
   <PropertyGroup>
-    <Quote>"</Quote>
-    <PowerShellPath>C:\Program Files\PowerShell\7</PowerShellPath>
-    <PSModulePath>$(MSBuildProjectDirectory)$(OutputPath)Microsoft.PowerShell.Archive.dll</PSModulePath>
+    <PSModuleName>Microsoft.PowerShell.Archive</PSModuleName>
+    <BuildItemPath>$(MSBuildProjectDirectory)$(OutDir)</BuildItemPath>
+    <InstallModulePath>$(MSBuildStartupDirectory)\$(PSModuleName)\bin\</InstallModulePath>
     <ResGenPath>$([System.IO.Path]::GetFullPath(`$(MSBuildProjectDirectory)\..\ResGen`))</ResGenPath>
   </PropertyGroup>
-
 
   <Target Name="GenerateResources">
     <Exec Command="echo Generating Resources" />
     <Exec Command="dotnet run" WorkingDirectory="$(ResGenPath)" />
   </Target>
-
-  <Target Name="InvokeBuild" DependsOnTargets="Clean;GenerateResources;Build" />
-
-  
-  <Target Name="InvokeTest" DependsOnTargets="InvokeBuild">
-    <Exec Command="echo Launching Tests" />
-
-    <Exec Command="powershell Invoke-Pester .\Tests.Archive\" />
+  <Target Name="MoveToInstall">
+    <Exec Command="echo Move files to Module Path" />
+    <ItemGroup>
+        <ExportItems Include="$(MSBuildProjectDirectory)\$(OutDir)\*.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(ExportItems)" DestinationFolder="$(InstallModulePath)" />
   </Target>
-
-  <Target Name="InvokeInteractive">
-    <!--
-    <Exec Command="pwsh Import-Module $()" />
-        <Exec Command="start $(Quote)$(PowerShellPath)$(Quote) -Interactive -command $psversiontable;Import-Module '$(MSBuildProjectDirectory)\$(OutputPath)Microsoft.PowerShell.Archive.dll'; Start-Sleep 30" WorkingDirectory="$(MSBuildProjectDirectory)"/>
-    <Exec Command="start /D $(PowerShellPath) pwsh.exe -Interactive -Command $psversiontable; Import-Module '$(MSBuildProjectDirectory)\$(OutputPath)Microsoft.PowerShell.Archive.dll'; Start-Sleep 30" WorkingDirectory="$(MSBuildProjectDirectory)" />
-    <Exec Command="dir $(MSBuildProjectDirectory)\$(OutputPath)Microsoft.PowerShell.Archive.dll" WorkingDirectory="$(MSBuildProjectDirectory)" />
-    <Exec Command="echo $(MSBuildProjectDirectory)\$(OutputPath)Microsoft.PowerShell.Archive.dll" />
-
-    -->
-    <Exec Command="echo Launching Interactive Mode" />
-    <Exec Command="start pwsh -Interactive -command $psversiontable;Import-Module '$(MSBuildProjectDirectory)\$(OutputPath)Microsoft.PowerShell.Archive.dll'; Start-Sleep 30" WorkingDirectory="$(MSBuildProjectDirectory)" />
-
-
-
-
-  </Target>
+  <Target Name="InvokeBuild" DependsOnTargets="Clean;GenerateResources;Build;MoveToInstall" />
 </Project>
