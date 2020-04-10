@@ -20,8 +20,6 @@ namespace Microsoft.PowerShell.Archive
     internal partial class TraceSource
     {
 
-
-
         /// <summary>
         /// Traces the Message and StackTrace properties of the exception
         /// and returns the new exception. This is not allowed to call other
@@ -151,6 +149,68 @@ namespace Microsoft.PowerShell.Archive
 
             // Note that the message param comes first
             var e = new PSArgumentException(message, paramName);
+
+            return e;
+        }
+        /// <summary>
+        /// Traces the Message and StackTrace properties of the exception
+        /// and returns the new exception. This variant uses the default
+        /// ArgumentOutOfRangeException template text. This is not allowed to call
+        /// other Throw*Exception variants, since they call this.
+        /// </summary>
+        /// <param name="paramName">
+        /// The name of the parameter whose argument value was out of range
+        /// </param>
+        /// <param name="actualValue">
+        /// The value of the argument causing the exception
+        /// </param>
+        /// <returns>Exception instance ready to throw.</returns>
+        internal static PSArgumentOutOfRangeException NewArgumentOutOfRangeException(string paramName, object actualValue)
+        {
+            if (string.IsNullOrEmpty(paramName))
+            {
+                throw new ArgumentNullException("paramName");
+            }
+
+            string message = String.Format(Exceptions.ArgumentOutOfRange, paramName);
+            var e = new PSArgumentOutOfRangeException(paramName, actualValue, message);
+
+            return e;
+        }
+
+        /// <summary>
+        /// Traces the Message and StackTrace properties of the exception
+        /// and returns the new exception. This variant allows the caller to
+        /// specify alternate template text, but only in assembly S.M.A.Core.
+        /// </summary>
+        /// <param name="paramName">
+        /// The name of the parameter whose argument value was invalid
+        /// </param>
+        /// <param name="actualValue">
+        /// The value of the argument causing the exception
+        /// </param>
+        /// <param name="resourceString">
+        /// The template string for this error
+        /// </param>
+        /// <param name="args">
+        /// Objects corresponding to {0}, {1}, etc. in the resource string
+        /// </param>
+        /// <returns>Exception instance ready to throw.</returns>
+        internal static PSArgumentOutOfRangeException NewArgumentOutOfRangeException(
+            string paramName, object actualValue, string resourceString, params object[] args)
+        {
+            if (string.IsNullOrEmpty(paramName))
+            {
+                throw NewArgumentNullException("paramName");
+            }
+
+            if (string.IsNullOrEmpty(resourceString))
+            {
+                throw NewArgumentNullException("resourceString");
+            }
+
+            string message = String.Format(resourceString, args);
+            var e = new PSArgumentOutOfRangeException(paramName, actualValue, message);
 
             return e;
         }
