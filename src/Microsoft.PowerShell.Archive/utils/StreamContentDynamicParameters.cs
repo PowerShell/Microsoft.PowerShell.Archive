@@ -23,8 +23,8 @@ namespace Microsoft.PowerShell.Archive
         /// reading data from the file.
         /// </summary>
         [Parameter]
-        //[ArgumentToEncodingTransformationAttribute()]
-        //[ArgumentEncodingCompletionsAttribute]
+        [ArgumentToEncodingTransformationAttribute()]
+        [ArgumentEncodingCompletionsAttribute]
         [ValidateNotNullOrEmpty]
         public Encoding Encoding
         {
