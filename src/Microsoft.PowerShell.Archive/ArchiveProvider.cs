@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -943,13 +943,21 @@ namespace Microsoft.PowerShell.Archive
                 throw TraceSource.NewArgumentException("path");
             }
 
-            path = NormalizePath(path);
-
             try {
+                path = NormalizePath(path);
 
                 if (!ItemExists(path))
                 {
-                    throw new Exception(String.Format(ArchiveProviderStrings.ItemDoesNotExist, path));
+                    WriteError(
+                        new ErrorRecord( 
+                            new IOException(String.Format(ArchiveProviderStrings.ItemDoesNotExist, path)),
+                            "ItemDoesNotExist",
+                            ErrorCategory.ObjectNotFound,
+                            path
+                        )
+
+                    );
+                    return;
                 }
 
                 bool isItemContainer = IsItemContainer(path) && IsItemContainerContainsItems(path);
