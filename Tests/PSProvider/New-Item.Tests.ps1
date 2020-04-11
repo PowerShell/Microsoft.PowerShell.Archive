@@ -207,8 +207,8 @@ Describe "New-Item -Force allows to create an item even if the directories in th
 
     BeforeEach {
         # Explicitly removing folder and the file before tests
-        Remove-Item $FullyQualifiedFolder -ErrorAction SilentlyContinue
-        Remove-Item $FullyQualifiedFile -ErrorAction SilentlyContinue
+        Remove-Item $FullyQualifiedFolder -Recurse -ErrorAction SilentlyContinue
+        Remove-Item $FullyQualifiedFile -Recurse -ErrorAction SilentlyContinue
         Test-Path -Path $FullyQualifiedFolder | Should -BeFalse
         Test-Path -Path $FullyQualifiedFile   | Should -BeFalse
     }
@@ -216,12 +216,10 @@ Describe "New-Item -Force allows to create an item even if the directories in th
     It "Should error correctly when -Force is not used and folder in the path doesn't exist" {
         { New-Item $FullyQualifiedFile -ErrorAction Stop } | Should -Throw -ErrorId 'NewItemIOError,Microsoft.PowerShell.Commands.NewItemCommand'
         Test-Path $FullyQualifiedFile | Should -BeFalse
-        #$FullyQualifiedFile | Should -Not -Exist
     }
     It "Should create new file correctly when -Force is used and folder in the path doesn't exist" {
         { New-Item $FullyQualifiedFile -Force -ErrorAction Stop } | Should -Not -Throw
-        Test-Path $FullyQualifiedFile | Should -BeFalse
-        #$FullyQualifiedFile | Should -Exist
+        Test-Path $FullyQualifiedFile | Should -BeTrue
     }
 }
 
