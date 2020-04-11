@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -799,16 +799,23 @@ namespace Microsoft.PowerShell.Archive
             path = NormalizePath(path);
 
             try {
+
                 if (Force)
                 {
                     ArchiveItemInfo NewFile = new ArchiveItemInfo(ArchiveDriveInfo, path, true);
                     ArchiveDriveInfo.buildFolderPaths();
                 }
-            
+
                 // Validate Parent Directory does not exist
                 if (!IsItemContainer(Path.GetDirectoryName(path)) && !Force)
                 {
-                    throw new Exception("Parent directory does not exist");
+                    WriteError(new ErrorRecord(
+                        new IOException("Parent directory does not exist"),
+                        "NewItemIOError",
+                        ErrorCategory.WriteError,
+                        path
+                    ));
+                    return;
                 }
                 
                 if (IsItemContainer(path) && itemType == ItemType.File)
@@ -1003,6 +1010,7 @@ namespace Microsoft.PowerShell.Archive
                     WriteError(new ErrorRecord(exception, "NewItemCreateIOError", ErrorCategory.WriteError, path));
                 }
                 else
+                    Console.WriteLine("An Error was thrown");
                     throw;
             }
 
