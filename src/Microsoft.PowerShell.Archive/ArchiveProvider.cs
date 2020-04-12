@@ -1618,11 +1618,7 @@ namespace Microsoft.PowerShell.Archive
             if (DynamicParameters != null)
             {
 
-                // [BUG] Regardless of override DynamicParameters is of type FileSystemContentWriterDynamicParameters
                 StreamContentWriterDynamicParameters dynParams = DynamicParameters as StreamContentWriterDynamicParameters;
-
-                //FileSystemContentWriterDynamicParameters dynParams = DynamicParameters as FileSystemContentWriterDynamicParameters;
-                //ArchiveContentWriterDynamicParameters dynParams = DynamicParameters as ArchiveContentWriterDynamicParameters;
 
                 if (dynParams != null)
                 {
