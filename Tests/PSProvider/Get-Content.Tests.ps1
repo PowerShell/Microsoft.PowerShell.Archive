@@ -407,7 +407,7 @@ baz
         }
 
         It "A warning should be emitted if both -AsByteStream and -Encoding are used together" {
-            [byte[]][char[]]"test" | Set-Content -Encoding Unicode -AsByteStream "${TESTDRIVE}\bfile.txt" -WarningVariable contentWarning *> $null
+            [byte[]][char[]]"test" | Set-Content -Encoding Unicode -AsByteStream -Path "${TESTDRIVE}\bfile.txt" -WarningVariable contentWarning *> $null
             $contentWarning.Message | Should -Match "-AsByteStream"
         }
     }
