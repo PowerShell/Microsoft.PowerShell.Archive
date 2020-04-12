@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -164,7 +164,9 @@ namespace Microsoft.PowerShell.Archive
                 throw TraceSource.NewArgumentException("drive.Root");
             }
 
-            FileInfo archiveInfo = new FileInfo(drive.Root);
+            FileInfo archiveInfo = new FileInfo(
+                Path.GetFullPath(drive.Root, SessionState.Path.CurrentLocation.Path)
+            );
 
 			if (!File.Exists(archiveInfo.FullName))
 			{
