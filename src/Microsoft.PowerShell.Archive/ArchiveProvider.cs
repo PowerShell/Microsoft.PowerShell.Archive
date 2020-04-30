@@ -53,8 +53,6 @@ namespace Microsoft.PowerShell.Archive
 
         }
 
-        // Todo: private Collection<WildcardPattern> _excludeMatcher = null;
-
         /// <summary>
         /// Converts all / in the path to \
         /// </summary>
@@ -120,15 +118,11 @@ namespace Microsoft.PowerShell.Archive
             return path;
         }
 
-        // Todo: private static FileSystemInfo GetFileSystemInfo(string path, ref bool isContainer)
-        // Todo: protected override object GetChildNamesDynamicParameters(string path)
-        // Todo: protected override object GetChildItemsDynamicParameters(string path, bool recurse)
-        // Todo: protected override object CopyItemDynamicParameters(string path, string destination, bool recurse)
         #region ICmdletProviderSupportsHelp members
-        // Todo: public string GetHelpMaml(string helpItemName, string path)
+
         #endregion
         #region CmdletProvider members
-        // Todo: protected override ProviderInfo Start(ProviderInfo providerInfo)
+
         #endregion CmdletProvider members
         #region DriveCmdletProvider members
 
@@ -182,18 +176,8 @@ namespace Microsoft.PowerShell.Archive
             return base.NewDrive( newDrive );
 		}
 
-        // Todo: private void MapNetworkDrive(PSDriveInfo drive)
-        // Todo: private void WinMapNetworkDrive(PSDriveInfo drive)
-        // Todo: private bool IsNetworkMappedDrive(PSDriveInfo drive)
-        // Todo: protected override PSDriveInfo RemoveDrive(PSDriveInfo drive)
-        // Todo: private PSDriveInfo WinRemoveDrive(PSDriveInfo drive)
-        // Todo: private bool IsSupportedDriveForPersistence(PSDriveInfo drive)
-        // Todo: private static string WinGetUNCForNetworkDrive(string driveName)
-        // Todo: private static string WinGetSubstitutedPathForNetworkDosDevice(string driveName)
-        // Todo: protected override Collection<PSDriveInfo> InitializeDefaultDrives()
         #endregion DriveCmdletProvider methods
         #region ItemCmdletProvider methods
-        // Todo: protected override object GetItemDynamicParameters(string path)
 
         /// <summary>
         /// Determines if the specified path is syntactically and semantically valid.
@@ -335,8 +319,6 @@ namespace Microsoft.PowerShell.Archive
                 WriteError(new ErrorRecord(accessException, "GetItemUnauthorizedAccessError", ErrorCategory.PermissionDenied, path));
             }
         }
-
-        // Todo: private FileSystemInfo GetFileSystemItem(string path, ref bool isContainer, bool showHidden)
 
         /// <summary>
         /// Invokes the item at the path using ShellExecute semantics.
@@ -626,9 +608,6 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
-        // Todo: private void Dir(
-        // Todo: private FlagsExpression<FileAttributes> FormatAttributeSwitchParameters()
-        // Todo: public static string Mode(PSObject instance)
         #region RenameItem
         /// <summary>
         /// Renames a file or directory.
@@ -893,10 +872,7 @@ namespace Microsoft.PowerShell.Archive
                     throw;
             }
         }
-        // Todo: private static bool WinCreateSymbolicLink(string path, string strTargetPath, bool isDirectory)
-        // Todo: private static bool WinCreateHardLink(string path, string strTargetPath)
-        // Todo: private static bool WinCreateJunction(string path, string strTargetPath)
-        // Todo: private static bool CheckItemExists(string strTargetPath, out bool isDirectory)
+
         private enum ItemType
         {
             Unknown,
@@ -926,8 +902,6 @@ namespace Microsoft.PowerShell.Archive
             return itemType;
         }
 
-        // Todo: private void CreateDirectory(string path, bool streamOutput)
-        // Todo: private bool CreateIntermediateDirectories(string path)
         #endregion NewItem
         #region RemoveItem
         /// <summary>
@@ -1014,10 +988,7 @@ namespace Microsoft.PowerShell.Archive
             }
 
 		}
-        // Todo: protected override object RemoveItemDynamicParameters(string path, bool recurse)
-        // Todo: private void RemoveDirectoryInfoItem(DirectoryInfo directory, bool recurse, bool force, bool rootOfRemoval)
-        // Todo: private void RemoveFileInfoItem(FileInfo file, bool force)
-        // Todo: private void RemoveFileSystemItem(FileSystemInfo fileSystemInfo, bool force)
+
         #endregion RemoveItem
         #region ItemExists
         /// <summary>
@@ -1158,7 +1129,7 @@ namespace Microsoft.PowerShell.Archive
 
             return result;
         }
-        // Todo: protected override object ItemExistsDynamicParameters(string path)
+
         #endregion ItemExists
         #region HasChildItems
 
@@ -1190,7 +1161,6 @@ namespace Microsoft.PowerShell.Archive
             return IsItemContainer(path) && IsItemContainerContainsItems(path);
         }
 
-        // Todo: private static bool DirectoryInfoHasChildItems(DirectoryInfo directory)
         #endregion HasChildItems
         #region CopyItem
         /// <summary>
@@ -1313,35 +1283,10 @@ namespace Microsoft.PowerShell.Archive
                 throw e;
             }
         }
-        // Todo: private void CopyItemFromRemoteSession(string path, string destinationPath, bool recurse, bool force, PSSession fromSession)
-        // Todo: private void CopyItemLocalOrToSession(string path, string destinationPath, bool recurse, bool Force, System.Management.Automation.PowerShell ps)
-        // Todo: private void CopyDirectoryInfoItem(
-        // Todo: private void CopyFileInfoItem(FileInfo file, string destinationPath, bool force, System.Management.Automation.PowerShell ps)
-        // Todo: private void CopyDirectoryFromRemoteSession(
-        // Todo: private ArrayList GetRemoteSourceAlternateStreams(System.Management.Automation.PowerShell ps, string path)
-        // Todo: private void InitializeFunctionPSCopyFileFromRemoteSession(System.Management.Automation.PowerShell ps)
-        // Todo: private void RemoveFunctionsPSCopyFileFromRemoteSession(System.Management.Automation.PowerShell ps)
-        // Todo: private bool ValidRemoteSessionForScripting(Runspace runspace)
-        // Todo: private Hashtable GetRemoteFileMetadata(string filePath, System.Management.Automation.PowerShell ps)
-        // Todo: private void SetFileMetadata(string sourceFileFullName, FileInfo destinationFile, System.Management.Automation.PowerShell ps)
-        // Todo: private void CopyFileFromRemoteSession(
-        // Todo: private bool PerformCopyFileFromRemoteSession(string sourceFileFullName, FileInfo destinationFile, string destinationPath, bool force, System.Management.Automation.PowerShell ps,
-        // Todo: private void InitializeFunctionsPSCopyFileToRemoteSession(System.Management.Automation.PowerShell ps)
-        // Todo: private void RemoveFunctionPSCopyFileToRemoteSession(System.Management.Automation.PowerShell ps)
-        // Todo: private bool RemoteTargetSupportsAlternateStreams(System.Management.Automation.PowerShell ps, string path)
-        // Todo: private string MakeRemotePath(System.Management.Automation.PowerShell ps, string remotePath, string filename)
-        // Todo: private bool RemoteDirectoryExist(System.Management.Automation.PowerShell ps, string path)
-        // Todo: private bool CopyFileStreamToRemoteSession(FileInfo file, string destinationPath, System.Management.Automation.PowerShell ps, bool isAlternateStream, string streamName)
-        // Todo: private Hashtable GetFileMetadata(FileInfo file)
-        // Todo: private void SetRemoteFileMetadata(FileInfo file, string remoteFilePath, System.Management.Automation.PowerShell ps)
-        // Todo: private bool PerformCopyFileToRemoteSession(FileInfo file, string destinationPath, System.Management.Automation.PowerShell ps)
-        // Todo: private bool RemoteDestinationPathIsFile(string destination, System.Management.Automation.PowerShell ps)
-        // Todo: private string CreateDirectoryOnRemoteSession(string destination, bool force, System.Management.Automation.PowerShell ps)
-        // Todo: private bool PathIsReservedDeviceName(string destinationPath, string errorId)
+
         #endregion CopyItem
         #endregion ContainerCmdletProvider members
         #region NavigationCmdletProvider members
-        // Todo: protected override string GetParentPath(string path, string root)
 
         // Note: we don't use IO.Path.IsPathRooted as this deals with "invalid" i.e. unnormalized paths
         private static bool IsAbsolutePath(string path)
@@ -1359,20 +1304,6 @@ namespace Microsoft.PowerShell.Archive
             return !string.IsNullOrEmpty(path) && Uri.TryCreate(path, UriKind.Absolute, out uri) && uri.IsUnc;
 #endif
         }
-
-        // Todo: private static bool IsUNCPath(string path)
-
-        // Todo: private static bool IsUNCRoot(string path)
-        // Todo: private static bool IsPathRoot(string path)
-        // Todo: protected override string NormalizeRelativePath(
-        // Todo: private string NormalizeRelativePathHelper(string path, string basePath)
-        // Todo: private string RemoveRelativeTokens(string path)
-        // Todo: private string GetCommonBase(string path1, string path2)
-        // Todo: private Stack<string> TokenizePathToStack(string path, string basePath)
-        // Todo: private Stack<string> NormalizeThePath(string basepath, Stack<string> tokenizedPathStack)
-        // Todo: private string CreateNormalizedRelativePathFromStack(Stack<string> normalizedPathStack)
-        // Todo: protected override string GetChildName(string path)
-        // Todo: private static string EnsureDriveIsRooted(string path)
 
         protected bool IsItemContainerContainsItems(string path)
         {
@@ -1411,20 +1342,11 @@ namespace Microsoft.PowerShell.Archive
 		}
 
         #region MoveItem
-        // Todo: protected override void MoveItem(
-        // Todo: private void MoveFileInfoItem(
-        // Todo: private void MoveDirectoryInfoItem(
-        // Todo: private void CopyAndDelete(DirectoryInfo directory, string destination, bool force)
-        // Todo: private bool IsSameVolume(string source, string destination)
+
         #endregion MoveItem
         #endregion NavigationCmdletProvider members
         #region IPropertyCmdletProvider
-        // Todo: public void GetProperty(string path, Collection<string> providerSpecificPickList)
-        // Todo: public object GetPropertyDynamicParameters(
-        // Todo: public void SetProperty(string path, PSObject propertyToSet)
-        // Todo: public object SetPropertyDynamicParameters(
-        // Todo: public void ClearProperty(
-        // Todo: public object ClearPropertyDynamicParameters(
+
         #endregion IPropertyCmdletProvider
         #region IContentCmdletProvider
 
@@ -1801,82 +1723,31 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
-        // Todo: private static class NativeMethods
-        // Todo: private struct NetResource
-        // Todo:     public int Scope;
-        // Todo:     public int Type;
-        // Todo:     public int DisplayType;
-        // Todo:     public int Usage;
-        // Todo:     public string LocalName;
-        // Todo:     public string RemoteName;
-        // Todo:     public string Comment;
-        // Todo:     public string Provider;
         #region InodeTracker
-        // Todo: private class InodeTracker
             private HashSet<(UInt64, UInt64)> _visitations;
         #endregion
-        // Todo: public static Hashtable Invoke(System.Management.Automation.PowerShell ps, FileSystemProvider fileSystemContext, CmdletProviderContext cmdletContext)
-        // Todo: public static Hashtable Invoke(System.Management.Automation.PowerShell ps, FileSystemProvider fileSystemContext, CmdletProviderContext cmdletContext, bool shouldHaveOutput)
     #endregion
     #region Dynamic Parameters
-        // Todo: internal sealed class CopyItemDynamicParameters
-        // Todo: internal sealed class GetChildDynamicParameters
-        // Todo: public class FileSystemContentDynamicParametersBase
-        // Todo: public class FileSystemClearContentDynamicParameters        
-        // Todo: public class FileSystemContentWriterDynamicParameters
-        // Todo: public class FileSystemContentReaderDynamicParameters
-        // Todo: public class FileSystemItemProviderDynamicParameters
-        // Todo: public class FileSystemProviderGetItemDynamicParameters
-        // Todo: public class FileSystemProviderRemoveItemDynamicParameters
+
     #endregion
     #region Symbolic Link
-        // Todo: public static class InternalSymbolicLinkLinkCodeMethods
-        // Todo:     private static extern bool DeviceIoControl(IntPtr hDevice, uint dwIoControlCode,
-        // Todo:     private static extern IntPtr FindFirstFileName(
-        // Todo:     private static extern bool FindNextFileName(
-        // Todo:     private static extern bool FindClose(IntPtr hFindFile);
-        // Todo:     private static extern bool GetFileInformationByHandle(
-        // Todo:     public static IEnumerable<string> GetTarget(PSObject instance)
-        // Todo:     public static string GetLinkType(PSObject instance)
-        // Todo:     private static List<string> InternalGetTarget(string filePath)
-        // Todo:     private static string InternalGetLinkType(FileSystemInfo fileInfo)
-        // Todo:     private static string WinInternalGetLinkType(string filePath)
-        // Todo:     private static bool WinIsSameFileSystemItem(string pathOne, string pathTwo)
-        // Todo:     private static bool WinGetInodeData(string path, out System.ValueTuple<UInt64, UInt64> inodeData)
-        // Todo:     private static string InternalGetTarget(SafeFileHandle handle)
-        // Todo:     private static string WinInternalGetTarget(SafeFileHandle handle)
-        // Todo:     private static bool WinCreateJunction(string path, string target)
-        // Todo:     private static SafeFileHandle OpenReparsePoint(string reparsePoint, FileDesiredAccess accessMode)
-        // Todo:     private static SafeFileHandle WinOpenReparsePoint(string reparsePoint, FileDesiredAccess accessMode)
+
     #endregion
     #region AlternateDataStreamUtilities
-        // Todo: public class AlternateStreamData
-        // Todo: public static class AlternateDataStreamUtilities
+
     #endregion
     #region CopyFileFromRemoteUtils
-    //     private const string functionToken = "function ";
-    //     private const string nameToken = "Name";
-    //     private const string definitionToken = "Definition";
+
         #region PSCopyToSessionHelper
-    //     private static string s_driveMaxSizeErrorFormatString = ArchiveProviderStrings.DriveMaxSizeError;
-    //     private static string s_PSCopyToSessionHelperDefinition = String.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateNotNullOrEmpty()]", s_driveMaxSizeErrorFormatString);
-    //     private static string s_PSCopyToSessionHelperDefinitionRestricted = String.Format(PSCopyToSessionHelperDefinitionFormat, @"[ValidateUserDrive()]", s_driveMaxSizeErrorFormatString);
-    //     private const string PSCopyToSessionHelperDefinitionFormat = @"
-    //     private static string s_PSCopyToSessionHelper = functionToken + PSCopyToSessionHelperName + @"
-    //     private static Hashtable s_PSCopyToSessionHelperFunction = new Hashtable() {
+
         #endregion
         #region PSCopyFromSessionHelper
-    //     private static string s_PSCopyFromSessionHelperDefinition = String.Format(PSCopyFromSessionHelperDefinitionFormat, @"[ValidateNotNullOrEmpty()]");
-    //     private static string s_PSCopyFromSessionHelperDefinitionRestricted = String.Format(PSCopyFromSessionHelperDefinitionFormat, @"[ValidateUserDrive()]");
-    //     private const string PSCopyFromSessionHelperDefinitionFormat = @"
-    //     private static Hashtable s_PSCopyFromSessionHelperFunction = new Hashtable() {
+
         #endregion
         #region PSCopyRemoteUtils
-    //     private static string s_PSCopyRemoteUtilsDefinitionRestricted = String.Format(PSCopyRemoteUtilsDefinitionFormat, @"[ValidateUserDrive()]", PSValidatePathFunction);
-    //     private const string PSCopyRemoteUtilsDefinitionFormat = @"
-    //     private const string PSValidatePathFunction = functionToken + "PSValidatePath" + @"
+
         #endregion
     #endregion
     }
-    //#endregion ArchiveProvider
+    #endregion ArchiveProvider
 }
