@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Globalization;
 using System.IO;
@@ -489,20 +489,18 @@ namespace Microsoft.PowerShell.Archive
             ref string updatedPath,
             ref string updatedFilter)
         {
-            // In order to support Wildcards?
-            WriteWarning($"ConvertPath ({path}, {filter})");
 
             // Don't handle full paths, paths that the user is already trying to
             // filter, or paths they are trying to escape.
             if ((!string.IsNullOrEmpty(filter)) ||
                 (path.Contains(Path.DirectorySeparatorChar, StringComparison.Ordinal)) ||
                 (path.Contains(Path.AltDirectorySeparatorChar, StringComparison.Ordinal)) ||
-                (path.Contains("`"))
+                (path.Contains('`'))
                 )
             {
                 return false;
             }
-
+            WriteWarning("I should resolve a path ${path}");
             // We can never actually modify the PowerShell path, as the
             // Win32 filtering support returns items that match the short
             // filename OR long filename.
@@ -523,7 +521,7 @@ namespace Microsoft.PowerShell.Archive
             // We replace character ranges with the single-character wildcard, '?'.
             updatedPath = path;
             updatedFilter = System.Text.RegularExpressions.Regex.Replace(path, "\\[.*?\\]", "?");
-            WriteWarning($"ConvertPath ({updatedPath}, {updatedFilter})");
+
             return true;
         }
 
@@ -564,7 +562,6 @@ namespace Microsoft.PowerShell.Archive
 
                     path = path.TrimStart(Path.AltDirectorySeparatorChar);
                     
-                    //Console.WriteLine($"GetPathItems '{path}'");
                     // Only the Root directory is looked at for this scenario. 
                     List<ArchiveItemInfo> fileInfoItems = ArchiveDriveInfo.GetItem(path, true, true).ToList();
 
