@@ -290,9 +290,10 @@ function Expand-Archive
 
     BEGIN
     {
-       $isVerbose = $psboundparameters.ContainsKey("Verbose")
-       $isConfirm = $psboundparameters.ContainsKey("Confirm")
-
+       [boolean] $isVerbose=$psboundparameters['Verbose']
+       [boolean] $isConfirm = $psboundparameters['Confirm']
+       [boolean] $isWhatIf = $psboundparameters['WhatIf']
+       
         $isDestinationPathProvided = $true
         if($DestinationPath -eq [string]::Empty)
         {
@@ -322,7 +323,7 @@ function Expand-Archive
             }
             else
             {
-                $createdItem = New-Item -Path $DestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop
+                $createdItem = New-Item -Path $DestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -WhatIf:$isWhatIf -ErrorAction Stop
                 if($createdItem -ne $null -and $createdItem.PSProvider.Name -ne "FileSystem")
                 {
                     Remove-Item "$DestinationPath" -Force -Recurse -ErrorAction SilentlyContinue
@@ -397,11 +398,11 @@ function Expand-Archive
 
                     if(!$destinationPathExists)
                     {
-                        New-Item -Path $resolvedDestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop | Out-Null
+                        New-Item -Path $resolvedDestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -WhatIf:$isWhatIf -ErrorAction Stop | Out-Null
                     }
                 }
 
-                ExpandArchiveHelper $resolvedSourcePaths $resolvedDestinationPath ([ref]$expandedItems) $Force $isVerbose $isConfirm
+                ExpandArchiveHelper $resolvedSourcePaths $resolvedDestinationPath ([ref]$expandedItems) $Force $isVerbose $isConfirm $isWhatIf
 
                 $isArchiveFileProcessingComplete = $true
             }
@@ -933,7 +934,8 @@ function ExpandArchiveHelper
         [ref]     $expandedItems,
         [boolean] $force,
         [boolean] $isVerbose,
-        [boolean] $isConfirm
+        [boolean] $isConfirm,
+	[boolean] $isWhatIf
     )
 
     Add-CompressionAssemblies
@@ -1022,7 +1024,7 @@ function ExpandArchiveHelper
                 # then it means that user has added this directory by other means.
                 if($pathExists -eq $false)
                 {
-                    New-Item $currentArchiveEntryPath -Type Directory -Confirm:$isConfirm | Out-Null
+                    New-Item $currentArchiveEntryPath -Type Directory -Confirm:$isConfirm -WhatIf:$isWhatIf| Out-Null
 
                     if(Test-Path -LiteralPath $currentArchiveEntryPath -PathType Container)
                     {
@@ -1046,7 +1048,7 @@ function ExpandArchiveHelper
                         # note that if any ancestor of this directory doesn't exist, we don't recursively create each one as New-Item
                         # takes care of this already, so only one DirectoryInfo is returned instead of one for each parent directory
                         # that only contains directories
-                        New-Item $currentArchiveEntryFileInfo.DirectoryName -Type Directory -Confirm:$isConfirm | Out-Null
+                        New-Item $currentArchiveEntryFileInfo.DirectoryName -Type Directory -Confirm:$isConfirm -WhatIf:$isWhatIf | Out-Null
 
                         if(!(Test-Path -LiteralPath $currentArchiveEntryFileInfo.DirectoryName -PathType Container))
                         {
@@ -1068,7 +1070,7 @@ function ExpandArchiveHelper
                     {
                         if($force)
                         {
-                            Remove-Item -LiteralPath $currentArchiveEntryFileInfo.FullName -Force -ErrorVariable ev -Verbose:$isVerbose -Confirm:$isConfirm
+                            Remove-Item -LiteralPath $currentArchiveEntryFileInfo.FullName -Force -ErrorVariable ev -Verbose:$isVerbose -Confirm:$isConfirm -WhatIf:$isWhatIf
                             if($ev -ne $null)
                             {
                                 $hasNonTerminatingError = $true
