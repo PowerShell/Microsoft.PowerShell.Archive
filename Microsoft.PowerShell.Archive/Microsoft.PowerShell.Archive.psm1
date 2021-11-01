@@ -290,9 +290,9 @@ function Expand-Archive
 
     BEGIN
     {
-       [boolean] $isVerbose=$psboundparameters['Verbose']
-       [boolean] $isConfirm = $psboundparameters['Confirm']
-       [boolean] $isWhatIf = $psboundparameters['WhatIf']
+	[boolean] $isVerbose = $PSBoundParameters.ContainsKey('Verbose') -and $PSBoundParameters['Verbose']
+	[boolean] $isConfirm = $PSBoundParameters.ContainsKey('Confirm') -and $PSBoundParameters['Confirm']
+	[boolean] $isWhatIf = $PSBoundParameters.ContainsKey('WhatIf') -and $PSBoundParameters['WhatIf']
        
         $isDestinationPathProvided = $true
         if($DestinationPath -eq [string]::Empty)
