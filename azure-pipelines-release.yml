@@ -11,7 +11,7 @@ resources:
 
 variables:
   - name: PackageName
-    value: 'icrosoft.PowerShell.Archive'
+    value: 'Microsoft.PowerShell.Archive'
   - name: PackageVersion
     value: ''
   - name: BuildOutDir
@@ -97,6 +97,6 @@ stages:
         optionsRulesDBPath: ''
         optionsFTPath: ''
         # tsa-upload
-        codeBaseName: 'Microsoft_PowerShell_IoT_2_14_2022'
+        codeBaseName: 'Microsoft_PowerShell_Archive_2_15_2022'
         # selections
         APIScan: false # set to false when not using Windows APIs.
