@@ -25,7 +25,8 @@ This makes it difficult for Unix-based OS users to use archives compressed on a 
 There are also a number of usability issues reported by users.
 For example, there are issues with wildcard characters in paths.
 Error reporting in some circumstances can be improved and more descriptive.
-Compatability with other archive software can also be improved as there are cases where an archive program may not recognize an archive produced by this module as valid.
+Compatibility with other archive software can also be improved as there are cases where an archive program may not recognize an archive produced by this module as valid.
+
 Interactions with other parts of PowerShell, such as the job system, advanced functions, and common parameters can be further improved.
 
 The next version of the archive module, Microsoft.PowerShell.Archive v2.0.0, plans on resolving these limitations and usability issues.
