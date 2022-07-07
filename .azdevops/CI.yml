@@ -36,7 +36,7 @@ stages:
         dir "$(BuildOutDir)\*" -Recurse
       displayName: Show BuildOutDirectory
        
-     - pwsh: |
+    - pwsh: |
         $OutputFile = "$PWD/build-unit-tests.xml"
         $results = $null
         $results = Invoke-Pester -Script ./Tests/Pester.Commands.Cmdlets.Archive.Tests.ps1 -OutputFile $OutputFile -PassThru -OutputFormat NUnitXml -Show Failed, Context, Describe, Fails
@@ -48,14 +48,14 @@ stages:
       displayName: Run Build Unit Tests
       condition: succeededOrFailed()
        
-     - task: PublishTestResults@2
-        displayName: 'Publish Test Results **/*tests.xml'
-        inputs:
-          testResultsFormat: NUnit
-          testResultsFiles: '**/*tests.xml'
-          testRunTitle: 'Build Unit Tests'
-        continueOnError: true
-        condition: succeededOrFailed()
+    - task: PublishTestResults@2
+      displayName: 'Publish Test Results **/*tests.xml'
+      inputs:
+        testResultsFormat: NUnit
+        testResultsFiles: '**/*tests.xml'
+        testRunTitle: 'Build Unit Tests'
+      continueOnError: true
+      condition: succeededOrFailed()
 
     - template: Sbom.yml@ComplianceRepo
       parameters:
