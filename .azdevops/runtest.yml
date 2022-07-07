@@ -1,7 +1,7 @@
 parameters:
   vmImageName: 'windows-2019'
-  jobName: `run_test_windows`
-  jobDisplayName: 'Run test`
+  jobName: 'run_test_windows'
+  jobDisplayName: 'Run test'
 
 jobs:
   - job: '${{ parameters.jobName }}'
