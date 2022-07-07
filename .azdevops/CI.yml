@@ -36,7 +36,7 @@ stages:
         dir "$(BuildOutDir)\*" -Recurse
       displayName: Show BuildOutDirectory
 
-    - template: template/runtest.yml
+    - template: runtest.yml
       parameters:
         vmImageName: windows-2019
         jobName: run_test_windows
