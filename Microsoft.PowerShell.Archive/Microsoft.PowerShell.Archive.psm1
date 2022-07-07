@@ -346,6 +346,7 @@ function Expand-Archive
     }
     PROCESS
     {
+        ThrowTerminatingErrorHelper "TestError" "This error is a test." ([System.Management.Automation.ErrorCategory]::InvalidArgument) $null
         switch($PsCmdlet.ParameterSetName)
         {
             "Path"
