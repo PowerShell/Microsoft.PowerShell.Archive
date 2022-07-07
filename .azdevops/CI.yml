@@ -39,7 +39,7 @@ stages:
     - pwsh: |
         Install-Module Pester -RequiredVersion 4.10.1
         $module = Get-Module -Name "Pester"
-        if ($module -neq $null)
+        if ($module -ne $null)
         {
           Remove-Module "Pester"
         } 
@@ -56,7 +56,6 @@ stages:
             throw "Build or tests failed.  Passed: $($results.PassedCount) Failed: $($results.FailedCount) Total: $($results.TotalCount)"
         }
       displayName: Run Build Unit Tests
-      condition: succeededOrFailed()
        
     - task: PublishTestResults@2
       displayName: 'Publish Test Results **/*tests.xml'
