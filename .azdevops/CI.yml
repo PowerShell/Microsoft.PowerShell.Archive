@@ -37,7 +37,7 @@ stages:
       displayName: Show BuildOutDirectory
 
     - pwsh: |
-        Install-Module Pester -RequiredVersion 4.10.1
+        Install-Module -Name "Pester" -RequiredVersion 4.10.1
         $module = Get-Module -Name "Pester"
         if ($module -ne $null)
         {
