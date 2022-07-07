@@ -36,35 +36,11 @@ stages:
         dir "$(BuildOutDir)\*" -Recurse
       displayName: Show BuildOutDirectory
 
-    - pwsh: |
-        Install-Module -Name "Pester" -RequiredVersion 4.10.1 -Force
-        $module = Get-Module -Name "Pester"
-        if ($module -ne $null)
-        {
-          Remove-Module "Pester"
-        } 
-        Import-Module -Name "Pester" -RequiredVersion 4.10.1
-      displayName: Install and Import Pester 4
-       
-    - pwsh: |
-        $OutputFile = "$PWD/build-unit-tests.xml"
-        $results = $null
-        $results = Invoke-Pester -Script ./Tests/Pester.Commands.Cmdlets.Archive.Tests.ps1 -OutputFile $OutputFile -PassThru -OutputFormat NUnitXml -Show Failed, Context, Describe, Fails
-        Write-Host "##vso[artifact.upload containerfolder=testResults;artifactname=testResults]$OutputFile"
-        if(!$results -or $results.FailedCount -gt 0 -or !$results.TotalCount)
-        {
-            throw "Build or tests failed.  Passed: $($results.PassedCount) Failed: $($results.FailedCount) Total: $($results.TotalCount)"
-        }
-      displayName: Run Build Unit Tests
-       
-    - task: PublishTestResults@2
-      displayName: 'Publish Test Results **/*tests.xml'
-      inputs:
-        testResultsFormat: NUnit
-        testResultsFiles: '**/*tests.xml'
-        testRunTitle: 'Build Unit Tests'
-      continueOnError: true
-      condition: succeededOrFailed()
+    - template: template/runtest.yml
+      parameters:
+        vmImageName: windows-2019
+        jobName: run_test_windows
+        jobDisplayName: Run tests Windows
 
     - template: Sbom.yml@ComplianceRepo
       parameters:
