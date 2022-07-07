@@ -1,7 +1,15 @@
 parameters:
-  vmImageName: 'windows-2019'
-  jobName: 'run_test_windows'
-  jobDisplayName: 'Run test'
+  - name: vmImageName
+    type: string
+    default: 'windows-2019'
+
+  - name: jobName
+    type: string
+    default: 'run_test_windows'
+
+  - name: jobDisplayName
+    type: string
+    default: 'Run test'
 
 jobs:
   - job: '${{ parameters.jobName }}'
