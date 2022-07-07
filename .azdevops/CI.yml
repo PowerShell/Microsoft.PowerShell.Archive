@@ -38,7 +38,11 @@ stages:
 
     - pwsh: |
         Install-Module Pester -RequiredVersion 4.10.1
-        Remove-Module "Pester"
+        $module = Get-Module -Name "Pester"
+        if ($module -neq $null)
+        {
+          Remove-Module "Pester"
+        } 
         Import-Module -Name "Pester" -RequiredVersion 4.10.1
       displayName: Install and Import Pester 4
        
