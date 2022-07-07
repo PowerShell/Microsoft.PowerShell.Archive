@@ -35,6 +35,12 @@ stages:
     - pwsh: |
         dir "$(BuildOutDir)\*" -Recurse
       displayName: Show BuildOutDirectory
+
+    - pwsh: |
+        Install-Module Pester -RequiredVersion 4.10.1
+        Remove-Module "Pester"
+        Import-Module -Name "Pester" -RequiredVersion 4.10.1
+      displayName: Install and Import Pester 4
        
     - pwsh: |
         $OutputFile = "$PWD/build-unit-tests.xml"
