@@ -323,7 +323,7 @@ function Expand-Archive
             else
             {
                 $createdItem = New-Item -Path $DestinationPath -ItemType Directory -Confirm:$isConfirm -Verbose:$isVerbose -ErrorAction Stop
-                if($createdItem -ne $null -and $createdItem.PSProvider.Name -ne "FileSystem")
+                if($null -ne $createdItem -and $createdItem.PSProvider.Name -ne "FileSystem")
                 {
                     Remove-Item "$DestinationPath" -Force -Recurse -ErrorAction SilentlyContinue
                     $errorMessage = ($LocalizedData.ExpandArchiveInValidDestinationPath -f $DestinationPath)
@@ -415,7 +415,7 @@ function Expand-Archive
                     {
                         # delete the expanded file/directory as the archive
                         # file was not completely expanded.
-                        $expandedItems | % { Remove-Item "$_" -Force -Recurse }
+                        $expandedItems | ForEach-Object { Remove-Item "$_" -Force -Recurse }
                     }
                 }
                 elseif ($PassThru -and $expandedItems.Count -gt 0)
@@ -689,7 +689,7 @@ function CompressSingleDirHelper
         $modifiedSourceDirFullName = $sourceDirFullName + [System.IO.Path]::DirectorySeparatorChar
     }
 
-    $dirContents = Get-ChildItem -LiteralPath $sourceDirPath -Recurse
+    $dirContents = Get-ChildItem -LiteralPath $sourceDirPath -Recurse -Force
     foreach($currentContent in $dirContents)
     {
         $isContainer = $currentContent -is [System.IO.DirectoryInfo]
@@ -744,10 +744,10 @@ function ZipArchiveHelper
         # At this point we are sure that the archive file has write access.
         $archiveFileStreamArgs = @($destinationPath, $fileMode)
         $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
-
+        
         $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Update, $false)
         $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
-
+        
         $currentEntryCount = 0
         $progressBarStatus = ($LocalizedData.CompressProgressBarText -f $destinationPath)
         $bufferSize = 4kb
@@ -765,7 +765,6 @@ function ZipArchiveHelper
             {
                 $relativeFilePath = [System.IO.Path]::GetFileName($currentFilePath)
             }
-
             # Update mode is selected.
             # Check to see if archive file already contains one or more zip files in it.
             if($isUpdateMode -eq $true -and $zipArchive.Entries.Count -gt 0)
@@ -786,7 +785,7 @@ function ZipArchiveHelper
                     }
                 }
 
-                if($entryToBeUpdated -ne $null)
+                if($null -ne $entryToBeUpdated)
                 {
                     $addItemtoArchiveFileMessage = ($LocalizedData.AddItemtoArchiveFile -f $currentFilePath)
                     $entryToBeUpdated.Delete()
@@ -823,13 +822,13 @@ function ZipArchiveHelper
                     if($null -ne $currentFileStream)
                     {
                         $srcStream = New-Object System.IO.BinaryReader $currentFileStream
-
+       
                         $entryPath = DirectorySeparatorNormalizeHelper $relativeFilePath
                         $currentArchiveEntry = $zipArchive.CreateEntry($entryPath, $compression)
 
                         # Updating  the File Creation time so that the same timestamp would be retained after expanding the compressed file.
                         # At this point we are sure that Get-ChildItem would succeed.
-                        $lastWriteTime = (Get-Item -LiteralPath $currentFilePath).LastWriteTime
+                        $lastWriteTime = (Get-Item -LiteralPath $currentFilePath -Force).LastWriteTime
                         if ($lastWriteTime.Year -lt 1980)
                         {
                             Write-Warning "'$currentFilePath' has LastWriteTime earlier than 1980. Compress-Archive will store any files with LastWriteTime values earlier than 1980 as 1/1/1980 00:00."
@@ -842,7 +841,7 @@ function ZipArchiveHelper
 
                         while($numberOfBytesRead = $srcStream.Read($buffer, 0, $bufferSize))
                         {
-                            $destStream.Write($buffer, 0, $numberOfBytesRead)
+                            $destStream.Write($buffer, 0, $numberOfBytesRead) # can file attributes be specified here
                             $destStream.Flush()
                         }
 
@@ -1097,7 +1096,7 @@ function ExpandArchiveHelper
                     {
                         # The ExtractToFile() method doesn't handle whitespace correctly, strip whitespace which is consistent with how Explorer handles archives
                         # There is an edge case where an archive contains files whose only difference is whitespace, but this is uncommon and likely not legitimate
-                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | % { $_.Trim() }
+                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | ForEach-Object { $_.Trim() }
                         $currentArchiveEntryPath = [string]::Join([System.IO.Path]::DirectorySeparatorChar, $parts)
 
                         [System.IO.Compression.ZipFileExtensions]::ExtractToFile($currentArchiveEntry, $currentArchiveEntryPath, $false)
