@@ -28,7 +28,7 @@ jobs:
           }
           Import-Module $(Pipeline.Workspace)/ModuleBuild/Microsoft.PowerShell.Archive.psd1
           $module = Get-Module -Name "Microsoft.PowerShell.Archive"
-          $module.Path | Write-Object
+          $module.Path | Write-Output
         displayName: Import Module from Build
 
       - pwsh: |
