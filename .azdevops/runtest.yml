@@ -27,6 +27,8 @@ jobs:
             Remove-Module $module
           }
           Import-Module $(Pipeline.Workspace)/ModuleBuild/Microsoft.PowerShell.Archive.psd1
+          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
+          $module.Path | Write-Object
         displayName: Import Module from Build
 
       - pwsh: |
