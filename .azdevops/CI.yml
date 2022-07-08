@@ -40,12 +40,12 @@ stages:
       inputs:
         sourceFolder: '$(BuildOutDir)'
         contents: '**'
-        targetFolder: '$(Build.ArtifactStagingDirectory)'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/Microsoft.PowerShell.Archive'
 
     - pwsh: |
         dir "$(Build.ArtifactStagingDirectory)/*" -Recurse
 
-    - publish: '$(Build.ArtifactStagingDirectory)/*'
+    - publish: '$(Build.ArtifactStagingDirectory)/Microsoft.PowerShell.Archive'
       displayName: 'Publish module build'
       artifact: ModuleBuild
 
