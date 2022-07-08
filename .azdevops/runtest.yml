@@ -14,7 +14,7 @@ parameters:
 jobs:
   - job: '${{ parameters.jobName }}'
     pool:
-    vmImage: ${{ parameters.vmImageName }}
+      vmImage: ${{ parameters.vmImageName }}
     displayName: ${{ parameters.jobDisplayName }}
     steps:
       - pwsh: |
