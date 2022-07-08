@@ -83,4 +83,4 @@ stages:
       parameters:
         vmImageName: windows-2019
         jobName: run_test_windows
-        jobDisplayName: Run tests Windows
+        jobDisplayName: Run Windows tests
