@@ -17,10 +17,17 @@ jobs:
       vmImage: ${{ parameters.vmImageName }}
     displayName: ${{ parameters.jobDisplayName }}
     steps:
-      - checkout: none
-
       - download: current
         artifact: ModuleBuild
+
+      - pwsh: |
+          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
+          if ($module -ne $null)
+          {
+            Remove-Module $module
+          }
+          Import-Module $(Pipeline.Workspace)/ModuleBuild/Microsoft.PowerShell.Archive.psd1
+        displayName: Import Module from Build
 
       - pwsh: |
           Install-Module -Name "Pester" -RequiredVersion 4.10.1 -Force
@@ -42,6 +49,14 @@ jobs:
               throw "Build or tests failed.  Passed: $($results.PassedCount) Failed: $($results.FailedCount) Total: $($results.TotalCount)"
           }
         displayName: Run Build Unit Tests
+
+      - pwsh: |
+          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
+          if ($module -ne $null)
+          {
+            Remove-Module $module
+          }
+        displayName: Remove Built Module from PSSession
         
       - task: PublishTestResults@2
         displayName: 'Publish Test Results **/*tests.xml'

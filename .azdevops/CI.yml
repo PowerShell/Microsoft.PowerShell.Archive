@@ -60,7 +60,7 @@ stages:
         jobDisplayName: Run Windows tests
 
 - stage: Compliance
-  dependsOn: Build
+  dependsOn: Test
   displayName: Compliance
   jobs:
     - job: Compliance
@@ -69,6 +69,8 @@ stages:
       variables:
         BuildOutDir: '$(Pipeline.Workspace)/ModuleBuild/'
       steps:
+        - checkout: none
+
         - download: current
           artifact: ModuleBuild
 
