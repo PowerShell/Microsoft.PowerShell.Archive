@@ -38,11 +38,11 @@ stages:
     - task: CopyFiles@2
       displayName: 'Copy build'
       inputs:
-        contents: '$(BuildOutDir)/*'
+        contents: '$(BuildOutDir)'
         targetFolder: '$(Build.ArtifactStagingDirectory)'
 
     - publish: '$(Build.ArtifactStagingDirectory)/*'
-      displayName: 'Publish script'
+      displayName: 'Publish module build'
       artifact: ModuleBuild
 
 - stage: Test
