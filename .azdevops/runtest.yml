@@ -11,5 +11,7 @@ parameters:
     type: string
     default: 'Run test'
 
-steps:
-  - script: echo ${{ parameters.vmImageName }}
+jobs:
+  - job: myJob
+    steps:
+      - script: echo ${{ parameters.vmImageName }}
