@@ -38,8 +38,12 @@ stages:
     - task: CopyFiles@2
       displayName: 'Copy build'
       inputs:
-        contents: '$(BuildOutDir)'
+        sourceFolder: '$(BuildOutDir)'
+        contents: '**'
         targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - pwsh: |
+        dir "$(Build.ArtifactStagingDirectory)/*" -Recurse
 
     - publish: '$(Build.ArtifactStagingDirectory)/*'
       displayName: 'Publish module build'
