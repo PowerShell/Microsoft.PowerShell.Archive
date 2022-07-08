@@ -57,6 +57,7 @@ jobs:
             Remove-Module $module
           }
         displayName: Remove Built Module from PSSession
+        condition: succeededOrFailed()
         
       - task: PublishTestResults@2
         displayName: 'Publish Test Results **/*tests.xml'

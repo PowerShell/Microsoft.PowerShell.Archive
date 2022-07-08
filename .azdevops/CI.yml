@@ -59,6 +59,18 @@ stages:
         jobName: run_test_windows
         jobDisplayName: Run Windows tests
 
+    - template: runtest.yml
+      parameters:
+        vmImageName: ubuntu-latest
+        jobName: run_test_linux
+        jobDisplayName: Run Linux tests
+    
+    - template: runtest.yml
+      parameters:
+        vmImageName: macos-latest
+        jobName: run_test_macos
+        jobDisplayName: Run macOS tests
+
 - stage: Compliance
   dependsOn: Test
   displayName: Compliance
