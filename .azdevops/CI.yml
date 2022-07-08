@@ -36,12 +36,6 @@ stages:
         dir "$(BuildOutDir)\*" -Recurse
       displayName: Show BuildOutDirectory
 
-    - template: runtest.yml
-      parameters:
-        vmImageName: windows-2019
-        jobName: run_test_windows
-        jobDisplayName: Run tests Windows
-
     - template: Sbom.yml@ComplianceRepo
       parameters:
         BuildDropPath: "$(BuildOutDir)"
@@ -81,3 +75,12 @@ stages:
 
     - publish: $(System.ArtifactsDirectory)\Microsoft.PowerShell.Archive.zip
       artifact: SignedModule
+
+- stage: Test
+  displayName: Run tests
+  jobs:
+    - template: runtest.yml
+      parameters:
+        vmImageName: windows-2019
+        jobName: run_test_windows
+        jobDisplayName: Run tests Windows
