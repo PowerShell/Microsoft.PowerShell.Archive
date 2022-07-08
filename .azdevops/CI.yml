@@ -63,7 +63,7 @@ stages:
       pool:
         vmImage: windows-2019
       variables:
-        BuildOutDir: `$(Pipeline.Workspace)/ModuleBuild/`
+        BuildOutDir: '$(Pipeline.Workspace)/ModuleBuild/'
       steps:
         - download: current
           artifact: ModuleBuild
