@@ -11,8 +11,7 @@ parameters:
     type: string
     default: 'Run test'
 
-jobs:
-  - job: '${{ parameters.jobName }}'
+job: '${{ parameters.jobName }}'
     pool:
         vmImage: ${{ parameters.vmImageName }}
     displayName: ${{ parameters.jobDisplayName }}
