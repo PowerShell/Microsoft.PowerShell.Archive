@@ -32,10 +32,21 @@ stages:
       displayName: Build Microsoft.PowerShell.Archive module
 
     - pwsh: |
-        dir "$(BuildOutDir)\*" -Recurse
+        dir "$(BuildOutDir)/*" -Recurse
       displayName: Show BuildOutDirectory
 
+    - task: CopyFiles@2
+      displayName: 'Copy build'
+      inputs:
+        contents: '$(BuildOutDir)/*'
+        targetFolder: '$(Build.ArtifactStagingDirectory)'
+
+    - publish: '$(Build.ArtifactStagingDirectory)/*'
+      displayName: 'Publish script'
+      artifact: ModuleBuild
+
 - stage: Test
+  dependsOn: Build
   displayName: Run tests
   jobs:
     - template: runtest.yml
@@ -45,12 +56,18 @@ stages:
         jobDisplayName: Run Windows tests
 
 - stage: Compliance
+  dependsOn: Build
   displayName: Compliance
   jobs:
     - job: Compliance
       pool:
         vmImage: windows-2019
+      variables:
+        BuildOutDir: `$(Pipeline.Workspace)/ModuleBuild/`
       steps:
+        - download: current
+          artifact: ModuleBuild
+
         - template: Sbom.yml@ComplianceRepo
           parameters:
             BuildDropPath: "$(BuildOutDir)"

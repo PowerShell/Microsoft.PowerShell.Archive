@@ -17,6 +17,11 @@ jobs:
       vmImage: ${{ parameters.vmImageName }}
     displayName: ${{ parameters.jobDisplayName }}
     steps:
+      - checkout: none
+
+      - download: current
+        artifact: ModuleBuild
+
       - pwsh: |
           Install-Module -Name "Pester" -RequiredVersion 4.10.1 -Force
           $module = Get-Module -Name "Pester"
