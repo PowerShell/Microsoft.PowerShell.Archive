@@ -1,0 +1,12 @@
+{
+  "profiles": {
+    "Microsoft.PowerShell.Archive": {
+      "commandName": "Project"
+    },
+    "PowerShell 7": {
+      "commandName": "Executable",
+      "executablePath": "pwsh",
+      "commandLineArgs": "-NoExit -Command \"& Import-Module .\\Microsoft.PowerShell.Archive.dll"
+    }
+  }
+}
