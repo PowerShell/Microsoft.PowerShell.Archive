@@ -41,14 +41,11 @@ namespace Microsoft.PowerShell.Archive
         [ValidateNotNullOrEmpty]
         public System.IO.Compression.CompressionLevel CompressionLevel { get; set; }
 
-        private HashSet<string> _sourcePaths;
-
-        private HashSet<string> _duplicatePaths;
+        private List<string> _sourcePaths;
 
         public CompressArchiveCommand()
         {
-            _sourcePaths = new HashSet<string>();
-            _duplicatePaths = new HashSet<string>();
+            _sourcePaths = new List<string>();
         }
 
         protected override void BeginProcessing()
@@ -59,81 +56,23 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void ProcessRecord()
         {
-            //Validate paths
-            string[]? paths;
-            paths = ParameterSetName.StartsWith("Path") ? ResolvePathWithWildcards(Path) : ResolvePathWithoutWildcards(LiteralPath);
-
-            PathHelper pathHelper = new PathHelper(this);
-
-            foreach (var path in paths)
-            {
-                
-                pathHelper.GetEntryRecordsForPath(path, false);
-
-                //Add path to source paths
-                if (!_sourcePaths.Add(path))
-                {
-                    //If the set already contains the path, add it to the set of duplicates
-                    _duplicatePaths.Add(path);
-                }
-            }
-
-            
+            if (ParameterSetName.StartsWith("Path")) _sourcePaths.AddRange(Path);
+            else _sourcePaths.AddRange(LiteralPath);
         }
 
         protected override void EndProcessing()
         {
-            //If there are duplicate paths, throw an error
-            if (_duplicatePaths.Count > 0)
-            {
-                var errorMsg = String.Format(ErrorMessages.DuplicatePathsMessage, _duplicatePaths.ToString());
-                var exception = new System.ArgumentException(errorMsg);
-                ErrorRecord errorRecord = new ErrorRecord(exception, "DuplicatePathFound", ErrorCategory.InvalidArgument, _duplicatePaths);
-                ThrowTerminatingError(errorRecord);
+            PathHelper pathHelper = new PathHelper(this);
 
-            }
+            //Get archive entries, validation is performed by PathHelper
+            List<ArchiveEntry> archiveEntries = pathHelper.GetEntryRecordsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath"));
+
+            //
         }
 
         protected override void StopProcessing()
         {
             base.StopProcessing();
-        }
-
-        private string[] ResolvePathWithWildcards(string[] paths)
-        {
-            List<string> outputPaths = new List<string>();
-            foreach (var path in paths)
-            {
-                var resolvedPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo);
-                if (providerInfo.Name != "FileSystem")
-                {
-                    //Throw an error
-                }
-                outputPaths.AddRange(resolvedPaths);
-            }
-            
-            return outputPaths.ToArray();
-        }
-
-        private string[] ResolvePathWithoutWildcards(string[] paths)
-        {
-            string[] outputPaths = new string[paths.Length];
-            for (int i=0; i<paths.Length; i++)
-            {
-                var path = paths[i];
-                var resolvedPath = GetUnresolvedProviderPathFromPSPath(path);
-                if (!System.IO.File.Exists(resolvedPath) && !System.IO.Directory.Exists(resolvedPath))
-                {
-                    //Throw an error
-                    var errorMsg = String.Format(ErrorMessages.PathNotFoundMessage, path);
-                    var exception = new System.InvalidOperationException(errorMsg);
-                    var errorRecord = new ErrorRecord(exception, "PathNotFound", ErrorCategory.InvalidArgument, path);
-                    ThrowTerminatingError(errorRecord);
-                }
-                outputPaths[i] = resolvedPath;
-            }
-
-            return outputPaths;
         }
 
         private string ResolvePath(string path)

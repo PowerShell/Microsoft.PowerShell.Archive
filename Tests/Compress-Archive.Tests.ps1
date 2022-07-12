@@ -173,7 +173,7 @@
         }
 
         It "Validate errors from Compress-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" {
-            CompressArchiveInvalidPathValidator "$TestDrive$($DS)InvalidPath" $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            #CompressArchiveInvalidPathValidator "$TestDrive$($DS)InvalidPath" $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
 
             $path = @("$TestDrive", "$TestDrive$($DS)InvalidPath")
             CompressArchiveInvalidPathValidator $path $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"

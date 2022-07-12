@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
+using System.Net.NetworkInformation;
 using System.Text;
 
 namespace Microsoft.PowerShell.Archive
@@ -34,10 +35,10 @@ namespace Microsoft.PowerShell.Archive
             foreach (var path in paths)
             {
                 //Resolve the path
-                var resolvedPaths = _cmdlet.GetResolvedProviderPathFromPSPath(path, out var providerInfo);
+                var resolvedPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo);
 
                 //Check if the path if from the filesystem
-                if (providerInfo.Name != "FileSystem")
+                if (providerInfo?.Name != "FileSystem")
                 {
                     //Add the path to the set of non-filesystem paths
                     nonfilesystemPaths.Add(path);
@@ -74,7 +75,7 @@ namespace Microsoft.PowerShell.Archive
             foreach (var path in paths)
             {
                 //Get the unresolved path
-                string unresolvedPath = _cmdlet.GetUnresolvedProviderPathFromPSPath(path);
+                string unresolvedPath = GetUnresolvedProviderPathFromPSPath(path);
 
                 //Get the prefix of the path
                 string prefix = System.IO.Path.GetDirectoryName(unresolvedPath) ?? String.Empty;
@@ -99,17 +100,23 @@ namespace Microsoft.PowerShell.Archive
         {
             if (System.IO.Directory.Exists(path))
             {
-                //Get all descendents
-                var childPaths = _cmdlet.InvokeProvider.ChildItem.GetNames(new string[] { path }, returnContainers: ReturnContainers.ReturnAllContainers,
-                    recurse: true, depth: uint.MaxValue, force: true, literalPath: false);
-
-                foreach (var childPath in childPaths)
+                try
                 {
-                    //Add an entry for each child path
-                    entries.Add(new ArchiveEntry(name: GetEntryName(path: childPath, prefix: prefix), fullPath: childPath));
-                }
+                    var directoryInfo = new System.IO.DirectoryInfo(path);
+                    foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
+                    {
+                        //Add an entry for each child path
+                        entries.Add(new ArchiveEntry(name: GetEntryName(path: childPath.FullName, prefix: prefix), fullPath: childPath.Name));
+                    }
 
-                return true;
+                    return true;
+                } catch (System.Management.Automation.ItemNotFoundException itemNotFoundException)
+                {
+                    //Throw a path not found error
+                    ErrorRecord errorRecord = new ErrorRecord(itemNotFoundException, "PathNotFound", ErrorCategory.InvalidArgument, path);
+                    _cmdlet.ThrowTerminatingError(errorRecord);
+                }
+                
             }
             return false;
         }
@@ -142,10 +149,86 @@ namespace Microsoft.PowerShell.Archive
                     .Select(x => x.Key);
         }
 
+        private System.Collections.ObjectModel.Collection<string>? GetResolvedProviderPathFromPSPath(string path, out ProviderInfo? providerInfo)
+        {
+            try
+            {
+                ProviderInfo info;
+                var resolvedPaths = _cmdlet.GetResolvedProviderPathFromPSPath(path, out info);
+                providerInfo = info;
+                return resolvedPaths;
+            }
+            catch (ProviderNotFoundException providerNotFoundException)
+            {
+                //Throw an invalid path error
+                ThrowInvalidPathError(path, providerNotFoundException);
+            }
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                ThrowInvalidPathError(path, driveNotFoundException);
+            }
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                ThrowInvalidPathError(path, providerInvocationException);
+            }
+            catch (NotSupportedException providerNotSupportedException)
+            {
+                ThrowInvalidPathError(path, providerNotSupportedException);
+            } 
+            catch (InvalidOperationException invalidOperationException)
+            {
+                ThrowInvalidPathError(path, invalidOperationException);
+            } 
+            catch (ItemNotFoundException itemNotFoundException)
+            {
+                ThrowPathNotFoundError(path, itemNotFoundException);
+            }
+            providerInfo = null;
+            return null;
+        }
+
+        private string? GetUnresolvedProviderPathFromPSPath(string path)
+        {
+            try
+            {
+                return _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path);
+            }
+            catch (ProviderNotFoundException providerNotFoundException)
+            {
+                //Throw an invalid path error
+                ThrowInvalidPathError(path, providerNotFoundException);
+            }
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                ThrowInvalidPathError(path, driveNotFoundException);
+            }
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                ThrowInvalidPathError(path, providerInvocationException);
+            }
+            catch (NotSupportedException providerNotSupportedException)
+            {
+                ThrowInvalidPathError(path, providerNotSupportedException);
+            }
+            catch (InvalidOperationException invalidOperationException)
+            {
+                ThrowInvalidPathError(path, invalidOperationException);
+            }
+            return null;
+        }
+
         private void ThrowPathNotFoundError(string path)
         {
             var errorMsg = String.Format(ErrorMessages.PathNotFoundMessage, path);
             var exception = new System.InvalidOperationException(errorMsg);
+            var errorRecord = new ErrorRecord(exception, "PathNotFound", ErrorCategory.InvalidArgument, path);
+            _cmdlet.ThrowTerminatingError(errorRecord);
+        }
+
+        private void ThrowPathNotFoundError(string path, Exception innerException)
+        {
+            var errorMsg = String.Format(ErrorMessages.PathNotFoundMessage, path);
+            var exception = new System.ArgumentException(errorMsg);
             var errorRecord = new ErrorRecord(exception, "PathNotFound", ErrorCategory.InvalidArgument, path);
             _cmdlet.ThrowTerminatingError(errorRecord);
         }
@@ -156,6 +239,14 @@ namespace Microsoft.PowerShell.Archive
             var errorMsg = String.Format(ErrorMessages.InvalidPathMessage, commaSeperatedPaths);
             var exception = new System.InvalidOperationException(errorMsg);
             var errorRecord = new ErrorRecord(exception, "InvalidPath", ErrorCategory.InvalidArgument, commaSeperatedPaths);
+            _cmdlet.ThrowTerminatingError(errorRecord);
+        }
+
+        private void ThrowInvalidPathError(string path, Exception innerException)
+        {
+            var errorMsg = String.Format(ErrorMessages.InvalidPathMessage, path);
+            var exception = new System.ArgumentException(errorMsg, innerException);
+            var errorRecord = new ErrorRecord(exception, "InvalidPath", ErrorCategory.InvalidArgument, path);
             _cmdlet.ThrowTerminatingError(errorRecord);
         }
 
