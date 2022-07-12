@@ -67,7 +67,7 @@ namespace Microsoft.PowerShell.Archive
 
             foreach (var path in paths)
             {
-                Sess
+                
                 pathHelper.GetEntryRecordsForPath(path, false);
 
                 //Add path to source paths
