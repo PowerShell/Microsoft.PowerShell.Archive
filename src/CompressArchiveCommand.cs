@@ -63,8 +63,13 @@ namespace Microsoft.PowerShell.Archive
             string[]? paths;
             paths = ParameterSetName.StartsWith("Path") ? ResolvePathWithWildcards(Path) : ResolvePathWithoutWildcards(LiteralPath);
 
+            PathHelper pathHelper = new PathHelper(this);
+
             foreach (var path in paths)
             {
+                Sess
+                pathHelper.GetEntryRecordsForPath(path, false);
+
                 //Add path to source paths
                 if (!_sourcePaths.Add(path))
                 {
