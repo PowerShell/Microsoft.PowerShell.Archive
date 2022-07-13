@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO.Compression;
 using System.Text;
 
 namespace Microsoft.PowerShell.Archive
@@ -12,38 +13,68 @@ namespace Microsoft.PowerShell.Archive
 
         private string _archivePath;
 
+        private System.IO.FileStream _archiveStream;
+
         private System.IO.Compression.ZipArchive _zipArchive;
 
-        ArchiveMode Mode => _mode;
+        private System.IO.Compression.CompressionLevel _compressionLevel;
 
-        string ArchivePath => _archivePath;
+        ArchiveMode IArchive.Mode => _mode;
 
-        public ZipArchive(string archivePath, ArchiveMode mode, System.IO.FileStream _archiveStream)
+        string IArchive.ArchivePath => _archivePath;
+
+        public ZipArchive(string archivePath, ArchiveMode mode, System.IO.FileStream archiveStream, CompressionLevel compressionLevel)
         {
             disposedValue = false;
             _mode = mode;
             _archivePath = archivePath;
-            _zipArchive = new System.IO.Compression.ZipArchive(_archiveStream, )
+            _archiveStream = archiveStream;
+            _zipArchive = new System.IO.Compression.ZipArchive(stream: archiveStream, mode: ConvertToZipArchiveMode(_mode), leaveOpen: true);
+            _compressionLevel = compressionLevel;
         }
 
-        void AddFilesytemEntry(ArchiveEntry entry)
+        void IArchive.AddFilesytemEntry(ArchiveEntry entry)
+        {
+            if (_mode == ArchiveMode.Read) throw new InvalidOperationException("Cannot add a filesystem entry to an archive in read mode");
+            // TODO: Add exception handling for _zipArchive.GetEntry
+            var entryInArchive = (_mode == ArchiveMode.Create) ? null : _zipArchive.GetEntry(entry.Name);
+            if (entry.Name.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
+            {
+                //Create an entry only
+                // TODO: Add exception handling for CreateEntry
+                if (entryInArchive == null) _zipArchive.CreateEntry(entry.Name);
+            }
+            else
+            {
+                if (entryInArchive != null)
+                {
+                    entryInArchive.Delete();
+                }
+                // TODO: Add exception handling
+                _zipArchive.CreateEntryFromFile(sourceFileName: entry.FullPath, entryName: entry.Name, compressionLevel: _compressionLevel);
+            }
+            // TODO: Check what happens when we add a folder with children and then add a file
+        }
+
+        string[] IArchive.GetEntries()
         {
             throw new NotImplementedException();
         }
 
-        string[] GetEntries()
+        void IArchive.Expand(string destinationPath)
         {
             throw new NotImplementedException();
         }
 
-        void Expand(string destinationPath)
+        private System.IO.Compression.ZipArchiveMode ConvertToZipArchiveMode(ArchiveMode archiveMode)
         {
-            throw new NotImplementedException();
-        }
-
-        private System.IO.Compression.ZipArchiveMode GetZipArchiveMode(ArchiveMode archiveMode)
-        {
-
+            switch (archiveMode)
+            {
+                case ArchiveMode.Create: return System.IO.Compression.ZipArchiveMode.Create;
+                case ArchiveMode.Update: return System.IO.Compression.ZipArchiveMode.Update;
+                case ArchiveMode.Read: return System.IO.Compression.ZipArchiveMode.Read;
+                default: return System.IO.Compression.ZipArchiveMode.Update;
+            }
         }
 
         protected virtual void Dispose(bool disposing)
@@ -53,6 +84,8 @@ namespace Microsoft.PowerShell.Archive
                 if (disposing)
                 {
                     // TODO: dispose managed state (managed objects)
+                    _zipArchive.Dispose();
+                    _archiveStream.Dispose();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

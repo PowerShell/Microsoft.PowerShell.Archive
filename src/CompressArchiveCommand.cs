@@ -54,13 +54,18 @@ namespace Microsoft.PowerShell.Archive
         protected override void BeginProcessing()
         {
             base.BeginProcessing();
+            // TODO: Add exception handling
             DestinationPath = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
+
+            // TODO: If we are in update mode, check if archive exists
+            // TODO: If we are not in update mode, check if archive does not exist or Overwrite is true and the archive is not read-only
         }
 
         protected override void ProcessRecord()
         {
             if (ParameterSetName.StartsWith("Path")) _sourcePaths.AddRange(Path);
             else _sourcePaths.AddRange(LiteralPath);
+            
         }
 
         protected override void EndProcessing()
@@ -68,7 +73,15 @@ namespace Microsoft.PowerShell.Archive
             //Get archive entries, validation is performed by PathHelper
             List<ArchiveEntry> archiveEntries = _pathHelper.GetEntryRecordsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath"));
 
-            //
+            //Create a zip archive
+            using (var archive = ArchiveFactory.GetArchive(ArchiveFormat.zip, DestinationPath, Update ? ArchiveMode.Update : ArchiveMode.Create, CompressionLevel))
+            {
+                //Add entries to the archive
+                foreach (ArchiveEntry entry in archiveEntries)
+                {
+                    archive.AddFilesytemEntry(entry);
+                }
+            }
         }
 
         protected override void StopProcessing()
