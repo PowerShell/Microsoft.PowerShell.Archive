@@ -46,28 +46,16 @@ namespace Microsoft.PowerShell.Archive
                 }
 
                 //Check if the entered path is relative to the current working directory
-                bool isPathRelativeToWorkingDirectory = CanPreservePathStructure(path);
+                bool shouldPreservePathStructure = CanPreservePathStructure(path);
 
                 //Go through each resolved path and add it to the list of entries
                 for (int i=0; i<resolvedPaths.Count; i++)
                 {
                     var resolvedPath = resolvedPaths[i];
                     //Get the prefix
-                    string prefix = System.IO.Path.GetDirectoryName(resolvedPath) ?? String.Empty;
+                    //string prefix = System.IO.Path.GetDirectoryName(resolvedPath) ?? String.Empty;
 
-                    if (System.IO.Directory.Exists(resolvedPath))
-                    {
-                        //Add directory seperator to end 
-                        if (!resolvedPath.EndsWith(System.IO.Path.DirectorySeparatorChar)) resolvedPath += System.IO.Path.DirectorySeparatorChar;
-                        AddDescendentEntries(path: resolvedPath, prefix: prefix, entries: entries);
-                    }
-                    else if (!System.IO.File.Exists(resolvedPath))
-                    {
-                        ThrowPathNotFoundError(path);
-                    }
-
-                    //Add an entry for the item
-                    entries.Add(new ArchiveEntry(name: GetEntryName(path: resolvedPath, prefix: prefix), fullPath: resolvedPath));
+                    AddEntryForFullyQualifiedPath(resolvedPath, entries, shouldPreservePathStructure);
                 }
             }
 
@@ -101,7 +89,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     //Add directory seperator to end 
                     if (!unresolvedPath.EndsWith(System.IO.Path.DirectorySeparatorChar)) unresolvedPath += System.IO.Path.DirectorySeparatorChar;
-                    AddDescendentEntries(path: unresolvedPath, prefix: prefix, entries: entries);
+                    AddDescendentEntries(path: unresolvedPath, entries: entries, shouldPreservePathStructure: true);
                 } else if (!System.IO.File.Exists(unresolvedPath))
                 {
                     ThrowPathNotFoundError(path);
@@ -119,7 +107,26 @@ namespace Microsoft.PowerShell.Archive
             return entries;
         }
 
-        private void AddDescendentEntries(string path, string prefix, List<ArchiveEntry> entries)
+        private void AddEntryForFullyQualifiedPath(string path, List<ArchiveEntry> entries, bool shouldPreservePathStructure)
+        {
+            // If unresolvedPath is not a file or folder, throw a path not found error
+            // If it is a folder, add its descendents to the list of ArchiveEntry
+            if (System.IO.Directory.Exists(path))
+            {
+                //Add directory seperator to end 
+                if (!path.EndsWith(System.IO.Path.DirectorySeparatorChar)) path += System.IO.Path.DirectorySeparatorChar;
+                AddDescendentEntries(path: path, entries: entries, shouldPreservePathStructure: shouldPreservePathStructure);
+            }
+            else if (!System.IO.File.Exists(path))
+            {
+                ThrowPathNotFoundError(path);
+            }
+
+            //Add an entry for the item
+            entries.Add(new ArchiveEntry(name: GetEntryName(path: path, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: path));
+        }
+
+        private void AddDescendentEntries(string path, List<ArchiveEntry> entries, bool shouldPreservePathStructure)
         {
             try
             {
@@ -127,7 +134,7 @@ namespace Microsoft.PowerShell.Archive
                 foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
                     //Add an entry for each child path
-                    entries.Add(new ArchiveEntry(name: GetEntryName(path: childPath.FullName, prefix: prefix), fullPath: childPath.Name));
+                    entries.Add(new ArchiveEntry(name: GetEntryName(path: childPath.FullName, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: childPath.Name));
                 }
             }
             catch (System.Management.Automation.ItemNotFoundException itemNotFoundException)
@@ -135,6 +142,27 @@ namespace Microsoft.PowerShell.Archive
                 //Throw a path not found error
                 ErrorRecord errorRecord = new ErrorRecord(itemNotFoundException, "PathNotFound", ErrorCategory.InvalidArgument, path);
                 _cmdlet.ThrowTerminatingError(errorRecord);
+            }
+        }
+
+        private string GetEntryName(string path, bool shouldPreservePathStructure)
+        {
+            //If the path is relative to the current working directory, return the relative path as name
+            if (shouldPreservePathStructure && IsPathRelativeToCurrentWorkingDirectory(path, out var relativePath))
+            {
+                return relativePath;
+            }
+            //Otherwise, return the name of the directory or file
+            if (path.EndsWith(System.IO.Path.DirectorySeparatorChar))
+            {
+                //Get substring from second-last directory seperator char till end
+                int secondLastIndex = path.LastIndexOf(System.IO.Path.DirectorySeparatorChar, path.Length - 2);
+                if (secondLastIndex == -1) return path;
+                else return path.Substring(secondLastIndex + 1);
+            }
+            else
+            {
+                return System.IO.Path.GetFileName(path);
             }
         }
 
@@ -320,10 +348,10 @@ namespace Microsoft.PowerShell.Archive
             return System.IO.Path.IsPathRooted(path);
         }
 
-        private bool IsPathRelativeToCurrentWorkingDirectory(string path)
+        private bool IsPathRelativeToCurrentWorkingDirectory(string path, out string relativePath)
         {
             // TODO: Add exception handling
-            string relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
+            relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
             return !relativePath.Contains("..");
         }
     }

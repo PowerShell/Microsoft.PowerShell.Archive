@@ -36,13 +36,16 @@ namespace Microsoft.PowerShell.Archive
         void IArchive.AddFilesytemEntry(ArchiveEntry entry)
         {
             if (_mode == ArchiveMode.Read) throw new InvalidOperationException("Cannot add a filesystem entry to an archive in read mode");
+
+            var entryName = entry.Name.Replace(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+
             // TODO: Add exception handling for _zipArchive.GetEntry
-            var entryInArchive = (_mode == ArchiveMode.Create) ? null : _zipArchive.GetEntry(entry.Name);
-            if (entry.Name.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
+            var entryInArchive = (_mode == ArchiveMode.Create) ? null : _zipArchive.GetEntry(entryName);
+            if (entryName.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
             {
                 //Create an entry only
                 // TODO: Add exception handling for CreateEntry
-                if (entryInArchive == null) _zipArchive.CreateEntry(entry.Name);
+                if (entryInArchive == null) _zipArchive.CreateEntry(entryName);
             }
             else
             {
@@ -51,9 +54,11 @@ namespace Microsoft.PowerShell.Archive
                     entryInArchive.Delete();
                 }
                 // TODO: Add exception handling
-                _zipArchive.CreateEntryFromFile(sourceFileName: entry.FullPath, entryName: entry.Name, compressionLevel: _compressionLevel);
+                _zipArchive.CreateEntryFromFile(sourceFileName: entry.FullPath, entryName: entryName, compressionLevel: _compressionLevel);
             }
             // TODO: Check what happens when we add a folder with children and then add a file
+            // TODO: Check if an entry also has a folder w/same name, if so, delete it and its children
+            // TODO: Schedule meeting
         }
 
         string[] IArchive.GetEntries()
