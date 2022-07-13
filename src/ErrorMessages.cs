@@ -12,5 +12,7 @@ namespace Microsoft.PowerShell.Archive
         internal static string DuplicatePathsMessage = "The path(s) {0} have been specified more than once.";
 
         internal static string InvalidPathMessage = "The path(s) {0} are invalid.";
+
+        internal static string ResolvesToMultiplePathsMessage = "The path {0} resolves to multiple possible paths.";
     }
 }

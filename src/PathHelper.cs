@@ -35,7 +35,7 @@ namespace Microsoft.PowerShell.Archive
             foreach (var path in paths)
             {
                 //Resolve the path
-                var resolvedPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo);
+                var resolvedPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo, mustExist: true);
 
                 //Check if the path if from the filesystem
                 if (providerInfo?.Name != "FileSystem")
@@ -149,7 +149,7 @@ namespace Microsoft.PowerShell.Archive
                     .Select(x => x.Key);
         }
 
-        private System.Collections.ObjectModel.Collection<string>? GetResolvedProviderPathFromPSPath(string path, out ProviderInfo? providerInfo)
+        private System.Collections.ObjectModel.Collection<string>? GetResolvedProviderPathFromPSPath(string path, out ProviderInfo? providerInfo, bool mustExist)
         {
             try
             {
@@ -181,7 +181,7 @@ namespace Microsoft.PowerShell.Archive
             } 
             catch (ItemNotFoundException itemNotFoundException)
             {
-                ThrowPathNotFoundError(path, itemNotFoundException);
+                if (mustExist) ThrowPathNotFoundError(path, itemNotFoundException);
             }
             providerInfo = null;
             return null;
@@ -217,6 +217,29 @@ namespace Microsoft.PowerShell.Archive
             return null;
         }
 
+        internal string ResolveToSingleFullyQualifiedPath(string path)
+        {
+            //path be literal or non-literal
+            //First, get non-literal path
+            string nonLiteralPath = GetUnresolvedProviderPathFromPSPath(path) ?? throw new ArgumentException($"Path {path} was resolved to null");
+
+            //Second, get literal path
+            var literalPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo, mustExist: false);
+            if (literalPaths != null)
+            {
+                //Ensure the literal paths came from the filesystem
+                if (providerInfo != null && providerInfo?.Name != "FileSystem") ThrowInvalidPathError(path);
+
+                //If there are >1 literalPaths, throw an error
+                if (literalPaths.Count > 1) ThrowResolvesToMultiplePathsError(path);
+
+                //If there is one item in literalPaths, compare it to nonLiteralPath
+                if (literalPaths[0] != nonLiteralPath) ThrowResolvesToMultiplePathsError(path);
+            }
+
+            return nonLiteralPath;
+        }
+
         private void ThrowPathNotFoundError(string path)
         {
             var errorMsg = String.Format(ErrorMessages.PathNotFoundMessage, path);
@@ -242,6 +265,14 @@ namespace Microsoft.PowerShell.Archive
             _cmdlet.ThrowTerminatingError(errorRecord);
         }
 
+        private void ThrowInvalidPathError(string path)
+        {
+            var errorMsg = String.Format(ErrorMessages.InvalidPathMessage, path);
+            var exception = new System.ArgumentException(errorMsg);
+            var errorRecord = new ErrorRecord(exception, "InvalidPath", ErrorCategory.InvalidArgument, path);
+            _cmdlet.ThrowTerminatingError(errorRecord);
+        }
+
         private void ThrowInvalidPathError(string path, Exception innerException)
         {
             var errorMsg = String.Format(ErrorMessages.InvalidPathMessage, path);
@@ -255,7 +286,15 @@ namespace Microsoft.PowerShell.Archive
             string commaSeperatedPaths = String.Join(',', paths);
             var errorMsg = String.Format(ErrorMessages.DuplicatePathsMessage, commaSeperatedPaths);
             var exception = new System.InvalidOperationException(errorMsg);
-            var errorRecord = new ErrorRecord(exception, "DuplicatePath", ErrorCategory.InvalidArgument, commaSeperatedPaths);
+            var errorRecord = new ErrorRecord(exception, "DuplicatePathFound", ErrorCategory.InvalidArgument, commaSeperatedPaths);
+            _cmdlet.ThrowTerminatingError(errorRecord);
+        }
+
+        private void ThrowResolvesToMultiplePathsError(string path)
+        {
+            var errorMsg = String.Format(ErrorMessages.ResolvesToMultiplePathsMessage, path);
+            var exception = new System.ArgumentException(errorMsg);
+            var errorRecord = new ErrorRecord(exception, "DuplicatePathFound", ErrorCategory.InvalidArgument, path);
             _cmdlet.ThrowTerminatingError(errorRecord);
         }
     }

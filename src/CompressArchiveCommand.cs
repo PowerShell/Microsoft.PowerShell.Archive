@@ -43,15 +43,18 @@ namespace Microsoft.PowerShell.Archive
 
         private List<string> _sourcePaths;
 
+        private PathHelper _pathHelper;
+
         public CompressArchiveCommand()
         {
             _sourcePaths = new List<string>();
+            _pathHelper = new PathHelper(this);
         }
 
         protected override void BeginProcessing()
         {
             base.BeginProcessing();
-            ResolvePath(DestinationPath);
+            DestinationPath = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
         }
 
         protected override void ProcessRecord()
@@ -62,10 +65,8 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void EndProcessing()
         {
-            PathHelper pathHelper = new PathHelper(this);
-
             //Get archive entries, validation is performed by PathHelper
-            List<ArchiveEntry> archiveEntries = pathHelper.GetEntryRecordsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath"));
+            List<ArchiveEntry> archiveEntries = _pathHelper.GetEntryRecordsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath"));
 
             //
         }
@@ -73,46 +74,6 @@ namespace Microsoft.PowerShell.Archive
         protected override void StopProcessing()
         {
             base.StopProcessing();
-        }
-
-        private string ResolvePath(string path)
-        {
-            //Get unresolved path
-            var unresolvedPath = GetUnresolvedProviderPathFromPSPath(path);
-
-            //Get resolved path
-            try
-            {
-                var resolvedPath = GetResolvedProviderPathFromPSPath(path, out var providerInfo);
-
-                if (resolvedPath.Count > 1 || providerInfo.Name != "FileSystem")
-                {
-                    //Throw an error: duplicate paths
-                }
-
-                if (resolvedPath.Count == 1 && resolvedPath[0] != unresolvedPath)
-                {
-                    //Throw an error: duplicate paths
-                }
-
-                if (resolvedPath.Count == 1 && resolvedPath[0] == unresolvedPath) return unresolvedPath;
-
-            } catch (Exception ex)
-            {
-                
-            }
-
-            ////If unresolvedPath doesn't exist, throw an error
-            //if (!System.IO.File.Exists(unresolvedPath))
-            //{
-            //    //Throw an error: path not found
-            //    var errorMsg = String.Format(ErrorMessages.PathNotFoundMessage, path);
-            //    var exception = new System.InvalidOperationException(errorMsg);
-            //    var errorRecord = new ErrorRecord(exception, "PathNotFound", ErrorCategory.InvalidArgument, path);
-            //    ThrowTerminatingError(errorRecord);
-            //}
-
-            return null;
         }
     }
 }

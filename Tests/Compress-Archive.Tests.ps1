@@ -173,17 +173,13 @@
         }
 
         It "Validate errors from Compress-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" {
-            #CompressArchiveInvalidPathValidator "$TestDrive$($DS)InvalidPath" $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            CompressArchiveInvalidPathValidator "$TestDrive$($DS)InvalidPath" $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
 
             $path = @("$TestDrive", "$TestDrive$($DS)InvalidPath")
             CompressArchiveInvalidPathValidator $path $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
         }
 
-        It "Validate error when non-existant path is supplied to DestinationPath parameter" {
-            CompressArchiveInvalidPathValidator "$TestDrive" "$TestDrive$($DS)NonExistingDirectory$($DS)sample.zip" "$TestDrive$($DS)NonExistingDirectory$($DS)sample.zip" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
-        }
-
-        It "Validate error from Compress-Archive when duplicate paths are supplied as input to Path parameter" -Tag this {
+        It "Validate error from Compress-Archive when duplicate paths are supplied as input to Path parameter" {
             $sourcePath = @(
                 "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt",
                 "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt")
@@ -200,7 +196,7 @@
             }
         }
 
-        It "Validate error from Compress-Archive when duplicate paths are supplied as input to LiteralPath parameter" {
+        It "Validate error from Compress-Archive when duplicate paths are supplied as input to LiteralPath parameter" -tag th {
             $sourcePath = @(
                 "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt",
                 "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt")
@@ -226,7 +222,7 @@
             try
             {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-                Test-Path $destinationPath | Should Be $true
+                Test-Path $destinationPath | Should -Be $true
             }
             finally
             {
@@ -256,11 +252,11 @@
             "Some Text" > $TestDrive$($DS)Sample.unzip
             "Some Text" > $TestDrive$($DS)Sample.cab
     
-            $preCreatedArchivePath = Join-Path $PSScriptRoot "SamplePreCreatedArchive.archive"
-            Copy-Item $preCreatedArchivePath $TestDrive$($DS)SamplePreCreatedArchive.zip -Force
+            #$preCreatedArchivePath = Join-Path $PSScriptRoot "SamplePreCreatedArchive.archive"
+            #Copy-Item $preCreatedArchivePath $TestDrive$($DS)SamplePreCreatedArchive.zip -Force
     
-            $preCreatedArchivePath = Join-Path $PSScriptRoot "TrailingSpacer.archive"
-            Copy-Item $preCreatedArchivePath $TestDrive$($DS)TrailingSpacer.zip -Force
+            #$preCreatedArchivePath = Join-Path $PSScriptRoot "TrailingSpacer.archive"
+            #Copy-Item $preCreatedArchivePath $TestDrive$($DS)TrailingSpacer.zip -Force
         }
 
 
