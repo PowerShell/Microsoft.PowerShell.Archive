@@ -16,7 +16,8 @@ The goal for the Archive module is to build a high-performing and maintainable m
 
 Currently, the archive module has a number of limitations.
 First, the module supports the zip32 format only.
-There is an opportunity to support additional supports by taking advanatage of new .NET APIs.
+There is an opportunity to support additional formats by taking advantage of new .NET APIs.
+
 Second, the module has limited performance compared to other archive software.
 Writing the next version of the module in C# instead of PowerShell Script is expected to improve the overall performance of the module.
 The module has limited cross-platform support because archive entries are written in an OS-specifc way due to different characters being used as path seperators in different OSs.
