@@ -33,6 +33,8 @@ namespace Microsoft.PowerShell.Archive
             _compressionLevel = compressionLevel;
         }
 
+        // If a file is added to the archive when it already contains a folder with the same name,
+        // it is up to the extraction software to deal with it (this is how it's done in other archive software)
         void IArchive.AddFilesytemEntry(ArchiveEntry entry)
         {
             if (_mode == ArchiveMode.Read) throw new InvalidOperationException("Cannot add a filesystem entry to an archive in read mode");
@@ -56,9 +58,7 @@ namespace Microsoft.PowerShell.Archive
                 // TODO: Add exception handling
                 _zipArchive.CreateEntryFromFile(sourceFileName: entry.FullPath, entryName: entryName, compressionLevel: _compressionLevel);
             }
-            // TODO: Check what happens when we add a folder with children and then add a file
-            // TODO: Check if an entry also has a folder w/same name, if so, delete it and its children
-            // TODO: Schedule meeting
+            
         }
 
         string[] IArchive.GetEntries()

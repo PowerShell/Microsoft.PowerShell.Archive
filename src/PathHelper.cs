@@ -337,7 +337,7 @@ namespace Microsoft.PowerShell.Archive
 
         private void ThrowResolvesToMultiplePathsError(string path)
         {
-            var errorMsg = String.Format(ErrorMessages.ResolvesToMultiplePathsMessage, path);
+            var errorMsg = String.Format(ErrorMessages.PathResolvesToMultiplePathsMessage, path);
             var exception = new System.ArgumentException(errorMsg);
             var errorRecord = new ErrorRecord(exception, "DuplicatePathFound", ErrorCategory.InvalidArgument, path);
             _cmdlet.ThrowTerminatingError(errorRecord);

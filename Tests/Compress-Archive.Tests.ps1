@@ -37,7 +37,7 @@
         Add-CompressionAssemblies
 
         # Used for validating an archive's contents
-        function Test-Archive {
+        function Test-ZipArchive {
             param
             (
                 [string] $archivePath,
@@ -136,7 +136,7 @@
                 try
                 {
                     Compress-Archive -LiteralPath $path -DestinationPath $destinationPath
-                    throw "Failed to validate that an invalid Path $invalidPath was supplied as input to Compress-Archive cmdlet."
+                    throw "Failed to validate that an invalid LiteralPath $invalidPath was supplied as input to Compress-Archive cmdlet."
                 }
                 catch
                 {
@@ -172,11 +172,11 @@
             CompressArchiveLiteralPathParameterSetValidator "" ""
         }
 
-        It "Validate errors from Compress-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" {
-            CompressArchiveInvalidPathValidator "$TestDrive$($DS)InvalidPath" $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+        It "Validate errors from Compress-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" -Tag this{
+            CompressArchiveInvalidPathValidator "$TestDrive$($DS)InvalidPath" "$TestDrive($DS)archive.zip" "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
 
             $path = @("$TestDrive", "$TestDrive$($DS)InvalidPath")
-            CompressArchiveInvalidPathValidator $path $TestDrive "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            CompressArchiveInvalidPathValidator $path "$TestDrive($DS)archive.zip" "$TestDrive$($DS)InvalidPath" "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
         }
 
         It "Validate error from Compress-Archive when duplicate paths are supplied as input to Path parameter" {
@@ -243,35 +243,32 @@
     
             $content = "Some Data"
             $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-2.txt
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-4.txt
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-2$($DS)Sample-5.txt
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-2$($DS)Sample-6.txt
-    
-            "Some Text" > $TestDrive$($DS)Sample.unzip
-            "Some Text" > $TestDrive$($DS)Sample.cab
-    
-            #$preCreatedArchivePath = Join-Path $PSScriptRoot "SamplePreCreatedArchive.archive"
-            #Copy-Item $preCreatedArchivePath $TestDrive$($DS)SamplePreCreatedArchive.zip -Force
-    
-            #$preCreatedArchivePath = Join-Path $PSScriptRoot "TrailingSpacer.archive"
-            #Copy-Item $preCreatedArchivePath $TestDrive$($DS)TrailingSpacer.zip -Force
+            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-2.txt
+            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-2$($DS)Sample-3.txt
         }
 
-
-        It "Validate that a single file can be compressed using Compress-Archive cmdlet" {
-            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
-            $destinationPath = "$TestDrive$($DS)SampleSingleFile.zip"
+        It "Validate that a single file can be compressed" {
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-2.txt"
+            $destinationPath = "$TestDrive$($DS)archive1.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should -Exist
+            Test-ZipArchive $destinationPath "Sample-2.txt"
         }
 
-        It "Validate that an empty folder can be compressed" -Tag "this" {
+        It "Validate that an empty folder can be compressed" {
             $sourcePath = "$TestDrive$($DS)EmptyDir"
-            $destinationPath = "$TestDrive$($DS)EmptyDir.zip"
+            $destinationPath = "$TestDrive$($DS)archive2.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            Test-Archive $destinationPath "EmptyDir/"
+            $destinationPath | Should -Exist
+            Test-ZipArchive $destinationPath "EmptyDir/"
+        }
+
+        It "Validate a folder containing files, non-empty folders, and empty folders can be compressed" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive3.zip"
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should -Exist
+            Test-ZipArchive $destinationPath "Sample-2.txt"
         }
     }
 
