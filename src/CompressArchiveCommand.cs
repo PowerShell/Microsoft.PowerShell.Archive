@@ -58,30 +58,38 @@ namespace Microsoft.PowerShell.Archive
             // TODO: Add exception handling
             DestinationPath = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
 
-            System.IO.FileInfo archiveFileInfo = new System.IO.FileInfo(DestinationPath);
-            System.IO.DirectoryInfo directoryInfo = new System.IO.DirectoryInfo(DestinationPath);
-
             // TODO: Add tests cases for conditions below
 
+            bool isArchiveAnExistingFile = System.IO.File.Exists(DestinationPath);
+            bool isArchiveAnExistingDirectory = System.IO.Directory.Exists(DestinationPath);
+
+            var archiveFileInfo = new System.IO.FileInfo(DestinationPath);
+            var archiveDirectoryInfo = new System.IO.DirectoryInfo(DestinationPath);
+
             //Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
-            if ((archiveFileInfo.Exists || directoryInfo.Exists) && !Update.IsPresent && !Overwrite.IsPresent)
+            if ((isArchiveAnExistingDirectory || isArchiveAnExistingFile) && !Update.IsPresent && !Overwrite.IsPresent)
             {
                 ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveExists, DestinationPath));
             }
+            //Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
+            else if (isArchiveAnExistingDirectory && Update.IsPresent)
+            {
+                ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveExistsAsDirectory, DestinationPath));
+            }
             //Throw an error if the cmdlet is in Update mode but the archive is read only
-            else if (archiveFileInfo.Exists && Update.IsPresent && archiveFileInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
+            else if (isArchiveAnExistingFile && Update.IsPresent && archiveFileInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
             {
                 ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveReadOnly, DestinationPath));
-            }
-            //Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
-            else if (directoryInfo.Exists && Update.IsPresent)
-            {
-                ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveExistsAsDirectory, DestinationPath));
-            }
+            }  
             //Throw an error if the DestinationPath is a directory with at least item and the cmdlet is in Overwrite mode
-            else if (directoryInfo.Exists && Overwrite.IsPresent && directoryInfo.GetFileSystemInfos().Length > 0)
+            else if (isArchiveAnExistingDirectory && Overwrite.IsPresent && archiveDirectoryInfo.GetFileSystemInfos().Length > 0)
             {
                 ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveExistsAsDirectory, DestinationPath));
+            }
+            //Throw an error if the cmdlet is in Update mode but the archive does not exist
+            else if (!isArchiveAnExistingFile && Update.IsPresent)
+            {
+
             }
         }
 

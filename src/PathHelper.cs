@@ -264,7 +264,7 @@ namespace Microsoft.PowerShell.Archive
         // TODO: Add directory seperator char at end
         internal string ResolveToSingleFullyQualifiedPath(string path)
         {
-            //path be literal or non-literal
+            //path can be literal or non-literal
             //First, get non-literal path
             string nonLiteralPath = GetUnresolvedProviderPathFromPSPath(path) ?? throw new ArgumentException($"Path {path} was resolved to null");
 

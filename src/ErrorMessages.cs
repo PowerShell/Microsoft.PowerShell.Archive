@@ -52,6 +52,7 @@ namespace Microsoft.PowerShell.Archive
         ArchiveExists,
         ArchiveExistsAsDirectory,
         ArchiveReadOnly,
-        PathResolvesToMultiplePaths
+        PathResolvesToMultiplePaths,
+        ArchiveDoesNotExist
     }
 }

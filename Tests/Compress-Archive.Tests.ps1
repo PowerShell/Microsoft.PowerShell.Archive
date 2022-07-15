@@ -258,7 +258,7 @@
             Test-ZipArchive $destinationPath @('Sample-2.txt')
         }
 
-        It "Validate that an empty folder can be compressed" -Tag this{
+        It "Validate that an empty folder can be compressed" {
             $sourcePath = "$TestDrive$($DS)EmptyDir"
             $destinationPath = "$TestDrive$($DS)archive2.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -276,29 +276,93 @@
     }
 
     Context "Update tests" -Skip {
+        
+    }
+
+    Context "DestinationPath tests" {
         BeforeAll {
             New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
-            New-Item $TestDrive$($DS)SourceDir$($DS)ChildDir-1 -Type Directory | Out-Null
     
             $content = "Some Data"
             $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-2.txt 
+            
+            New-Item $TestDrive$($DS)archive3.zip -Type Directory | Out-Null
+
+            New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
         }
 
-        It "Validate error from Compress-Archive when archive file already exists and -Update and -Force parameters is not specified" {
+        It "Throws an error when archive file already exists and -Update and -Overwrite parameters are not specified" {
             $sourcePath = "$TestDrive$($DS)SourceDir"
-            $destinationPath = "$TestDrive$($DS)ValidateErrorWhenUpdateNotSpecified.zip"
+            $destinationPath = "$TestDrive$($DS)archive1.zip"
 
             try
             {
                 "Some Data" > $destinationPath
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-                throw "Failed to validate that an archive file format $destinationPath already exists and -Update switch parameter is not specified while running Compress-Archive command."
+                throw "Failed to validate that an archive file format $destinationPath already exists and -Update switch parameter is not specified."
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveFileExists,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveExists,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
+        }
+
+        It "Throws a terminating error when archive does not exist and -Update mode is specified" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive2.zip"
+
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
+                throw "Failed to validate that an archive file format $destinationPath does not exist and -Update switch parameter is specified."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveDoesNotExist,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws a terminating error when DestinationPath is a directory and -Update is specified" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive3.zip"
+
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
+                throw "Failed to validate that a directory $destinationPath exists and -Update switch parameter is specified."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws a terminating error when DestinationPath is a folder containing at least 1 item and Overwrite is specified" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive"
+
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Overwrite
+                throw "Failed to detect an error when $destinationPath is an existing directory containing at least 1 item and -Overwrite switch parameter is specified."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Overwrites a directory containing no items when -Overwrite is specified" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)EmptyDirectory"
+
+            (Get-Item $destinationPath) -is [System.IO.DirectoryInfo] | Should -Be $true
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Overwrite
+
+            # Ensure $destiationPath is now a file
+            $destinationPathInfo = Get-Item $destinationPath
+            $destinationPathInfo -is [System.IO.DirectoryInfo] | Should -Be $false
+            $destinationPathInfo -is [System.IO.FileInfo] | Should -Be $true
         }
     }
 
