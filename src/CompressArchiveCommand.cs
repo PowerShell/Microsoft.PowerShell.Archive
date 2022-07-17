@@ -10,6 +10,8 @@ namespace Microsoft.PowerShell.Archive
     [OutputType(typeof(System.IO.FileInfo))]
     public class CompressArchiveCommand : PSCmdlet
     {
+        // TODO: Add filter parameter
+
         [Parameter(Mandatory = true, Position = 0, ParameterSetName = "Path", ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
         [Parameter(Mandatory = true, Position = 0, ParameterSetName = "PathWithOverwrite", ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
         [Parameter(Mandatory = true, Position = 0, ParameterSetName = "PathWithUpdate", ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
@@ -54,7 +56,6 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void BeginProcessing()
         {
-            base.BeginProcessing();
             // TODO: Add exception handling
             DestinationPath = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
 
@@ -95,16 +96,26 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void ProcessRecord()
         {
-            if (ParameterSetName.StartsWith("Path")) _sourcePaths.AddRange(Path);
-            else _sourcePaths.AddRange(LiteralPath);
+            if (ParameterSetName.StartsWith("Path"))
+            {
+                _sourcePaths.AddRange(Path);
+            }
+            else
+            {
+                _sourcePaths.AddRange(LiteralPath);
+            }
+            
         }
 
         protected override void EndProcessing()
         {
             //Get archive entries, validation is performed by PathHelper
+            
             List<ArchiveEntry> archiveEntries = _pathHelper.GetEntryRecordsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath"));
 
-            //Create a zip archive
+            //Create an archive
+            // This is where we will switch between different types of archives
+            // TODO: Add shouldprocess support
             using (var archive = ArchiveFactory.GetArchive(ArchiveFormat.zip, DestinationPath, Update ? ArchiveMode.Update : ArchiveMode.Create, CompressionLevel))
             {
                 //Add entries to the archive
@@ -113,6 +124,11 @@ namespace Microsoft.PowerShell.Archive
                 {
                     archive.AddFilesytemEntry(entry);
                 }
+            }
+
+            try
+            {
+
             }
         }
 

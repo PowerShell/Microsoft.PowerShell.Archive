@@ -151,6 +151,8 @@
             New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
             $content = "Some Data"
             $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
+
+            New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
         }
 
 
@@ -232,6 +234,80 @@
                 Remove-Item "$sourcePath" -Force -Recurse -ErrorAction SilentlyContinue
             }
         }
+
+        It "Throws an error when Path and DestinationPath are the same" {
+            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $destinationPath = $sourcePath
+
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                throw "Failed to detect an error when Path and DestinationPath are the same"
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws an error when Path and DestinationPath are the same and -Update is specified" {
+            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $destinationPath = $sourcePath
+
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
+                throw "Failed to detect an error when Path and DestinationPath are the same and -Update is specified"
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws an error when Path and DestinationPath are the same and -Overwrite is specified" {
+            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $destinationPath = $sourcePath
+
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Overwrite
+                throw "Failed to detect an error when Path and DestinationPath are the same and -Overwrite is specified"
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws an error when LiteralPath and DestinationPath are the same" {
+            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $destinationPath = $sourcePath
+
+            try {
+                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
+                throw "Failed to detect an error when LiteralPath and DestinationPath are the same"
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "SameLiteralPathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws an error when LiteralPath and DestinationPath are the same and -Update is specified" {
+            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $destinationPath = $sourcePath
+
+            try {
+                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath -Update
+                throw "Failed to detect an error when LiteralPath and DestinationPath are the same and -Update is specified"
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws an error when LiteralPath and DestinationPath are the same and -Overwrite is specified" {
+            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $destinationPath = $sourcePath
+
+            try {
+                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath -Overwrite
+                throw "Failed to detect an error when LiteralPath and DestinationPath are the same and -Overwrite is specified"
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+
     }
 
     Context "Basic functional tests" {
@@ -351,6 +427,10 @@
                 $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
+    }
+
+    Context "-Overwrite Tests" {
+        
 
         It "Overwrites a directory containing no items when -Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)SourceDir"

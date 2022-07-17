@@ -22,6 +22,7 @@ namespace Microsoft.PowerShell.Archive
             return format switch
             {
                 ArchiveFormat.zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
+                // TODO: Add archive types here
                 // TODO: Add message to exception
                 _ => throw new NotImplementedException()
             };

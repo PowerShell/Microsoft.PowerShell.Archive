@@ -35,6 +35,7 @@ namespace Microsoft.PowerShell.Archive
 
         // If a file is added to the archive when it already contains a folder with the same name,
         // it is up to the extraction software to deal with it (this is how it's done in other archive software)
+        // TODO: Explain how to add folders to the archive
         void IArchive.AddFilesytemEntry(ArchiveEntry entry)
         {
             if (_mode == ArchiveMode.Read) throw new InvalidOperationException("Cannot add a filesystem entry to an archive in read mode");
