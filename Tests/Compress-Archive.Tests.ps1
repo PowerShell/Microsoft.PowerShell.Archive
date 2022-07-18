@@ -430,7 +430,20 @@
     }
 
     Context "-Overwrite Tests" {
-        
+        BeforeAll {
+            New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
+    
+            $content = "Some Data"
+            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
+
+            New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
+
+            # Create $TestDrive$($DS)archive.zip
+            Compress-Archive -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt -DestinationPath "$TestDrive$($DS)archive.zip"
+
+            # Create Sample-2.txt
+            $content | Out-File -FilePath $TestDrive$($DS)Sample-2.txt
+        }
 
         It "Overwrites a directory containing no items when -Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)SourceDir"
@@ -443,6 +456,20 @@
             $destinationPathInfo = Get-Item $destinationPath
             $destinationPathInfo -is [System.IO.DirectoryInfo] | Should -Be $false
             $destinationPathInfo -is [System.IO.FileInfo] | Should -Be $true
+        }
+
+        It "Overwrites an archive that already exists" {
+            $destinationPath = "$TestDrive$($DS)archive.zip"
+
+            # Get the entries of the original zip archive
+            Test-ZipArchive $destinationPath @("Sample-1.txt") 
+
+            # Overwrite the archive
+            $sourcePath = "$TestDrive$($DS)Sample-2.txt"
+            Compress-Archive -Path $sourcePath -DestinationPath "$TestDrive$($DS)archive.zip" -Overwrite
+
+            # Ensure the original entries and different than the new entries
+            Test-ZipArchive $destinationPath @("Sample-2.txt") 
         }
     }
 
@@ -502,6 +529,39 @@
             {
                 Pop-Location
             }
+        }
+    }
+
+    Contect "Special and Wildcard Characters Tests" {
+        BeforeAll {
+            New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
+    
+            $content = "Some Data"
+            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
+        }
+
+
+        It "Accepts DestinationPath parameter with wildcard characters that resolves to one path" {
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
+            $destinationPath = "$TestDrive$($DS)Sample[]SingleFile.zip"
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+        	    Test-Path -LiteralPath $destinationPath | Should Be $true
+            }
+            finally
+            {
+                Remove-Item -LiteralPath $destinationPath -Force
+            }
+        }
+
+        It "Accepts DestinationPath parameter with [ but no matching ]" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive[2.zip"
+
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Test-Path -LiteralPath $destinationPath | Should Be $true
+            Test-ZipArchive $destinationPath @("SourceDir/", "SourceDir/Sample-1.txt")
         }
     }
 }
