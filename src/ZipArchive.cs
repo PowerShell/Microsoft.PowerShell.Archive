@@ -36,18 +36,21 @@ namespace Microsoft.PowerShell.Archive
         // If a file is added to the archive when it already contains a folder with the same name,
         // it is up to the extraction software to deal with it (this is how it's done in other archive software)
         // TODO: Explain how to add folders to the archive
-        void IArchive.AddFilesytemEntry(ArchiveEntry entry)
+        void IArchive.AddFilesytemEntry(ArchiveAddition entry)
         {
             if (_mode == ArchiveMode.Read) throw new InvalidOperationException("Cannot add a filesystem entry to an archive in read mode");
 
-            var entryName = entry.Name.Replace(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+            var entryName = entry.EntryName.Replace(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
 
             // TODO: Add exception handling for _zipArchive.GetEntry
             var entryInArchive = (_mode == ArchiveMode.Create) ? null : _zipArchive.GetEntry(entryName);
-            if (entryName.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
+            if (entry.Type == ArchiveAddition.ArchiveAdditionType.Directory)
             {
                 //Create an entry only
                 // TODO: Add exception handling for CreateEntry
+
+                // TODO: Ensure entryName has / at the end
+
                 if (entryInArchive == null) _zipArchive.CreateEntry(entryName);
             }
             else

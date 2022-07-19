@@ -1,28 +1,12 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using Microsoft.PowerShell.Archive.Localized;
+using System;
 using System.Management.Automation;
-using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
     internal static class ErrorMessages
     {
-        // TODO: Move error messages to .resx file
-        internal static string PathNotFoundMessage = "The path {0} could not be found";
-
-        internal static string DuplicatePathsMessage = "The path(s) {0} have been specified more than once.";
-
-        internal static string InvalidPathMessage = "The path(s) {0} are invalid.";
-
-        internal static string PathResolvesToMultiplePathsMessage = "The path {0} resolves to multiple possible paths.";
-
-        internal static string ArchiveExistsMessage = "The destination path {0} already exists";
-
-        internal static string ArchiveExistsAsDirectoryMessage = "The destination path {0} is a directory";
-
-        internal static string ArchiveIsReadOnlyMessage = "The archive at {0} is read-only.";
-
-        internal static ErrorRecord GetErrorRecordForArgumentException(ErrorCode errorCode, string errorItem)
+        internal static ErrorRecord GetErrorRecord(ErrorCode errorCode, string errorItem)
         {
             var errorMsg = String.Format(GetErrorMessage(errorCode: errorCode), errorItem);
             var exception = new ArgumentException(errorMsg);
@@ -33,13 +17,13 @@ namespace Microsoft.PowerShell.Archive
         {
             return errorCode switch
             {
-                ErrorCode.PathNotFound => PathNotFoundMessage,
-                ErrorCode.InvalidPath => InvalidPathMessage,
-                ErrorCode.DuplicatePaths => DuplicatePathsMessage,
-                ErrorCode.ArchiveExists => ArchiveExistsMessage,
-                ErrorCode.ArchiveExistsAsDirectory => ArchiveExistsAsDirectoryMessage,
-                ErrorCode.ArchiveReadOnly => ArchiveIsReadOnlyMessage,
-                ErrorCode.PathResolvesToMultiplePaths => PathResolvesToMultiplePathsMessage,
+                ErrorCode.PathNotFound => Messages.PathNotFoundMessage,
+                ErrorCode.InvalidPath => Messages.InvalidPathMessage,
+                ErrorCode.DuplicatePaths => Messages.DuplicatePathsMessage,
+                ErrorCode.ArchiveExists => Messages.ArchiveExistsMessage,
+                ErrorCode.ArchiveExistsAsDirectory => Messages.ArchiveExistsAsDirectoryMessage,
+                ErrorCode.ArchiveReadOnly => Messages.ArchiveIsReadOnlyMessage,
+                ErrorCode.PathResolvesToMultiplePaths => Messages.PathResolvesToMultiplePathsMessage,
                 _ => throw new NotImplementedException("Error code has not been implemented")
             };
         }
@@ -47,13 +31,27 @@ namespace Microsoft.PowerShell.Archive
 
     internal enum ErrorCode
     {
+        // Used when a path does not resolve to a file or directory on the filesystem
         PathNotFound,
+        // Used when a path is invalid (e.g., if the path is for a non-filesystem provider)
         InvalidPath,
+        // Used when when a path has been supplied to the cmdlet at least twice
         DuplicatePaths,
+        // Used when DestinationPath is an existing file
         ArchiveExists,
+        // Used when DestinationPath is an existing directory
         ArchiveExistsAsDirectory,
+        // Used when DestinationPath is a non-empty directory and Action Overwrite is specified
+        ArchiveIsNonEmptyDirectory,
+        // Used when Compress-Archive cmdlet is in Update mode but the archive is read-only
         ArchiveReadOnly,
+        // May be removed
         PathResolvesToMultiplePaths,
-        ArchiveDoesNotExist
+        // Used when DestinationPath does not exist and the Compress-Archive cmdlet is in Update mode
+        ArchiveDoesNotExist,
+        // Used when Path and DestinationPath are the same
+        SamePathAndDestinationPath,
+        // Used when LiteralPath and DestinationPath are the same
+        SameLiteralPathAndDestinationPath
     }
 }

@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Microsoft.PowerShell.Archive.Localized;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -19,122 +20,169 @@ namespace Microsoft.PowerShell.Archive
             _cmdlet = cmdlet;
         }
 
-        internal List<ArchiveEntry> GetEntryRecordsForPath(string[] paths, bool literalPath)
+        /// <summary>
+        /// Get a list of ArchiveAddition objects from an array of paths depending on whether we want to use the path literally or not.
+        /// </summary>
+        /// <param name="paths">An array of paths, relative or absolute -- they do not necessarily have to be fully qualifed paths.</param>
+        /// <param name="literalPath">If true, wildcard characters in each path are expanded. If false, wildcard characters are not expanded.</param>
+        /// <returns></returns>
+        internal List<ArchiveAddition> GetArchiveAdditionsForPath(string[] paths, bool literalPath)
         {
             if (literalPath) return GetArchiveEntriesForLiteralPath(paths);
             else return GetArchiveEntriesForNonLiteralPaths(paths);
         }
 
-        private List<ArchiveEntry> GetArchiveEntriesForNonLiteralPaths(string[] paths)
+        /// <summary>
+        /// Get a list of ArchiveAddition objects from an array of paths by expanding wildcard characters in each path (if found).
+        /// </summary>
+        /// <param name="paths">See above</param>
+        /// <returns>See summary</returns>
+        private List<ArchiveAddition> GetArchiveEntriesForNonLiteralPaths(string[] paths)
         {
-            List<ArchiveEntry> entries = new List<ArchiveEntry>();
+            List<ArchiveAddition> additions = new List<ArchiveAddition>();
 
             //Used to keep track of non-filesystem paths
             HashSet<string> nonfilesystemPaths = new HashSet<string>();
 
             foreach (var path in paths)
             {
-                //Resolve the path
-                var resolvedPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo, mustExist: true);
+                // Resolve the path
+                // GetResolvedProviderPathFromPSPath should not return null even if the path does not exist, but if it does, something went horribly wrong, so throw an exception
+                var resolvedPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo, mustExist: true) ?? throw new InvalidOperationException(message: Messages.GetResolvedPathFromPSPathProviderReturnedNullMessage);
 
-                //Check if the path if from the filesystem
+                // Check if the path if from the filesystem
                 if (providerInfo?.Name != "FileSystem")
                 {
-                    //Add the path to the set of non-filesystem paths
+                    // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
                     nonfilesystemPaths.Add(path);
                     continue;
                 }
 
-                //Check if the entered path is relative to the current working directory
+                // Check if the cmdlet can preserve paths based on path variable
                 bool shouldPreservePathStructure = CanPreservePathStructure(path);
 
-                //Go through each resolved path and add it to the list of entries
+                // Go through each resolved path and add an ArchiveAddition for it to additions
                 for (int i=0; i<resolvedPaths.Count; i++)
                 {
                     var resolvedPath = resolvedPaths[i];
-                    //Get the prefix
-                    //string prefix = System.IO.Path.GetDirectoryName(resolvedPath) ?? String.Empty;
-
-                    AddEntryForFullyQualifiedPath(resolvedPath, entries, shouldPreservePathStructure);
+                    AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
                 }
             }
 
-            //Throw an invalid path error
-            if (nonfilesystemPaths.Count > 0) ThrowInvalidPathError(nonfilesystemPaths);
+            // If there is at least 1 non-filesystem path, throw an invalid path error
+            if (nonfilesystemPaths.Count > 0)
+            {
+                // Get an error record and throw it
+                var commaSperatedPaths = String.Join(separator: ',', values: nonfilesystemPaths);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InvalidPath, errorItem: commaSperatedPaths);
+                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
+            }
 
-            //Check for duplicate paths
-            var duplicates = GetDuplicatePaths(entries);
-            if (duplicates.Count() > 0) ThrowDuplicatePathsError(duplicates);
+            // If there are duplicate paths, throw an error
+            var duplicates = GetDuplicatePaths(additions);
+            if (duplicates.Count() > 0)
+            {
+                // Get an error record and throw it
+                var commaSperatedPaths = String.Join(separator: ',', values: duplicates);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.DuplicatePaths, errorItem: commaSperatedPaths);
+                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
+            }
 
-            return entries;
+            return additions;
         }
 
-        private List<ArchiveEntry> GetArchiveEntriesForLiteralPath(string[] paths)
+        /// <summary>
+        /// Get a list of ArchiveAddition objects from an array of paths by NOT expanding wildcard characters.
+        /// </summary>
+        /// <param name="paths"></param>
+        /// <returns></returns>
+        private List<ArchiveAddition> GetArchiveEntriesForLiteralPath(string[] paths)
         {
-            List<ArchiveEntry> entries = new List<ArchiveEntry>();
+            List<ArchiveAddition> additions = new List<ArchiveAddition>();
 
             foreach (var path in paths)
             {
-                //Get the unresolved path
-                string unresolvedPath = GetUnresolvedProviderPathFromPSPath(path);
+                // Resolve the path -- gets the fully qualified path
+                string fullyQualifiedPath = GetUnresolvedProviderPathFromPSPath(path);
 
-                // TODO: Factor out this part -- adding an entry
+                // Check if we can preserve the path structure -- this is based on the original path the user entered (not fully qualified)
+                bool canPreservePathStructure = CanPreservePathStructure(path: path);
 
-                //Get the prefix of the path
-                string prefix = System.IO.Path.GetDirectoryName(unresolvedPath) ?? String.Empty;
-
-                // If unresolvedPath is not a file or folder, throw a path not found error
-                // If it is a folder, add its descendents to the list of ArchiveEntry
-                if (System.IO.Directory.Exists(unresolvedPath))
-                {
-                    //Add directory seperator to end 
-                    if (!unresolvedPath.EndsWith(System.IO.Path.DirectorySeparatorChar)) unresolvedPath += System.IO.Path.DirectorySeparatorChar;
-                    AddDescendentEntries(path: unresolvedPath, entries: entries, shouldPreservePathStructure: true);
-                } else if (!System.IO.File.Exists(unresolvedPath))
-                {
-                    ThrowPathNotFoundError(path);
-                }
-
-                //Add an entry for the item
-                entries.Add(new ArchiveEntry(name: GetEntryName(path: unresolvedPath, prefix: prefix), fullPath: unresolvedPath));
+                // Add an ArchiveAddition for the path to the list of additions
+                AddAdditionForFullyQualifiedPath(path: fullyQualifiedPath, additions: additions, shouldPreservePathStructure: canPreservePathStructure);
             }
 
-            //Check for duplicate paths
-            var duplicates = GetDuplicatePaths(entries);
-            if (duplicates.Count() > 0) ThrowDuplicatePathsError(duplicates);
+            // If there are duplicate paths, throw an error
+            var duplicates = GetDuplicatePaths(additions);
+            if (duplicates.Count() > 0)
+            {
+                // Get an error record and throw it
+                var commaSperatedPaths = String.Join(separator: ',', values: duplicates);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.DuplicatePaths, errorItem: commaSperatedPaths);
+                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
+            }
 
-            //Return archive entries
-            return entries;
+            // Return archive additions
+            return additions;
         }
 
-        private void AddEntryForFullyQualifiedPath(string path, List<ArchiveEntry> entries, bool shouldPreservePathStructure)
+        /// <summary>
+        /// Adds an ArchiveAddition object for a path to a list of ArchiveAddition objects
+        /// </summary>
+        /// <param name="path">The fully qualified path</param>
+        /// <param name="additions">The list where to add the ArchiveAddition object for the path</param>
+        /// <param name="shouldPreservePathStructure">If true, relative path structure will be preserved. If false, relative path structure will NOT be preserved.</param>
+        private void AddAdditionForFullyQualifiedPath(string path, List<ArchiveAddition> additions, bool shouldPreservePathStructure)
         {
-            // If unresolvedPath is not a file or folder, throw a path not found error
-            // If it is a folder, add its descendents to the list of ArchiveEntry
+            var additionType = ArchiveAddition.ArchiveAdditionType.File;
             if (System.IO.Directory.Exists(path))
             {
-                //Add directory seperator to end 
+                // Add directory seperator to end if it does not already have it
                 if (!path.EndsWith(System.IO.Path.DirectorySeparatorChar)) path += System.IO.Path.DirectorySeparatorChar;
-                AddDescendentEntries(path: path, entries: entries, shouldPreservePathStructure: shouldPreservePathStructure);
+                // Recurse through the child items and add them to additions
+                AddDescendentEntries(path: path, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
+                additionType = ArchiveAddition.ArchiveAdditionType.Directory;
             }
             else if (!System.IO.File.Exists(path))
             {
-                ThrowPathNotFoundError(path);
+                // Throw an error if the path does not exist
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.PathNotFound, errorItem: path);
+                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
             }
 
-            //Add an entry for the item
-            entries.Add(new ArchiveEntry(name: GetEntryName(path: path, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: path));
+            // Add an entry for the item
+            additions.Add(new ArchiveAddition(entryName: GetEntryName(path: path, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: path, type: additionType));
         }
 
-        private void AddDescendentEntries(string path, List<ArchiveEntry> entries, bool shouldPreservePathStructure)
+        /// <summary>
+        /// Creates an ArchiveAdditon object for each child item of the directory and adds it to a list of ArchiveAddition objects
+        /// </summary>
+        /// <param name="path">A fully qualifed path referring to a directory</param>
+        /// <param name="additions">Where the ArchiveAddtion object for each child item of the directory will be added</param>
+        /// <param name="shouldPreservePathStructure">See above</param>
+        private void AddDescendentEntries(string path, List<ArchiveAddition> additions, bool shouldPreservePathStructure)
         {
             try
             {
                 var directoryInfo = new System.IO.DirectoryInfo(path);
                 foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
-                    //Add an entry for each child path
-                    entries.Add(new ArchiveEntry(name: GetEntryName(path: childPath.FullName, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: childPath.Name));
+                    ArchiveAddition.ArchiveAdditionType? type = null;
+                    if (childPath is System.IO.FileInfo)
+                    {
+                        type = ArchiveAddition.ArchiveAdditionType.File;
+                    }
+                    if (childPath is System.IO.DirectoryInfo)
+                    {
+                        type = ArchiveAddition.ArchiveAdditionType.Directory;
+                    } else
+                    {
+                        // Throw a terminating error if the childPath is neither a file or a directory -- seems impossible, but done for safety
+                        // TODO: Throw an error
+                    }
+                    // Add an entry for each child path
+
+                    additions.Add(new ArchiveAddition(entryName: GetEntryName(path: childPath.FullName, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: childPath.Name));
                 }
             }
             catch (System.Management.Automation.ItemNotFoundException itemNotFoundException)
@@ -186,7 +234,7 @@ namespace Microsoft.PowerShell.Archive
             return entryName;
         }
 
-        private IEnumerable<string> GetDuplicatePaths(List<ArchiveEntry> entries)
+        private IEnumerable<string> GetDuplicatePaths(List<ArchiveAddition> entries)
         {
             return entries.GroupBy(x => x.FullPath)
                     .Where(group => group.Count() > 1)
@@ -268,19 +316,19 @@ namespace Microsoft.PowerShell.Archive
             //First, get non-literal path
             string nonLiteralPath = GetUnresolvedProviderPathFromPSPath(path) ?? throw new ArgumentException($"Path {path} was resolved to null");
 
-            //Second, get literal path
+            /*//Second, get literal path
             var literalPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo, mustExist: false);
             if (literalPaths != null)
             {
-                //Ensure the literal paths came from the filesystem
+                // Ensure the literal paths came from the filesystem
                 if (providerInfo != null && providerInfo?.Name != "FileSystem") ThrowInvalidPathError(path);
 
-                //If there are >1 literalPaths, throw an error
+                // If there are >1 literalPaths, throw an error
                 if (literalPaths.Count > 1) ThrowResolvesToMultiplePathsError(path);
 
-                //If there is one item in literalPaths, compare it to nonLiteralPath
+                // If there is one item in literalPaths, compare it to nonLiteralPath
                 if (literalPaths[0] != nonLiteralPath) ThrowResolvesToMultiplePathsError(path);
-            }
+            }*/
 
             return nonLiteralPath;
         }

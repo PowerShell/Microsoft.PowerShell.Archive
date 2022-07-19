@@ -1,6 +1,9 @@
-﻿using System;
+﻿using Microsoft.PowerShell.Archive.Localized;
+using System;
 using System.Collections.Generic;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Linq;
 using System.Management.Automation;
 using System.Reflection;
 
@@ -10,41 +13,57 @@ namespace Microsoft.PowerShell.Archive
     [OutputType(typeof(System.IO.FileInfo))]
     public class CompressArchiveCommand : PSCmdlet
     {
-        // TODO: Add filter parameter
 
+        // TODO: Add filter parameter
+        // TODO: Add format parameter
+        // TODO: Add flatten parameter
+        // TODO: Add comments to methods
+
+        // TODO: Add warnings for archive file extension
+        // TODO: Add tar support
+
+        // TODO: Add comments to ArchiveEntry and for adding filesystem entry to zip
+
+        // TODO: Add error messages for each error code
+
+        /// <summary>
+        /// The Path parameter - specifies paths of files or directories from the filesystem to add to or update in the archive.
+        /// This parameter does expand wildcard characters.
+        /// </summary>
         [Parameter(Mandatory = true, Position = 0, ParameterSetName = "Path", ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = "PathWithOverwrite", ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = "PathWithUpdate", ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
         [ValidateNotNullOrEmpty]
         public string[]? Path { get; set; }
 
-        [Parameter(Mandatory = true, ParameterSetName = "LiteralPath", ValueFromPipeline = false, ValueFromPipelineByPropertyName = true)]
-        [Parameter(Mandatory = true, ParameterSetName = "LiteralPathWithOverwrite", ValueFromPipeline = false, ValueFromPipelineByPropertyName = true)]
-        [Parameter(Mandatory = true, ParameterSetName = "LiteralPathWithUpdate", ValueFromPipeline = false, ValueFromPipelineByPropertyName = true)]
+        /// <summary>
+        /// The LiteralPath parameter - specifies paths of files or directories from the filesystem to add to or update in the archive.
+        /// This parameter does not expand wildcard characters.
+        /// </summary>
+        [Parameter(Mandatory = true, Position = 1, ParameterSetName = "LiteralPath", ValueFromPipeline = false, ValueFromPipelineByPropertyName = true)]
         [ValidateNotNullOrEmpty]
         [Alias("PSPath")]
         public string[]? LiteralPath { get; set; }
 
-        [Parameter(Mandatory = true, Position = 1, ValueFromPipeline = false, ValueFromPipelineByPropertyName = false)]
+        /// <summary>
+        /// The DestinationPath parameter - specifies the location of the archive in the filesystem.
+        /// </summary>
+        [Parameter(Mandatory = true, Position = 2, ValueFromPipeline = false, ValueFromPipelineByPropertyName = false)]
         [ValidateNotNullOrEmpty]
+        [NotNull]
         public string? DestinationPath { get; set; }
 
-        [Parameter(Mandatory = true, ParameterSetName = "PathWithUpdate", ValueFromPipeline = false, ValueFromPipelineByPropertyName = false)]
-        [Parameter(Mandatory = true, ParameterSetName = "LiteralPathWithUpdate", ValueFromPipeline = false, ValueFromPipelineByPropertyName = false)]
-        public SwitchParameter Update { get; set; }
-
-        [Parameter(Mandatory = true, ParameterSetName = "PathWithOverwrite", ValueFromPipeline = false, ValueFromPipelineByPropertyName = false)]
-        [Parameter(Mandatory = true, ParameterSetName = "LiteralPathWithOverwrite", ValueFromPipeline = false, ValueFromPipelineByPropertyName = false)]
-        public SwitchParameter Overwrite { get; set; }
+        [Parameter()]
+        public Action Action { get; set; } = Action.Create;
 
         [Parameter()]
         public SwitchParameter PassThru { get; set; } = false;
 
         [Parameter()]
         [ValidateNotNullOrEmpty]
-        public System.IO.Compression.CompressionLevel CompressionLevel { get; set; }
+        public System.IO.Compression.CompressionLevel CompressionLevel { get; set; } = System.IO.Compression.CompressionLevel.Optimal;
 
-        private List<string> _sourcePaths;
+        public ArchiveFormat Format { get; set; } = ArchiveFormat.zip;
+
+        private List<string>? _sourcePaths;
 
         private PathHelper _pathHelper;
 
@@ -59,82 +78,153 @@ namespace Microsoft.PowerShell.Archive
             // TODO: Add exception handling
             DestinationPath = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
 
-            // TODO: Add tests cases for conditions below
-
-            bool isArchiveAnExistingFile = System.IO.File.Exists(DestinationPath);
-            bool isArchiveAnExistingDirectory = System.IO.Directory.Exists(DestinationPath);
-
-            var archiveFileInfo = new System.IO.FileInfo(DestinationPath);
-            var archiveDirectoryInfo = new System.IO.DirectoryInfo(DestinationPath);
-
-            //Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
-            if ((isArchiveAnExistingDirectory || isArchiveAnExistingFile) && !Update.IsPresent && !Overwrite.IsPresent)
-            {
-                ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveExists, DestinationPath));
-            }
-            //Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
-            else if (isArchiveAnExistingDirectory && Update.IsPresent)
-            {
-                ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveExistsAsDirectory, DestinationPath));
-            }
-            //Throw an error if the cmdlet is in Update mode but the archive is read only
-            else if (isArchiveAnExistingFile && Update.IsPresent && archiveFileInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
-            {
-                ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveReadOnly, DestinationPath));
-            }  
-            //Throw an error if the DestinationPath is a directory with at least item and the cmdlet is in Overwrite mode
-            else if (isArchiveAnExistingDirectory && Overwrite.IsPresent && archiveDirectoryInfo.GetFileSystemInfos().Length > 0)
-            {
-                ThrowTerminatingError(ErrorMessages.GetErrorRecordForArgumentException(ErrorCode.ArchiveExistsAsDirectory, DestinationPath));
-            }
-            //Throw an error if the cmdlet is in Update mode but the archive does not exist
-            else if (!isArchiveAnExistingFile && Update.IsPresent)
-            {
-
-            }
+            // Validate DestinationPath
+            ValidateDestinationPath();
         }
 
         protected override void ProcessRecord()
         {
+            // Add each path from -Path or -LiteralPath to _sourcePaths because they can get lost when the next item in the pipeline is sent
             if (ParameterSetName.StartsWith("Path"))
             {
-                _sourcePaths.AddRange(Path);
+                _sourcePaths?.AddRange(Path);
             }
             else
             {
-                _sourcePaths.AddRange(LiteralPath);
+                _sourcePaths?.AddRange(LiteralPath);
             }
-            
         }
 
         protected override void EndProcessing()
         {
-            //Get archive entries, validation is performed by PathHelper
-            
-            List<ArchiveEntry> archiveEntries = _pathHelper.GetEntryRecordsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath"));
+            // Get archive entries, validation is performed by PathHelper
+            // _sourcePaths should not be null at this stage, but if it is, prevent a NullReferenceException by doing the following
+            List<ArchiveAddition> archiveAddtions = _sourcePaths != null ? _pathHelper.GetArchiveAdditionsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath")) : new List<ArchiveAddition>();
 
-            //Create an archive
-            // This is where we will switch between different types of archives
-            // TODO: Add shouldprocess support
-            using (var archive = ArchiveFactory.GetArchive(ArchiveFormat.zip, DestinationPath, Update ? ArchiveMode.Update : ArchiveMode.Create, CompressionLevel))
+            // Remove references to _sourcePaths, Path, and LiteralPath to free up memory
+            // The user could have supplied a lot of paths, so we should do this
+            Path = null;
+            LiteralPath = null;
+            _sourcePaths = null;
+
+            // Throw a terminating error if there is a source path as same as DestinationPath.
+            // We don't want to overwrite the file or directory that we want to add to the archive.
+            var additionsWithSamePathAsDestination = archiveAddtions.Where(addition => addition.FullPath == DestinationPath).ToList();
+            if (additionsWithSamePathAsDestination.Count() > 0)
             {
-                //Add entries to the archive
-                // TODO: Update progress
-                foreach (ArchiveEntry entry in archiveEntries)
-                {
-                    archive.AddFilesytemEntry(entry);
-                }
+                // Since duplicate checking is performed earlier, there must a single ArchiveAddition such that ArchiveAddition.FullPath == DestinationPath
+                var errorCode = ParameterSetName.StartsWith("Path") ? ErrorCode.SamePathAndDestinationPath : ErrorCode.SameLiteralPathAndDestinationPath;
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode, errorItem: additionsWithSamePathAsDestination[0].FullPath);
+                ThrowTerminatingError(errorRecord);
             }
 
+            // Warn the user if there are no items to add for some reason (e.g., no items matched the filter)
+            if (archiveAddtions.Count == 0)
+            {
+                WriteWarning(Messages.NoItemsToAddWarning);
+            }
+
+            // Get the ArchiveMode for the archive to be created or updated
+            ArchiveMode archiveMode = ArchiveMode.Create;
+            if (Action == Action.Update)
+            {
+                archiveMode = ArchiveMode.Update;
+            }
+
+            // Don't create the archive object yet because the user could have specified -WhatIf or -Confirm
+            IArchive? archive = null;
             try
             {
+                if (ShouldProcess(target: DestinationPath, action: "Create"))
+                {
+                    // Create an archive -- this is where we will switch between different types of archives
+                    archive = ArchiveFactory.GetArchive(format: Format, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
+                }
 
+                // TODO: Update progress
+                foreach (ArchiveAddition entry in archiveAddtions)
+                {
+                    if (ShouldProcess(target: entry.FullPath, action: "Add"))
+                    {
+                        archive?.AddFilesytemEntry(entry);
+                    }
+                }
+            } 
+            catch
+            {
+
+            } 
+            finally
+            {
+                archive?.Dispose();
             }
         }
 
         protected override void StopProcessing()
         {
             base.StopProcessing();
+        }
+
+        /// <summary>
+        /// Validate DestinationPath parameter
+        /// </summary>
+        private void ValidateDestinationPath()
+        {
+            // TODO: Add tests cases for conditions below
+            ErrorCode? errorCode = null;
+
+            var archiveAsFile = new System.IO.FileInfo(DestinationPath);
+            var archiveAsDirectory = new System.IO.DirectoryInfo(DestinationPath);
+
+            // Check if DestinationPath is an existing file
+            if (archiveAsFile.Exists)
+            {
+                // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
+                if (Action == Action.Create)
+                {
+                    errorCode = ErrorCode.ArchiveExists;
+                }
+                // Throw an error if the cmdlet is in Update mode but the archive is read only
+                if (Action == Action.Update && archiveAsFile.Attributes.HasFlag(FileAttributes.ReadOnly))
+                {
+                    errorCode = ErrorCode.ArchiveReadOnly;
+                }
+            } 
+            // Check if DestinationPath is an existing directory
+            else if (archiveAsDirectory.Exists)
+            {
+                // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
+                if (Action == Action.Create)
+                {
+                    errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                }
+                // Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
+                if (Action == Action.Update)
+                {
+                    errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                }
+                // Throw an error if the DestinationPath is a directory with at least item and the cmdlet is in Overwrite mode
+                if (Action == Action.Overwrite && archiveAsDirectory.GetFileSystemInfos().Length > 0)
+                {
+                    errorCode = ErrorCode.ArchiveIsNonEmptyDirectory;
+                }
+            } 
+            // In this case, DestinationPath does not exist
+            else
+            {
+                // Throw an error if DestinationPath does not exist and cmdlet is in Update mode
+                if (Action == Action.Update)
+                {
+                    errorCode = ErrorCode.ArchiveDoesNotExist;
+                }
+            }
+
+            if (errorCode != null)
+            {
+                // Throw an error -- since we are validating DestinationPath, the problem is with DestinationPath
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode.Value, errorItem: DestinationPath);
+                ThrowTerminatingError(errorRecord);
+            }
         }
     }
 }

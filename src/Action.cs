@@ -4,8 +4,10 @@ using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
-    public enum ArchiveFormat
+    public enum Action
     {
-        zip,
+        Create,
+        Update,
+        Overwrite
     }
 }
