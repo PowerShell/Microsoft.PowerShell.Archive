@@ -8,6 +8,6 @@ namespace Microsoft.PowerShell.Archive
     {
         Create,
         Update,
-        Read
+        Extract
     }
 }

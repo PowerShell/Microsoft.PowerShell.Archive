@@ -75,11 +75,28 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void BeginProcessing()
         {
-            // TODO: Add exception handling
             DestinationPath = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
 
             // Validate DestinationPath
             ValidateDestinationPath();
+
+            // We want to get the appropriate archive format based on the destination path or give a warning
+
+            // If the user did not specify which archive format to use, try to determine it automatically
+            if (Format is null)
+            {
+                // Try and get the suitable archive format based on DestinationPath 
+                if (ArchiveFactory.TryGetArchiveFormatForPath(path: DestinationPath, archiveFormat: out var archiveFormat)) {
+                    Format = archiveFormat;
+                }
+                // If the archive format could not be determined, use zip by default and emit a warning
+                else
+                {
+                    var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, DestinationPath);
+                    WriteWarning(warningMsg);
+                    Format = ArchiveFormat.zip;
+                }
+            }
         }
 
         protected override void ProcessRecord()

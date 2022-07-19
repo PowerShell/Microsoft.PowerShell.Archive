@@ -123,6 +123,9 @@
   <data name="ArchiveExistsMessage" xml:space="preserve">
     <value />
   </data>
+  <data name="ArchiveFormatCouldNotBeDeterminedWarning" xml:space="preserve">
+    <value />
+  </data>
   <data name="ArchiveIsReadOnlyMessage" xml:space="preserve">
     <value />
   </data>

@@ -81,6 +81,15 @@ namespace Microsoft.PowerShell.Archive.Localized {
         /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
+        internal static string ArchiveFormatCouldNotBeDeterminedWarning {
+            get {
+                return ResourceManager.GetString("ArchiveFormatCouldNotBeDeterminedWarning", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
         internal static string ArchiveIsReadOnlyMessage {
             get {
                 return ResourceManager.GetString("ArchiveIsReadOnlyMessage", resourceCulture);

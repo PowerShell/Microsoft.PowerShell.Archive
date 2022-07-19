@@ -10,7 +10,7 @@ namespace Microsoft.PowerShell.Archive
         internal ArchiveMode Mode { get; }
 
         // Get the fully qualified path of the archive
-        internal string ArchivePath { get; }
+        internal string Path { get; }
 
         // Add a file or folder to the archive. The entry name of the added item in the
         // will be ArchiveEntry.Name.

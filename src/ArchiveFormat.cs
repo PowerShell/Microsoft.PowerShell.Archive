@@ -7,5 +7,7 @@ namespace Microsoft.PowerShell.Archive
     public enum ArchiveFormat
     {
         zip,
+        tar,
+        tgz
     }
 }
