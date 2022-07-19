@@ -99,6 +99,15 @@ namespace Microsoft.PowerShell.Archive.Localized {
         /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
+        internal static string ArchiveFormatDeterminedVerboseMessage {
+            get {
+                return ResourceManager.GetString("ArchiveFormatDeterminedVerboseMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
         internal static string ArchiveIsReadOnlyMessage {
             get {
                 return ResourceManager.GetString("ArchiveIsReadOnlyMessage", resourceCulture);

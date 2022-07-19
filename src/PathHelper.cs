@@ -95,7 +95,7 @@ namespace Microsoft.PowerShell.Archive
             for (int i = 0; i < resolvedPaths.Count; i++)
             {
                 var resolvedPath = resolvedPaths[i];
-                AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
+                AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: archiveAdditions, shouldPreservePathStructure: shouldPreservePathStructure);
             }
         }
 

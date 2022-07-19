@@ -96,6 +96,9 @@ namespace Microsoft.PowerShell.Archive
                     WriteWarning(warningMsg);
                     Format = ArchiveFormat.zip;
                 }
+                // Write a verbose message saying that Format is not specified and a format was determined automatically
+                string verboseMessage = String.Format(Messages.ArchiveFormatDeterminedVerboseMessage, Format);
+                WriteVerbose(verboseMessage);
             }
             // If the user did specify which archive format to use, emit a warning if DestinationPath does not match the chosen archive format
             else

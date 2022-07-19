@@ -43,7 +43,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 archiveFormat = ArchiveFormat.tgz;
             }
-            return archiveFormat is null;
+            return archiveFormat != null;
         }
     }
 }
