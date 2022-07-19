@@ -52,6 +52,8 @@ namespace Microsoft.PowerShell.Archive
         // Used when Path and DestinationPath are the same
         SamePathAndDestinationPath,
         // Used when LiteralPath and DestinationPath are the same
-        SameLiteralPathAndDestinationPath
+        SameLiteralPathAndDestinationPath,
+        // Used when the user does not have sufficient permissions to access a path
+        InsufficientPermissionsToAccessPath,
     }
 }

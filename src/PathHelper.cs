@@ -9,11 +9,12 @@ using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
-    //To-do: Add exception handling
 
     internal class PathHelper
     {
         private PSCmdlet _cmdlet;
+
+        private const string FilesystemProviderName = "FileSystem";
 
         internal PathHelper(PSCmdlet cmdlet)
         {
@@ -28,17 +29,6 @@ namespace Microsoft.PowerShell.Archive
         /// <returns></returns>
         internal List<ArchiveAddition> GetArchiveAdditionsForPath(string[] paths, bool literalPath)
         {
-            if (literalPath) return GetArchiveEntriesForLiteralPath(paths);
-            else return GetArchiveEntriesForNonLiteralPaths(paths);
-        }
-
-        /// <summary>
-        /// Get a list of ArchiveAddition objects from an array of paths by expanding wildcard characters in each path (if found).
-        /// </summary>
-        /// <param name="paths">See above</param>
-        /// <returns>See summary</returns>
-        private List<ArchiveAddition> GetArchiveEntriesForNonLiteralPaths(string[] paths)
-        {
             List<ArchiveAddition> additions = new List<ArchiveAddition>();
 
             //Used to keep track of non-filesystem paths
@@ -46,26 +36,14 @@ namespace Microsoft.PowerShell.Archive
 
             foreach (var path in paths)
             {
-                // Resolve the path
-                // GetResolvedProviderPathFromPSPath should not return null even if the path does not exist, but if it does, something went horribly wrong, so throw an exception
-                var resolvedPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo, mustExist: true) ?? throw new InvalidOperationException(message: Messages.GetResolvedPathFromPSPathProviderReturnedNullMessage);
+                // Based on the value of literalPath, call the appropriate method
 
-                // Check if the path if from the filesystem
-                if (providerInfo?.Name != "FileSystem")
+                if (literalPath)
                 {
-                    // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
-                    nonfilesystemPaths.Add(path);
-                    continue;
-                }
-
-                // Check if the cmdlet can preserve paths based on path variable
-                bool shouldPreservePathStructure = CanPreservePathStructure(path);
-
-                // Go through each resolved path and add an ArchiveAddition for it to additions
-                for (int i=0; i<resolvedPaths.Count; i++)
+                    AddArchiveAdditionForUserEnteredLiteralPath(path: path, archiveAdditions: additions, nonfilesystemPaths: nonfilesystemPaths);
+                } else
                 {
-                    var resolvedPath = resolvedPaths[i];
-                    AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
+                    AddArchiveAdditionForUserEnteredNonLiteralPath(path: path, archiveAdditions: additions, nonfilesystemPaths: nonfilesystemPaths);
                 }
             }
 
@@ -92,38 +70,59 @@ namespace Microsoft.PowerShell.Archive
         }
 
         /// <summary>
-        /// Get a list of ArchiveAddition objects from an array of paths by NOT expanding wildcard characters.
+        /// Resolves a user-entered path while expanding wildcards, creates an ArchiveAddition object for it, and its to the list of ArchiveAddition objects
         /// </summary>
-        /// <param name="paths"></param>
-        /// <returns></returns>
-        private List<ArchiveAddition> GetArchiveEntriesForLiteralPath(string[] paths)
+        /// <param name="path"></param>
+        /// <param name="archiveAdditions"></param>
+        /// <param name="nonfilesystemPaths"></param>
+        private void AddArchiveAdditionForUserEnteredNonLiteralPath(string path, List<ArchiveAddition> archiveAdditions, HashSet<string> nonfilesystemPaths)
         {
-            List<ArchiveAddition> additions = new List<ArchiveAddition>();
+            // Resolve the path -- I don't think we need to handle exceptions here as no special behavior occurs when an exception occurs
+            var resolvedPaths = _cmdlet.SessionState.Path.GetResolvedProviderPathFromPSPath(path: path, provider: out var providerInfo);
 
-            foreach (var path in paths)
+            // Check if the path if from the filesystem
+            if (providerInfo?.Name != FilesystemProviderName)
             {
-                // Resolve the path -- gets the fully qualified path
-                string fullyQualifiedPath = GetUnresolvedProviderPathFromPSPath(path);
-
-                // Check if we can preserve the path structure -- this is based on the original path the user entered (not fully qualified)
-                bool canPreservePathStructure = CanPreservePathStructure(path: path);
-
-                // Add an ArchiveAddition for the path to the list of additions
-                AddAdditionForFullyQualifiedPath(path: fullyQualifiedPath, additions: additions, shouldPreservePathStructure: canPreservePathStructure);
+                // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
+                nonfilesystemPaths.Add(path);
+                return;
             }
 
-            // If there are duplicate paths, throw an error
-            var duplicates = GetDuplicatePaths(additions);
-            if (duplicates.Count() > 0)
+            // Check if the cmdlet can preserve paths based on path variable
+            bool shouldPreservePathStructure = CanPreservePathStructure(path);
+
+            // Go through each resolved path and add an ArchiveAddition for it to additions
+            for (int i = 0; i < resolvedPaths.Count; i++)
             {
-                // Get an error record and throw it
-                var commaSperatedPaths = String.Join(separator: ',', values: duplicates);
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.DuplicatePaths, errorItem: commaSperatedPaths);
-                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
+                var resolvedPath = resolvedPaths[i];
+                AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
+            }
+        }
+
+        /// <summary>
+        /// Resolves a user-entered path without expanding wildcards, creates an ArchiveAddition object for it, and its to the list of ArchiveAddition objects
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="archiveAdditions"></param>
+        /// <param name="nonfilesystemPaths"></param>
+        private void AddArchiveAdditionForUserEnteredLiteralPath(string path, List<ArchiveAddition> archiveAdditions, HashSet<string> nonfilesystemPaths)
+        {
+            // Resolve the path -- gets the fully qualified path
+            // I don't think we need to handle exceptions for the call below as the cmdlet does not have any special behaviors when the call below throws an exception
+            string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
+
+            // Check if the path is from the filesystem
+            if (providerInfo.Name != FilesystemProviderName)
+            {
+                nonfilesystemPaths.Add(path);
+                return;
             }
 
-            // Return archive additions
-            return additions;
+            // Check if we can preserve the path structure -- this is based on the original path the user entered (not fully qualified)
+            bool canPreservePathStructure = CanPreservePathStructure(path: path);
+
+            // Add an ArchiveAddition for the path to the list of additions
+            AddAdditionForFullyQualifiedPath(path: fullyQualifiedPath, additions: archiveAdditions, shouldPreservePathStructure: canPreservePathStructure);
         }
 
         /// <summary>
@@ -167,43 +166,49 @@ namespace Microsoft.PowerShell.Archive
                 var directoryInfo = new System.IO.DirectoryInfo(path);
                 foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
-                    ArchiveAddition.ArchiveAdditionType? type = null;
-                    if (childPath is System.IO.FileInfo)
-                    {
-                        type = ArchiveAddition.ArchiveAdditionType.File;
-                    }
+                    // childPath can either be a file or directory, and nothing else
+                    ArchiveAddition.ArchiveAdditionType type = ArchiveAddition.ArchiveAdditionType.File;
                     if (childPath is System.IO.DirectoryInfo)
                     {
                         type = ArchiveAddition.ArchiveAdditionType.Directory;
-                    } else
-                    {
-                        // Throw a terminating error if the childPath is neither a file or a directory -- seems impossible, but done for safety
-                        // TODO: Throw an error
                     }
+                    
                     // Add an entry for each child path
-
-                    additions.Add(new ArchiveAddition(entryName: GetEntryName(path: childPath.FullName, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: childPath.Name));
+                    var entryName = GetEntryName(path: childPath.FullName, shouldPreservePathStructure: shouldPreservePathStructure);
+                    additions.Add(new ArchiveAddition(entryName: entryName, fullPath: childPath.Name, type: type));
                 }
-            }
-            catch (System.Management.Automation.ItemNotFoundException itemNotFoundException)
+            } 
+            // Throw a terminating error if a securityException occurs
+            catch (System.Security.SecurityException)
             {
-                //Throw a path not found error
-                ErrorRecord errorRecord = new ErrorRecord(itemNotFoundException, "PathNotFound", ErrorCategory.InvalidArgument, path);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InsufficientPermissionsToAccessPath, errorItem: path);
+                _cmdlet.ThrowTerminatingError(errorRecord);
+            }
+            // Throw a terminating error if a directoryNotFoundException occurs
+            catch (System.IO.DirectoryNotFoundException)
+            {
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.PathNotFound, errorItem: path);
                 _cmdlet.ThrowTerminatingError(errorRecord);
             }
         }
 
+        /// <summary>
+        /// Get the archive path from a fully qualified path
+        /// </summary>
+        /// <param name="path">A fully qualified path</param>
+        /// <param name="shouldPreservePathStructure"></param>
+        /// <returns></returns>
         private string GetEntryName(string path, bool shouldPreservePathStructure)
         {
-            //If the path is relative to the current working directory, return the relative path as name
-            if (shouldPreservePathStructure && IsPathRelativeToCurrentWorkingDirectory(path, out var relativePath))
+            // If the path is relative to the current working directory, return the relative path as name
+            if (shouldPreservePathStructure && TryGetPathRelativeToCurrentWorkingDirectory(path, out var relativePath))
             {
                 return relativePath;
             }
-            //Otherwise, return the name of the directory or file
+            // Otherwise, return the name of the directory or file
             if (path.EndsWith(System.IO.Path.DirectorySeparatorChar))
             {
-                //Get substring from second-last directory seperator char till end
+                // Get substring from second-last directory seperator char till end
                 int secondLastIndex = path.LastIndexOf(System.IO.Path.DirectorySeparatorChar, path.Length - 2);
                 if (secondLastIndex == -1) return path;
                 else return path.Substring(secondLastIndex + 1);
@@ -214,191 +219,59 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
-        private string GetEntryName(string path, string prefix)
+        /// <summary>
+        /// Get the duplicate fully qualified paths from a list of ArchiveAdditions
+        /// </summary>
+        /// <param name="additions"></param>
+        /// <returns></returns>
+        private IEnumerable<string> GetDuplicatePaths(List<ArchiveAddition> additions)
         {
-            if (prefix == String.Empty) return path;
-
-            //If the path does not start with the prefix, throw an exception
-            if (!path.StartsWith(prefix))
-            {
-                throw new ArgumentException($"{path} does not begin with {prefix}");
-            }
-
-            if (path.Length <= prefix.Length) throw new ArgumentException($"The length of {path} is shorter than or equal to the length of {prefix}");
-
-            string entryName = path.Substring(prefix.Length + 1);
-
-            //Normalize entryName to use forwardslashes instead of backslashes
-            entryName = entryName.Replace(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
-
-            return entryName;
-        }
-
-        private IEnumerable<string> GetDuplicatePaths(List<ArchiveAddition> entries)
-        {
-            return entries.GroupBy(x => x.FullPath)
+            return additions.GroupBy(x => x.FullPath)
                     .Where(group => group.Count() > 1)
                     .Select(x => x.Key);
         }
 
-        private System.Collections.ObjectModel.Collection<string>? GetResolvedProviderPathFromPSPath(string path, out ProviderInfo? providerInfo, bool mustExist)
-        {
-            try
-            {
-                ProviderInfo info;
-                var resolvedPaths = _cmdlet.GetResolvedProviderPathFromPSPath(path, out info);
-                providerInfo = info;
-                return resolvedPaths;
-            }
-            catch (ProviderNotFoundException providerNotFoundException)
-            {
-                //Throw an invalid path error
-                ThrowInvalidPathError(path, providerNotFoundException);
-            }
-            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
-            {
-                ThrowInvalidPathError(path, driveNotFoundException);
-            }
-            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
-            {
-                ThrowInvalidPathError(path, providerInvocationException);
-            }
-            catch (NotSupportedException providerNotSupportedException)
-            {
-                ThrowInvalidPathError(path, providerNotSupportedException);
-            } 
-            catch (InvalidOperationException invalidOperationException)
-            {
-                ThrowInvalidPathError(path, invalidOperationException);
-            } 
-            catch (ItemNotFoundException itemNotFoundException)
-            {
-                if (mustExist) ThrowPathNotFoundError(path, itemNotFoundException);
-            }
-            providerInfo = null;
-            return null;
-        }
-
-        private string? GetUnresolvedProviderPathFromPSPath(string path)
-        {
-            try
-            {
-                return _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path);
-            }
-            catch (ProviderNotFoundException providerNotFoundException)
-            {
-                //Throw an invalid path error
-                ThrowInvalidPathError(path, providerNotFoundException);
-            }
-            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
-            {
-                ThrowInvalidPathError(path, driveNotFoundException);
-            }
-            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
-            {
-                ThrowInvalidPathError(path, providerInvocationException);
-            }
-            catch (NotSupportedException providerNotSupportedException)
-            {
-                ThrowInvalidPathError(path, providerNotSupportedException);
-            }
-            catch (InvalidOperationException invalidOperationException)
-            {
-                ThrowInvalidPathError(path, invalidOperationException);
-            }
-            return null;
-        }
-
-        // TODO: Add directory seperator char at end
+        /// <summary>
+        /// Resolve a path that may contain wildcard characters and could be a literal or non-literal path to a single fully qualified path.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
         internal string ResolveToSingleFullyQualifiedPath(string path)
         {
-            //path can be literal or non-literal
-            //First, get non-literal path
-            string nonLiteralPath = GetUnresolvedProviderPathFromPSPath(path) ?? throw new ArgumentException($"Path {path} was resolved to null");
+            // Currently, all this function does is return the literal fully qualified path of a path
 
-            /*//Second, get literal path
-            var literalPaths = GetResolvedProviderPathFromPSPath(path, out var providerInfo, mustExist: false);
-            if (literalPaths != null)
+            // First, get non-literal path
+            string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
+
+            // If the path is not from the filesystem, throw an error
+            if (providerInfo.Name != FilesystemProviderName)
             {
-                // Ensure the literal paths came from the filesystem
-                if (providerInfo != null && providerInfo?.Name != "FileSystem") ThrowInvalidPathError(path);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InvalidPath, errorItem: path);
+                _cmdlet.ThrowTerminatingError(errorRecord);
+            }
 
-                // If there are >1 literalPaths, throw an error
-                if (literalPaths.Count > 1) ThrowResolvesToMultiplePathsError(path);
-
-                // If there is one item in literalPaths, compare it to nonLiteralPath
-                if (literalPaths[0] != nonLiteralPath) ThrowResolvesToMultiplePathsError(path);
-            }*/
-
-            return nonLiteralPath;
+            return fullyQualifiedPath;
         }
 
-        private void ThrowPathNotFoundError(string path)
-        {
-            var errorMsg = String.Format(ErrorMessages.PathNotFoundMessage, path);
-            var exception = new System.InvalidOperationException(errorMsg);
-            var errorRecord = new ErrorRecord(exception, "PathNotFound", ErrorCategory.InvalidArgument, path);
-            _cmdlet.ThrowTerminatingError(errorRecord);
-        }
-
-        private void ThrowPathNotFoundError(string path, Exception innerException)
-        {
-            var errorMsg = String.Format(ErrorMessages.PathNotFoundMessage, path);
-            var exception = new System.ArgumentException(errorMsg);
-            var errorRecord = new ErrorRecord(exception, "PathNotFound", ErrorCategory.InvalidArgument, path);
-            _cmdlet.ThrowTerminatingError(errorRecord);
-        }
-
-        private void ThrowInvalidPathError(HashSet<string> paths)
-        {
-            string commaSeperatedPaths = String.Join(',', paths);
-            var errorMsg = String.Format(ErrorMessages.InvalidPathMessage, commaSeperatedPaths);
-            var exception = new System.InvalidOperationException(errorMsg);
-            var errorRecord = new ErrorRecord(exception, "InvalidPath", ErrorCategory.InvalidArgument, commaSeperatedPaths);
-            _cmdlet.ThrowTerminatingError(errorRecord);
-        }
-
-        private void ThrowInvalidPathError(string path)
-        {
-            var errorMsg = String.Format(ErrorMessages.InvalidPathMessage, path);
-            var exception = new System.ArgumentException(errorMsg);
-            var errorRecord = new ErrorRecord(exception, "InvalidPath", ErrorCategory.InvalidArgument, path);
-            _cmdlet.ThrowTerminatingError(errorRecord);
-        }
-
-        private void ThrowInvalidPathError(string path, Exception innerException)
-        {
-            var errorMsg = String.Format(ErrorMessages.InvalidPathMessage, path);
-            var exception = new System.ArgumentException(errorMsg, innerException);
-            var errorRecord = new ErrorRecord(exception, "InvalidPath", ErrorCategory.InvalidArgument, path);
-            _cmdlet.ThrowTerminatingError(errorRecord);
-        }
-
-        private void ThrowDuplicatePathsError(IEnumerable<string> paths)
-        {
-            string commaSeperatedPaths = String.Join(',', paths);
-            var errorMsg = String.Format(ErrorMessages.DuplicatePathsMessage, commaSeperatedPaths);
-            var exception = new System.InvalidOperationException(errorMsg);
-            var errorRecord = new ErrorRecord(exception, "DuplicatePathFound", ErrorCategory.InvalidArgument, commaSeperatedPaths);
-            _cmdlet.ThrowTerminatingError(errorRecord);
-        }
-
-        private void ThrowResolvesToMultiplePathsError(string path)
-        {
-            var errorMsg = String.Format(ErrorMessages.PathResolvesToMultiplePathsMessage, path);
-            var exception = new System.ArgumentException(errorMsg);
-            var errorRecord = new ErrorRecord(exception, "DuplicatePathFound", ErrorCategory.InvalidArgument, path);
-            _cmdlet.ThrowTerminatingError(errorRecord);
-        }
-
+        /// <summary>
+        /// Determines if the relative path structure can be preserved
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
         private bool CanPreservePathStructure(string path)
         {
             return System.IO.Path.IsPathRooted(path);
         }
 
-        private bool IsPathRelativeToCurrentWorkingDirectory(string path, out string relativePath)
+        /// <summary>
+        /// Tries to get a path relative to the current working directory as long as the relative path does not contain ".."
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="relativePath"></param>
+        /// <returns></returns>
+        private bool TryGetPathRelativeToCurrentWorkingDirectory(string path, out string relativePath)
         {
-            // TODO: Add exception handling
             relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
             return !relativePath.Contains("..");
         }
