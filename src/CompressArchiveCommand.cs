@@ -61,7 +61,8 @@ namespace Microsoft.PowerShell.Archive
         [ValidateNotNullOrEmpty]
         public System.IO.Compression.CompressionLevel CompressionLevel { get; set; } = System.IO.Compression.CompressionLevel.Optimal;
 
-        public ArchiveFormat Format { get; set; } = ArchiveFormat.zip;
+        [Parameter()]
+        public ArchiveFormat? Format { get; set; } = null;
 
         private List<string>? _sourcePaths;
 
@@ -80,23 +81,32 @@ namespace Microsoft.PowerShell.Archive
             // Validate DestinationPath
             ValidateDestinationPath();
 
-            // We want to get the appropriate archive format based on the destination path or give a warning
-
+            // Check if cmdlet is able to determine the format of the archive based on the extension of DestinationPath
+            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatForPath(path: DestinationPath, archiveFormat: out var archiveFormat);
             // If the user did not specify which archive format to use, try to determine it automatically
             if (Format is null)
             {
-                // Try and get the suitable archive format based on DestinationPath 
-                if (ArchiveFactory.TryGetArchiveFormatForPath(path: DestinationPath, archiveFormat: out var archiveFormat)) {
-                    Format = archiveFormat;
-                }
-                // If the archive format could not be determined, use zip by default and emit a warning
-                else
+                if (ableToDetermineArchiveFormat)
                 {
+                    Format = archiveFormat;
+                } else
+                {
+                    // If the archive format could not be determined, use zip by default and emit a warning
                     var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, DestinationPath);
                     WriteWarning(warningMsg);
                     Format = ArchiveFormat.zip;
                 }
             }
+            // If the user did specify which archive format to use, emit a warning if DestinationPath does not match the chosen archive format
+            else
+            {
+                if (archiveFormat is null || archiveFormat.Value != Format.Value)
+                {
+                    var warningMsg = String.Format(Messages.ArchiveExtensionDoesNotMatchArchiveFormatWarning, DestinationPath);
+                    WriteWarning(warningMsg);
+                }
+            }
+
         }
 
         protected override void ProcessRecord()
@@ -155,7 +165,7 @@ namespace Microsoft.PowerShell.Archive
                 if (ShouldProcess(target: DestinationPath, action: "Create"))
                 {
                     // Create an archive -- this is where we will switch between different types of archives
-                    archive = ArchiveFactory.GetArchive(format: Format, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
+                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
                 }
 
                 // TODO: Update progress
