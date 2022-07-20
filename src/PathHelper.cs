@@ -9,12 +9,12 @@ using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
-
+    // TODO: Add exception handling
     internal class PathHelper
     {
         private PSCmdlet _cmdlet;
 
-        private const string FilesystemProviderName = "FileSystem";
+        private const string FileSystemProviderName = "FileSystem";
 
         internal PathHelper(PSCmdlet cmdlet)
         {
@@ -31,13 +31,12 @@ namespace Microsoft.PowerShell.Archive
         {
             List<ArchiveAddition> additions = new List<ArchiveAddition>();
 
-            //Used to keep track of non-filesystem paths
+            // Used to keep track of non-filesystem paths
             HashSet<string> nonfilesystemPaths = new HashSet<string>();
 
             foreach (var path in paths)
             {
                 // Based on the value of literalPath, call the appropriate method
-
                 if (literalPath)
                 {
                     AddArchiveAdditionForUserEnteredLiteralPath(path: path, archiveAdditions: additions, nonfilesystemPaths: nonfilesystemPaths);
@@ -81,7 +80,7 @@ namespace Microsoft.PowerShell.Archive
             var resolvedPaths = _cmdlet.SessionState.Path.GetResolvedProviderPathFromPSPath(path: path, provider: out var providerInfo);
 
             // Check if the path if from the filesystem
-            if (providerInfo?.Name != FilesystemProviderName)
+            if (providerInfo?.Name != FileSystemProviderName)
             {
                 // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
                 nonfilesystemPaths.Add(path);
@@ -112,7 +111,7 @@ namespace Microsoft.PowerShell.Archive
             string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
 
             // Check if the path is from the filesystem
-            if (providerInfo.Name != FilesystemProviderName)
+            if (providerInfo.Name != FileSystemProviderName)
             {
                 nonfilesystemPaths.Add(path);
                 return;
@@ -175,14 +174,15 @@ namespace Microsoft.PowerShell.Archive
                     
                     // Add an entry for each child path
                     var entryName = GetEntryName(path: childPath.FullName, shouldPreservePathStructure: shouldPreservePathStructure);
-                    additions.Add(new ArchiveAddition(entryName: entryName, fullPath: childPath.Name, type: type));
+                    additions.Add(new ArchiveAddition(entryName: entryName, fullPath: childPath.FullName, type: type));
                 }
             } 
-            // Throw a terminating error if a securityException occurs
-            catch (System.Security.SecurityException)
+            // Throw a non-terminating error if a securityException occurs
+            catch (System.Security.SecurityException securityException)
             {
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InsufficientPermissionsToAccessPath, errorItem: path);
-                _cmdlet.ThrowTerminatingError(errorRecord);
+                var errorId = ErrorCode.InsufficientPermissionsToAccessPath.ToString();
+                var errorRecord = new ErrorRecord(securityException, errorId: errorId, ErrorCategory.SecurityError, targetObject: path);
+                _cmdlet.WriteError(errorRecord);
             }
             // Throw a terminating error if a directoryNotFoundException occurs
             catch (System.IO.DirectoryNotFoundException)
@@ -245,7 +245,7 @@ namespace Microsoft.PowerShell.Archive
             string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
 
             // If the path is not from the filesystem, throw an error
-            if (providerInfo.Name != FilesystemProviderName)
+            if (providerInfo.Name != FileSystemProviderName)
             {
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InvalidPath, errorItem: path);
                 _cmdlet.ThrowTerminatingError(errorRecord);

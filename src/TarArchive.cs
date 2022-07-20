@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Formats.Tar;
+using System.IO;
 using System.Text;
 
 namespace Microsoft.PowerShell.Archive
@@ -12,13 +14,25 @@ namespace Microsoft.PowerShell.Archive
 
         private string _path;
 
-        ArchiveMode IArchive.Mode => throw new NotImplementedException();
+        private TarWriter _tarWriter;
 
-        string IArchive.Path => throw new NotImplementedException();
+        private FileStream _fileStream;
+
+        ArchiveMode IArchive.Mode => _mode;
+
+        string IArchive.Path => _path;
+
+        public TarArchive(string path, ArchiveMode mode, FileStream fileStream)
+        {
+            _mode = mode;
+            _path = path;
+            _tarWriter = new TarWriter(archiveStream: fileStream, archiveFormat: TarFormat.Pax, leaveOpen: false);
+            _fileStream = fileStream;
+        }
 
         void IArchive.AddFilesytemEntry(ArchiveAddition entry)
         {
-            throw new NotImplementedException();
+            _tarWriter.WriteEntry(fileName: entry.FullPath, entryName: entry.EntryName);
         }
 
         string[] IArchive.GetEntries()
@@ -38,6 +52,8 @@ namespace Microsoft.PowerShell.Archive
                 if (disposing)
                 {
                     // TODO: dispose managed state (managed objects)
+                    _tarWriter.Dispose();
+                    _fileStream.Dispose();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

@@ -63,6 +63,15 @@ namespace Microsoft.PowerShell.Archive.Localized {
         /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
+        internal static string ArchiveDoesNotExistMessage {
+            get {
+                return ResourceManager.GetString("ArchiveDoesNotExistMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
         internal static string ArchiveExistsAsDirectoryMessage {
             get {
                 return ResourceManager.GetString("ArchiveExistsAsDirectoryMessage", resourceCulture);
@@ -126,9 +135,9 @@ namespace Microsoft.PowerShell.Archive.Localized {
         /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
-        internal static string GetResolvedPathFromPSPathProviderReturnedNullMessage {
+        internal static string InsufficientPermssionsToAccessPathMessage {
             get {
-                return ResourceManager.GetString("GetResolvedPathFromPSPathProviderReturnedNullMessage", resourceCulture);
+                return ResourceManager.GetString("InsufficientPermssionsToAccessPathMessage", resourceCulture);
             }
         }
         
@@ -153,6 +162,15 @@ namespace Microsoft.PowerShell.Archive.Localized {
         /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
+        internal static string OverwriteDestinationPathFailed {
+            get {
+                return ResourceManager.GetString("OverwriteDestinationPathFailed", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
         internal static string PathNotFoundMessage {
             get {
                 return ResourceManager.GetString("PathNotFoundMessage", resourceCulture);
@@ -162,9 +180,18 @@ namespace Microsoft.PowerShell.Archive.Localized {
         /// <summary>
         ///   Looks up a localized string similar to .
         /// </summary>
-        internal static string PathResolvesToMultiplePathsMessage {
+        internal static string SameLiteralPathAndDestinationPathMessage {
             get {
-                return ResourceManager.GetString("PathResolvesToMultiplePathsMessage", resourceCulture);
+                return ResourceManager.GetString("SameLiteralPathAndDestinationPathMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
+        ///   Looks up a localized string similar to .
+        /// </summary>
+        internal static string SamePathAndDestinationPathMessage {
+            get {
+                return ResourceManager.GetString("SamePathAndDestinationPathMessage", resourceCulture);
             }
         }
     }

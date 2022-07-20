@@ -23,7 +23,11 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.ArchiveExists => Messages.ArchiveExistsMessage,
                 ErrorCode.ArchiveExistsAsDirectory => Messages.ArchiveExistsAsDirectoryMessage,
                 ErrorCode.ArchiveReadOnly => Messages.ArchiveIsReadOnlyMessage,
-                ErrorCode.PathResolvesToMultiplePaths => Messages.PathResolvesToMultiplePathsMessage,
+                ErrorCode.ArchiveDoesNotExist => Messages.ArchiveDoesNotExistMessage,
+                ErrorCode.SamePathAndDestinationPath => Messages.SamePathAndDestinationPathMessage,
+                ErrorCode.SameLiteralPathAndDestinationPath => Messages.SameLiteralPathAndDestinationPathMessage,
+                ErrorCode.InsufficientPermissionsToAccessPath => Messages.InsufficientPermssionsToAccessPathMessage,
+                ErrorCode.OverwriteDestinationPathFailed => Messages.OverwriteDestinationPathFailed,
                 _ => throw new NotImplementedException("Error code has not been implemented")
             };
         }
@@ -45,8 +49,6 @@ namespace Microsoft.PowerShell.Archive
         ArchiveIsNonEmptyDirectory,
         // Used when Compress-Archive cmdlet is in Update mode but the archive is read-only
         ArchiveReadOnly,
-        // May be removed
-        PathResolvesToMultiplePaths,
         // Used when DestinationPath does not exist and the Compress-Archive cmdlet is in Update mode
         ArchiveDoesNotExist,
         // Used when Path and DestinationPath are the same
@@ -55,5 +57,7 @@ namespace Microsoft.PowerShell.Archive
         SameLiteralPathAndDestinationPath,
         // Used when the user does not have sufficient permissions to access a path
         InsufficientPermissionsToAccessPath,
+        // Used when the cmdlet could not overwrite DestinationPath
+        OverwriteDestinationPathFailed
     }
 }

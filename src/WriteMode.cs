@@ -4,7 +4,7 @@ using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
-    public enum Action
+    public enum WriteMode
     {
         Create,
         Update,

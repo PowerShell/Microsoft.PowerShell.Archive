@@ -5,7 +5,7 @@
     },
     "PowerShell 7": {
       "commandName": "Executable",
-      "executablePath": "pwsh",
+      "executablePath": "C:\\Users\\t-ayousuf\\Code\\PowerShell\\src\\powershell-win-core\\bin\\Debug\\net7.0\\win7-x64\\pwsh.exe",
       "commandLineArgs": "-NoExit -Command \"& Import-Module .\\Microsoft.PowerShell.Archive.dll"
     }
   }
