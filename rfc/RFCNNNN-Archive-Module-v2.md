@@ -16,7 +16,8 @@ The goal for the Archive module is to build a high-performing and maintainable m
 
 Currently, the archive module has a number of limitations.
 First, the module supports the zip32 format only.
-There is an opportunity to support additional supports by taking advanatage of new .NET APIs.
+There is an opportunity to support additional formats by taking advantage of new .NET APIs.
+
 Second, the module has limited performance compared to other archive software.
 Writing the next version of the module in C# instead of PowerShell Script is expected to improve the overall performance of the module.
 The module has limited cross-platform support because archive entries are written in an OS-specifc way due to different characters being used as path seperators in different OSs.
@@ -25,7 +26,8 @@ This makes it difficult for Unix-based OS users to use archives compressed on a 
 There are also a number of usability issues reported by users.
 For example, there are issues with wildcard characters in paths.
 Error reporting in some circumstances can be improved and more descriptive.
-Compatability with other archive software can also be improved as there are cases where an archive program may not recognize an archive produced by this module as valid.
+Compatibility with other archive software can also be improved as there are cases where an archive program may not recognize an archive produced by this module as valid.
+
 Interactions with other parts of PowerShell, such as the job system, advanced functions, and common parameters can be further improved.
 
 The next version of the archive module, Microsoft.PowerShell.Archive v2.0.0, plans on resolving these limitations and usability issues.
