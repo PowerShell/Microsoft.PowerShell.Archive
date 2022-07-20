@@ -3,7 +3,7 @@ RFC:
 Author: Abdullah Yousuf
 Status: Draft
 SupercededBy: 
-Version: 1.0
+Version: 1.1
 Area: Archive
 Comments Due: 8/6/2022
 Plan to implement: Yes
@@ -81,17 +81,9 @@ Relative path structure refers to the hierarchial structure of a path relative t
 Parameter sets:
 
 ```powershell
-Compress-Archive [-Path] <string[]> [-DestinationPath] <string> [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
+Compress-Archive [-Path] <string[]> [-DestinationPath] <string> [-WriteMode {Create | Update | Overwrite}] [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
 
-Compress-Archive [-Path] <string[]> [-DestinationPath] <string> -Overwrite [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
-
-Compress-Archive [-Path] <string[]> [-DestinationPath] <string> -Update [-CompressionLevel {Optimal |NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
-
-Compress-Archive [-DestinationPath] <string> -LiteralPath <string[]> [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
-
-Compress-Archive [-DestinationPath] <string> -LiteralPath <string[]> -Overwrite [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
-
-Compress-Archive [-DestinationPath] <string> -LiteralPath <string[]> -Update [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
+Compress-Archive -LiteralPath <string[]> [-DestinationPath] <string> [-WriteMode {Create | Update | Overwrite}] [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
 
 ```
 
@@ -218,7 +210,9 @@ Note that `.zip` is not appended to the archive name.
 
 #### **Relative Path Structure Preservation**
 
-When valid path(s) is supplied to the `-Path` or `-LiteralPath` parameter, the relative structure of the path is preserved as long as the path is not absolute, and does not contain ~ or .. (the path can contain other wildcard characters such as *, [, ], ?, and `).
+When valid paths are supplied to the `-Path` or `-LiteralPath` parameter, the relative structures of the paths are preserved as long as the paths are not rooted, and do not contain ..
+The paths must be relative to current working directory.
+When `-Path` is used, globbing is still performed.
 
 Example: `Compress-Archive -Path Documents\MyFile.txt -DestinationPath destination.zip`
 creates an archive with the structure:
@@ -256,7 +250,7 @@ Note that the `Documents` folder is not retained in the archive.
 
 Example: `Compress-Archive -Path Documents -DestinationPath destination.zip -Flatten` creates an archive which only contains the files in or descended from `Documents` and these files are the top-level items.
 
-The `-Flatten` parameter can be used with `-Update`.
+The `-Flatten` parameter can be used with `-WriteMode Update`.
 In such case, only the added items are flattened.
 
 Example: Suppose we have `archive.zip` which has the following structure:
@@ -267,7 +261,7 @@ archive.zip
 |   |---file1.txt
 ```
 
-After calling `Compress-Archive -Path Documents/file2.txt -DestinationPath archive.zip -Update`, `archive.zip` becomes as follows:
+After calling `Compress-Archive -Path Documents/file2.txt -DestinationPath archive.zip -WriteMode Update`, `archive.zip` becomes as follows:
 
 ```
 archive.zip
@@ -381,14 +375,21 @@ When files and/or folders with different paths resolve to the same entry name in
 
 Example: `Compress-Archive -Path ~/Documents/Folder1/file.txt,~/Documents/Folder2/file.txt -DestinationPath destination.zip -Flatten` creates an archive that contains `file.txt` from `~/Documents/Folder2/file.txt` because it overwrites the file from `~/Documents/Folder1/file.txt`.
 
-If the destination path already exists when `Compress-Archive` is called and `-Update` is not specified, a terminating error is thrown.
-`-Overwrite` can be specified to overwrite the file at the destination path (as long as it is a file and not a folder).
+If the destination path already exists when `Compress-Archive` is called and `-WriteMode Update` is not specified, a terminating error is thrown.
+`-WriteMode Overwrite` can be specified to overwrite the file at the destination path (as long as it is a file and not a folder).
 
 Example: Suppose `archive.tar` already exists. `Compress-Archive -Path file.txt -DestinationPath archive.tar` results in a terminating error.
 
-Example: Suppose `archive.tar` already exists and is a file. `Compress-Archive -Path file.txt -DestinationPath archive.tar -Overwrite` creates a new archive overwriting `archive.tar`.
+Example: Suppose `archive.tar` already exists and is a file. `Compress-Archive -Path file.txt -DestinationPath archive.tar -WriteMode Overwrite` creates a new archive overwriting `archive.tar`.
 
-Example: Suppose `archive.tar` already exists and is a folder. `Compress-Archive -Path file.txt -DestinationPath archive.tar -Overwrite` results in a terminating error.
+Example: Suppose `archive.tar` already exists and is a folder. `Compress-Archive -Path file.txt -DestinationPath archive.tar -WriteMode Overwrite` results in a terminating error.
+
+### `-WriteMode` parameter
+The `-WriteMode` parameter is an enum that accepts three possible choices: `Create`, `Update` or `Overwrite`.
+
+`-WriteMode Create` creates an archive normally.
+`-WriteMode Update` updates an archive.
+`-WriteMode Overwrite` overwrites an archive with a new archive.
 
 ### Expand-Archive
 
