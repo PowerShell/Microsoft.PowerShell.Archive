@@ -386,7 +386,7 @@ Example: Suppose `archive.tar` already exists and is a file. `Compress-Archive -
 
 Example: Suppose `archive.tar` already exists and is a folder. `Compress-Archive -Path file.txt -DestinationPath archive.tar -WriteMode Overwrite` results in a terminating error.
 
-### `-WriteMode` parameter
+#### `-WriteMode` parameter
 The `-WriteMode` parameter is an enum that accepts three possible choices: `Create`, `Update` or `Overwrite`.
 
 `-WriteMode Create` creates an archive normally.
