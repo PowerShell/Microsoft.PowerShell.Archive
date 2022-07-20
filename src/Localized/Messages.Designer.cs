@@ -61,7 +61,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The archive {0} does not exist..
         /// </summary>
         internal static string ArchiveDoesNotExistMessage {
             get {
@@ -70,7 +70,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The destination path {0} is a directory..
         /// </summary>
         internal static string ArchiveExistsAsDirectoryMessage {
             get {
@@ -79,7 +79,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The destination path {0} already exists..
         /// </summary>
         internal static string ArchiveExistsMessage {
             get {
@@ -88,7 +88,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The archive {0} does not have an extension or an extension that matches the chosen archive format..
         /// </summary>
         internal static string ArchiveExtensionDoesNotMatchArchiveFormatWarning {
             get {
@@ -97,7 +97,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The format of the archive {0} could not determined by its extension. The zip format is chosen by default..
         /// </summary>
         internal static string ArchiveFormatCouldNotBeDeterminedWarning {
             get {
@@ -106,7 +106,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The -Format was not specified, so the archive format was determined to be {0} based on its extension..
         /// </summary>
         internal static string ArchiveFormatDeterminedVerboseMessage {
             get {
@@ -115,7 +115,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The archive at {0} is read-only..
         /// </summary>
         internal static string ArchiveIsReadOnlyMessage {
             get {
@@ -124,7 +124,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The path(s) {0} have been specified more than once..
         /// </summary>
         internal static string DuplicatePathsMessage {
             get {
@@ -133,7 +133,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to There are insufficient permissions to access the path {0}..
         /// </summary>
         internal static string InsufficientPermssionsToAccessPathMessage {
             get {
@@ -142,7 +142,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The path(s) {0} are invalid..
         /// </summary>
         internal static string InvalidPathMessage {
             get {
@@ -151,7 +151,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to There are no items to add to the archive..
         /// </summary>
         internal static string NoItemsToAddWarning {
             get {
@@ -160,7 +160,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to Could not overwrite the destination path..
         /// </summary>
         internal static string OverwriteDestinationPathFailed {
             get {
@@ -169,7 +169,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to The path {0} could not be found..
         /// </summary>
         internal static string PathNotFoundMessage {
             get {
@@ -178,7 +178,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to A path {0} supplied to -LiteralPath is the same as the path supplied to -DestinationPath..
         /// </summary>
         internal static string SameLiteralPathAndDestinationPathMessage {
             get {
@@ -187,7 +187,7 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
-        ///   Looks up a localized string similar to .
+        ///   Looks up a localized string similar to A path {0} supplied to -Path is the same as the path supplied to -DestinationPath..
         /// </summary>
         internal static string SamePathAndDestinationPathMessage {
             get {

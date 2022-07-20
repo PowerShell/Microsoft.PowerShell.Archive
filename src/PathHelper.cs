@@ -163,6 +163,8 @@ namespace Microsoft.PowerShell.Archive
             try
             {
                 var directoryInfo = new System.IO.DirectoryInfo(path);
+                // pathPrefix is used to construct the entry names of the descendents of the directory
+                var pathPrefix = GetPrefixForPath(directoryInfo: directoryInfo);
                 foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
                     // childPath can either be a file or directory, and nothing else
@@ -173,7 +175,7 @@ namespace Microsoft.PowerShell.Archive
                     }
                     
                     // Add an entry for each child path
-                    var entryName = GetEntryName(path: childPath.FullName, shouldPreservePathStructure: shouldPreservePathStructure);
+                    var entryName = GetEntryName(path: childPath.FullName, prefix: pathPrefix);
                     additions.Add(new ArchiveAddition(entryName: entryName, fullPath: childPath.FullName, type: type));
                 }
             } 
@@ -219,6 +221,38 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
+        private string GetEntryName(string path, string prefix)
+        {
+            if (prefix == String.Empty) return path;
+
+            //If the path does not start with the prefix, throw an exception
+            if (!path.StartsWith(prefix))
+            {
+                throw new ArgumentException($"{path} does not begin with {prefix}");
+            }
+
+            if (path.Length <= prefix.Length) throw new ArgumentException($"The length of {path} is shorter than or equal to the length of {prefix}");
+
+            string entryName = path.Substring(prefix.Length);
+
+            return entryName;
+        }
+
+        private string GetPrefixForPath(System.IO.DirectoryInfo directoryInfo)
+        {
+            // Get the parent directory of the path
+            if (directoryInfo.Parent is null)
+            {
+                return String.Empty;
+            }
+            var prefix = directoryInfo.Parent.FullName;
+            if (!prefix.EndsWith(System.IO.Path.DirectorySeparatorChar))
+            {
+                prefix += System.IO.Path.DirectorySeparatorChar;
+            }
+            return prefix;
+        }
+
         /// <summary>
         /// Get the duplicate fully qualified paths from a list of ArchiveAdditions
         /// </summary>
@@ -261,7 +295,7 @@ namespace Microsoft.PowerShell.Archive
         /// <returns></returns>
         private bool CanPreservePathStructure(string path)
         {
-            return System.IO.Path.IsPathRooted(path);
+            return !System.IO.Path.IsPathRooted(path);
         }
 
         /// <summary>

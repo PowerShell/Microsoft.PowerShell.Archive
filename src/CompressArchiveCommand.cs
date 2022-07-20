@@ -72,6 +72,7 @@ namespace Microsoft.PowerShell.Archive
         {
             _sourcePaths = new List<string>();
             _pathHelper = new PathHelper(this);
+            Messages.Culture = new System.Globalization.CultureInfo("en-US");
         }
 
         protected override void BeginProcessing()
