@@ -1,20 +1,17 @@
-if ((Test-Path "$PSScriptRoot\out")) {
-    Remove-Item -Path $PSScriptRoot\out -Recurse -Force
+$buildOutputDirectory = "$PSScriptRoot\src\build\net7.0"
+
+if ((Test-Path $buildOutputDirectory)) {
+    Remove-Item -Path $buildOutputDirectory -Recurse -Force
 }
 
-New-Item -ItemType directory -Path $PSScriptRoot\out | Out-Null
-New-Item -ItemType directory -Path $PSScriptRoot\out\Microsoft.PowerShell.Archive | Out-Null
+# Perform dotnet build
+dotnet build .\src\Microsoft.PowerShell.Archive.csproj -c release
 
-$OutPath = Join-Path $PSScriptRoot "out"
-$OutModulePath = Join-Path $OutPath "Microsoft.PowerShell.Archive"
+"Build module location:   $buildOutputDirectory" | Write-Verbose -Verbose
 
-Copy-Item -Recurse -Path "$PSScriptRoot\Microsoft.PowerShell.Archive" -Destination $OutPath -Force
+"Setting VSTS variable 'BuildOutDir' to '$buildOutputDirectory'" | Write-Verbose -Verbose
+Write-Host "##vso[task.setvariable variable=BuildOutDir]$buildOutputDirectory"
 
-"Build module location:   $OutModulePath" | Write-Verbose -Verbose
-
-"Setting VSTS variable 'BuildOutDir' to '$OutModulePath'" | Write-Verbose -Verbose
-Write-Host "##vso[task.setvariable variable=BuildOutDir]$OutModulePath"
-
-$psd1ModuleVersion = (Get-Content -Path "$OutModulePath\Microsoft.PowerShell.Archive.psd1" | Select-String 'ModuleVersion="(.*)"').Matches[0].Groups[1].Value
+$psd1ModuleVersion = (Get-Content -Path "$buildOutputDirectory\Microsoft.PowerShell.Archive.psd1" | Select-String 'ModuleVersion="(.*)"').Matches[0].Groups[1].Value
 "Setting VSTS variable 'PackageVersion' to '$psd1ModuleVersion'" | Write-Verbose -Verbose
 Write-Host "##vso[task.setvariable variable=PackageVersion]$psd1ModuleVersion"

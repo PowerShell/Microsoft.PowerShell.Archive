@@ -124,10 +124,12 @@ namespace Microsoft.PowerShell.Archive
             // Throw a terminating error if the path could not be found
             catch (System.Management.Automation.ItemNotFoundException notFoundException)
             {
-
+                var errorRecord = new ErrorRecord(exception: notFoundException, errorId: ErrorCode.PathNotFound.ToString(), errorCategory: ErrorCategory.InvalidArgument,
+                    targetObject: path);
+                _cmdlet.ThrowTerminatingError(errorRecord);
             }
 
-            // If an exception was caught, write a non-terminating error
+            // If an exception (besides ItemNotFoundException) was caught, write a non-terminating error
             if (exception != null)
             {
                 var errorRecord = new ErrorRecord(exception: exception, errorId: ErrorCode.InvalidPath.ToString(), errorCategory: ErrorCategory.InvalidArgument,
@@ -157,6 +159,8 @@ namespace Microsoft.PowerShell.Archive
                     nonfilesystemPaths.Add(path);
                     return;
                 }
+
+                // We do not need to check if the path exists here because it is done in AddAdditionForFullyQualifiedMethod call
 
                 // Check if we can preserve the path structure -- this is based on the original path the user entered (not fully qualified)
                 bool canPreservePathStructure = CanPreservePathStructure(path: path);
@@ -208,7 +212,8 @@ namespace Microsoft.PowerShell.Archive
                 // Add directory seperator to end if it does not already have it
                 if (!path.EndsWith(System.IO.Path.DirectorySeparatorChar)) path += System.IO.Path.DirectorySeparatorChar;
                 // Recurse through the child items and add them to additions
-                AddDescendentEntries(path: path, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
+                var directoryInfo = new System.IO.DirectoryInfo(path);
+                AddDescendentEntries(directoryInfo: directoryInfo, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
                 additionType = ArchiveAddition.ArchiveAdditionType.Directory;
             }
             else if (!System.IO.File.Exists(path))
@@ -228,11 +233,10 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="path">A fully qualifed path referring to a directory</param>
         /// <param name="additions">Where the ArchiveAddtion object for each child item of the directory will be added</param>
         /// <param name="shouldPreservePathStructure">See above</param>
-        private void AddDescendentEntries(string path, List<ArchiveAddition> additions, bool shouldPreservePathStructure)
+        private void AddDescendentEntries(System.IO.DirectoryInfo directoryInfo, List<ArchiveAddition> additions, bool shouldPreservePathStructure)
         {
             try
             {
-                var directoryInfo = new System.IO.DirectoryInfo(path);
                 // pathPrefix is used to construct the entry names of the descendents of the directory
                 var pathPrefix = GetPrefixForPath(directoryInfo: directoryInfo);
                 foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
@@ -249,18 +253,12 @@ namespace Microsoft.PowerShell.Archive
                     additions.Add(new ArchiveAddition(entryName: entryName, fullPath: childPath.FullName, type: type));
                 }
             } 
-            // Throw a non-terminating error if a securityException occurs
+            // Write a non-terminating error if a securityException occurs
             catch (System.Security.SecurityException securityException)
             {
                 var errorId = ErrorCode.InsufficientPermissionsToAccessPath.ToString();
-                var errorRecord = new ErrorRecord(securityException, errorId: errorId, ErrorCategory.SecurityError, targetObject: path);
+                var errorRecord = new ErrorRecord(securityException, errorId: errorId, ErrorCategory.SecurityError, targetObject: directoryInfo);
                 _cmdlet.WriteError(errorRecord);
-            }
-            // Throw a terminating error if a directoryNotFoundException occurs
-            catch (System.IO.DirectoryNotFoundException)
-            {
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.PathNotFound, errorItem: path);
-                _cmdlet.ThrowTerminatingError(errorRecord);
             }
         }
 
@@ -281,9 +279,20 @@ namespace Microsoft.PowerShell.Archive
             if (path.EndsWith(System.IO.Path.DirectorySeparatorChar))
             {
                 // Get substring from second-last directory seperator char till end
-                int secondLastIndex = path.LastIndexOf(System.IO.Path.DirectorySeparatorChar, path.Length - 2);
-                if (secondLastIndex == -1) return path;
-                else return path.Substring(secondLastIndex + 1);
+                if (path.Length - 2 < 0)
+                {
+                    return path;
+                }
+
+                int secondLastIndex = path.LastIndexOf(value: System.IO.Path.DirectorySeparatorChar, startIndex: path.Length - 2);
+                if (secondLastIndex == -1)
+                {
+                    return path;
+                }
+                else
+                {
+                    return path.Substring(secondLastIndex + 1);
+                }
             }
             else
             {
@@ -295,13 +304,17 @@ namespace Microsoft.PowerShell.Archive
         {
             if (prefix == String.Empty) return path;
 
-            //If the path does not start with the prefix, throw an exception
+            // If the path does not start with the prefix, throw an exception
             if (!path.StartsWith(prefix))
             {
                 throw new ArgumentException($"{path} does not begin with {prefix}");
             }
 
-            if (path.Length <= prefix.Length) throw new ArgumentException($"The length of {path} is shorter than or equal to the length of {prefix}");
+            // If the path is the same length as the prefix
+            if (path.Length == prefix.Length)
+            {
+                throw new ArgumentException($"The length of {path} is shorter than or equal to the length of {prefix}");
+            }
 
             string entryName = path.Substring(prefix.Length);
 
