@@ -19,6 +19,11 @@ namespace Microsoft.PowerShell.Archive
                 _ => throw new NotImplementedException()
             };
 
+            if (format == ArchiveFormat.tar)
+            {
+                archiveFileStream.Position = archiveFileStream.Length;
+            }
+
             return format switch
             {
                 ArchiveFormat.zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),

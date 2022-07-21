@@ -61,6 +61,15 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to {0} was added to the archive..
+        /// </summary>
+        internal static string AddedItemToArchiveVerboseMessage {
+            get {
+                return ResourceManager.GetString("AddedItemToArchiveVerboseMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The archive {0} does not exist..
         /// </summary>
         internal static string ArchiveDoesNotExistMessage {

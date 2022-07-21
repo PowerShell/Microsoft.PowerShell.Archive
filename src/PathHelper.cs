@@ -76,25 +76,63 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="nonfilesystemPaths"></param>
         private void AddArchiveAdditionForUserEnteredNonLiteralPath(string path, List<ArchiveAddition> archiveAdditions, HashSet<string> nonfilesystemPaths)
         {
-            // Resolve the path -- I don't think we need to handle exceptions here as no special behavior occurs when an exception occurs
-            var resolvedPaths = _cmdlet.SessionState.Path.GetResolvedProviderPathFromPSPath(path: path, provider: out var providerInfo);
-
-            // Check if the path if from the filesystem
-            if (providerInfo?.Name != FileSystemProviderName)
+            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
+            Exception? exception = null;
+            try
             {
-                // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
-                nonfilesystemPaths.Add(path);
-                return;
+                // Resolve the path -- I don't think we need to handle exceptions here as no special behavior occurs when an exception occurs
+                var resolvedPaths = _cmdlet.SessionState.Path.GetResolvedProviderPathFromPSPath(path: path, provider: out var providerInfo);
+
+                // Check if the path if from the filesystem
+                if (providerInfo?.Name != FileSystemProviderName)
+                {
+                    // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
+                    nonfilesystemPaths.Add(path);
+                    return;
+                }
+
+                // Check if the cmdlet can preserve paths based on path variable
+                bool shouldPreservePathStructure = CanPreservePathStructure(path);
+
+                // Go through each resolved path and add an ArchiveAddition for it to additions
+                for (int i = 0; i < resolvedPaths.Count; i++)
+                {
+                    var resolvedPath = resolvedPaths[i];
+                    AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: archiveAdditions, shouldPreservePathStructure: shouldPreservePathStructure);
+                }
+            }
+            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
+            {
+                exception = providerNotFoundException;
+            }
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                exception = driveNotFoundException;
+            }
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                exception = providerInvocationException;
+            }
+            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
+            {
+                exception = notSupportedException;
+            }
+            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
+            {
+                exception = invalidOperationException;
+            }
+            // Throw a terminating error if the path could not be found
+            catch (System.Management.Automation.ItemNotFoundException notFoundException)
+            {
+
             }
 
-            // Check if the cmdlet can preserve paths based on path variable
-            bool shouldPreservePathStructure = CanPreservePathStructure(path);
-
-            // Go through each resolved path and add an ArchiveAddition for it to additions
-            for (int i = 0; i < resolvedPaths.Count; i++)
+            // If an exception was caught, write a non-terminating error
+            if (exception != null)
             {
-                var resolvedPath = resolvedPaths[i];
-                AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: archiveAdditions, shouldPreservePathStructure: shouldPreservePathStructure);
+                var errorRecord = new ErrorRecord(exception: exception, errorId: ErrorCode.InvalidPath.ToString(), errorCategory: ErrorCategory.InvalidArgument,
+                    targetObject: path);
+                _cmdlet.WriteError(errorRecord);
             }
         }
 
@@ -106,22 +144,54 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="nonfilesystemPaths"></param>
         private void AddArchiveAdditionForUserEnteredLiteralPath(string path, List<ArchiveAddition> archiveAdditions, HashSet<string> nonfilesystemPaths)
         {
-            // Resolve the path -- gets the fully qualified path
-            // I don't think we need to handle exceptions for the call below as the cmdlet does not have any special behaviors when the call below throws an exception
-            string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
-
-            // Check if the path is from the filesystem
-            if (providerInfo.Name != FileSystemProviderName)
+            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
+            Exception? exception = null;
+            try
             {
-                nonfilesystemPaths.Add(path);
-                return;
+                // Resolve the path -- gets the fully qualified path
+                string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
+
+                // Check if the path is from the filesystem
+                if (providerInfo.Name != FileSystemProviderName)
+                {
+                    nonfilesystemPaths.Add(path);
+                    return;
+                }
+
+                // Check if we can preserve the path structure -- this is based on the original path the user entered (not fully qualified)
+                bool canPreservePathStructure = CanPreservePathStructure(path: path);
+
+                // Add an ArchiveAddition for the path to the list of additions
+                AddAdditionForFullyQualifiedPath(path: fullyQualifiedPath, additions: archiveAdditions, shouldPreservePathStructure: canPreservePathStructure);
+            } 
+            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
+            {
+                exception = providerNotFoundException;
+            } 
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                exception = driveNotFoundException;
+            } 
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                exception = providerInvocationException;
+            } 
+            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
+            {
+                exception = notSupportedException;
+            } 
+            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
+            {
+                exception = invalidOperationException;
             }
 
-            // Check if we can preserve the path structure -- this is based on the original path the user entered (not fully qualified)
-            bool canPreservePathStructure = CanPreservePathStructure(path: path);
-
-            // Add an ArchiveAddition for the path to the list of additions
-            AddAdditionForFullyQualifiedPath(path: fullyQualifiedPath, additions: archiveAdditions, shouldPreservePathStructure: canPreservePathStructure);
+            // If an exception was caught, write a non-terminating error
+            if (exception != null)
+            {
+                var errorRecord = new ErrorRecord(exception: exception, errorId: ErrorCode.InvalidPath.ToString(), errorCategory: ErrorCategory.InvalidArgument, 
+                    targetObject: path);
+                _cmdlet.WriteError(errorRecord);
+            }
         }
 
         /// <summary>

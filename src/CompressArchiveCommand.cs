@@ -68,11 +68,14 @@ namespace Microsoft.PowerShell.Archive
 
         private PathHelper _pathHelper;
 
+        private bool _didCreateNewArchive;
+
         public CompressArchiveCommand()
         {
             _sourcePaths = new List<string>();
             _pathHelper = new PathHelper(this);
             Messages.Culture = new System.Globalization.CultureInfo("en-US");
+            _didCreateNewArchive = false;
         }
 
         protected override void BeginProcessing()
@@ -176,26 +179,64 @@ namespace Microsoft.PowerShell.Archive
 
                     // Create an archive -- this is where we will switch between different types of archives
                     archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
+                    _didCreateNewArchive = archiveMode == ArchiveMode.Update;
                 }
 
                 // TODO: Update progress
+                long numberOfAdditions = archiveAddtions.Count;
+                long numberOfAddedItems = 0;
+                var progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", "0% complete");
+                WriteProgress(progressRecord);
                 foreach (ArchiveAddition entry in archiveAddtions)
                 {
                     if (ShouldProcess(target: entry.FullPath, action: "Add"))
                     {
                         archive?.AddFilesytemEntry(entry);
+                        // Keep track of number of items added to the archive and use that to update progress
+                        numberOfAddedItems++;
+                        var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
+                        progressRecord.StatusDescription = $"{percentComplete:0.0}% complete";
+                        WriteProgress(progressRecord);
+
+                        // Write a verbose message saying this item was added to the archive
+                        var addedItemMessage = String.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FullPath);
+                        WriteVerbose(addedItemMessage);
+                    } else
+                    {
+                        numberOfAdditions--;
                     }
+                }
+
+                // If there were no items to add, show progress as 100%
+                if (numberOfAdditions == 0)
+                {
+                    progressRecord.StatusDescription = "100% complete";
+                    WriteProgress(progressRecord);
                 }
             }
             finally
             {
                 archive?.Dispose();
             }
+
+            // If -PassThru is specified, write a System.IO.FileInfo object
+            if (PassThru)
+            {
+                var archiveInfo = new System.IO.FileInfo(DestinationPath);
+                WriteObject(archiveInfo);
+            }
         }
 
         protected override void StopProcessing()
         {
-            base.StopProcessing();
+            // If a new output archive was created, delete it (this does not delete an archive if -WriteMode Update is specified)
+            if (_didCreateNewArchive)
+            {
+                if (System.IO.File.Exists(DestinationPath))
+                {
+                    System.IO.File.Delete(DestinationPath);
+                }
+            }
         }
 
         /// <summary>
