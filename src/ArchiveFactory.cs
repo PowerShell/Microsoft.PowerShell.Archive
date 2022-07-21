@@ -19,15 +19,10 @@ namespace Microsoft.PowerShell.Archive
                 _ => throw new NotImplementedException()
             };
 
-            if (format == ArchiveFormat.tar)
-            {
-                archiveFileStream.Position = archiveFileStream.Length;
-            }
-
             return format switch
             {
                 ArchiveFormat.zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
-                ArchiveFormat.tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
+                //ArchiveFormat.tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
                 // TODO: Add archive types here
                 // TODO: Add message to exception
                 _ => throw new NotImplementedException()
@@ -41,14 +36,14 @@ namespace Microsoft.PowerShell.Archive
             {
                 archiveFormat = ArchiveFormat.zip;
             }
-            if (path.EndsWith(".tar"))
+            /*if (path.EndsWith(".tar"))
             {
                 archiveFormat = ArchiveFormat.tar;
             }
             if (path.EndsWith(".tar.gz") || path.EndsWith(".tgz"))
             {
                 archiveFormat = ArchiveFormat.tgz;
-            }
+            }*/
             return archiveFormat != null;
         }
     }

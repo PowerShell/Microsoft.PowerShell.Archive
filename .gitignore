@@ -3,6 +3,12 @@
 ##
 ## Get latest from https://github.com/github/gitignore/blob/master/VisualStudio.gitignore
 
+# VSCode 
+.vscode
+
+# Visual Studio Launch Settings
+src/Properties
+
 # User-specific files
 *.rsuser
 *.suo

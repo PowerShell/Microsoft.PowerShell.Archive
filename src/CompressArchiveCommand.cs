@@ -85,34 +85,7 @@ namespace Microsoft.PowerShell.Archive
             // Validate DestinationPath
             ValidateDestinationPath();
 
-            // Check if cmdlet is able to determine the format of the archive based on the extension of DestinationPath
-            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatForPath(path: DestinationPath, archiveFormat: out var archiveFormat);
-            // If the user did not specify which archive format to use, try to determine it automatically
-            if (Format is null)
-            {
-                if (ableToDetermineArchiveFormat)
-                {
-                    Format = archiveFormat;
-                } else
-                {
-                    // If the archive format could not be determined, use zip by default and emit a warning
-                    var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, DestinationPath);
-                    WriteWarning(warningMsg);
-                    Format = ArchiveFormat.zip;
-                }
-                // Write a verbose message saying that Format is not specified and a format was determined automatically
-                string verboseMessage = String.Format(Messages.ArchiveFormatDeterminedVerboseMessage, Format);
-                WriteVerbose(verboseMessage);
-            }
-            // If the user did specify which archive format to use, emit a warning if DestinationPath does not match the chosen archive format
-            else
-            {
-                if (archiveFormat is null || archiveFormat.Value != Format.Value)
-                {
-                    var warningMsg = String.Format(Messages.ArchiveExtensionDoesNotMatchArchiveFormatWarning, DestinationPath);
-                    WriteWarning(warningMsg);
-                }
-            }
+            
 
         }
 
@@ -327,6 +300,39 @@ namespace Microsoft.PowerShell.Archive
                 var errorRecord = new ErrorRecord(unauthorizedAccessException, errorId: ErrorCode.InsufficientPermissionsToAccessPath.ToString(),
                     errorCategory: ErrorCategory.PermissionDenied, targetObject: DestinationPath);
                 ThrowTerminatingError(errorRecord);
+            }
+        }
+
+        private void DetermineArchiveFormat()
+        {
+            // Check if cmdlet is able to determine the format of the archive based on the extension of DestinationPath
+            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatForPath(path: DestinationPath, archiveFormat: out var archiveFormat);
+            // If the user did not specify which archive format to use, try to determine it automatically
+            if (Format is null)
+            {
+                if (ableToDetermineArchiveFormat)
+                {
+                    Format = archiveFormat;
+                }
+                else
+                {
+                    // If the archive format could not be determined, use zip by default and emit a warning
+                    var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, DestinationPath);
+                    WriteWarning(warningMsg);
+                    Format = ArchiveFormat.zip;
+                }
+                // Write a verbose message saying that Format is not specified and a format was determined automatically
+                string verboseMessage = String.Format(Messages.ArchiveFormatDeterminedVerboseMessage, Format);
+                WriteVerbose(verboseMessage);
+            }
+            // If the user did specify which archive format to use, emit a warning if DestinationPath does not match the chosen archive format
+            else
+            {
+                if (archiveFormat is null || archiveFormat.Value != Format.Value)
+                {
+                    var warningMsg = String.Format(Messages.ArchiveExtensionDoesNotMatchArchiveFormatWarning, DestinationPath);
+                    WriteWarning(warningMsg);
+                }
             }
         }
     }

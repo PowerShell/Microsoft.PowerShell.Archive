@@ -7,6 +7,16 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Microsoft.PowerShell.Archive.psd1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="Microsoft.PowerShell.Archive.psd1">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="PowerShellStandard.Library" Version="7.0.0-preview.1" />
   </ItemGroup>
 
