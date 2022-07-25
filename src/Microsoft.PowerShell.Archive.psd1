@@ -12,7 +12,7 @@
 RootModule = ''
 
 # Version number of this module.
-ModuleVersion = '2.0.0'
+ModuleVersion = '2.0.1-preview1'
 
 # Supported PSEditions
 # CompatiblePSEditions = @()
@@ -30,10 +30,10 @@ CompanyName = 'Microsoft'
 Copyright = '(c) Microsoft. All rights reserved.'
 
 # Description of the functionality provided by this module
-Description = 'The module allows creating and expanding archives.'
+Description = 'PowerShell module for creating and expanding archives.'
 
 # Minimum version of the PowerShell engine required by this module
-PowerShellVersion = '7.3.0'
+PowerShellVersion = '7.2.5'
 
 # Name of the PowerShell host required by this module
 # PowerShellHostName = ''
@@ -72,7 +72,7 @@ NestedModules = @('Microsoft.PowerShell.Archive.dll')
 FunctionsToExport = '*'
 
 # Cmdlets to export from this module, for best performance, do not use wildcards and do not delete the entry, use an empty array if there are no cmdlets to export.
-CmdletsToExport = @('Compress-Archive', 'Expand-Archive', 'Expand-Archive2')
+CmdletsToExport = @('Compress-Archive')
 
 # Variables to export from this module
 VariablesToExport = '*'
@@ -110,7 +110,7 @@ PrivateData = @{
         # ReleaseNotes = ''
 
         # Prerelease string of this module
-        # Prerelease = 'This module is a prerelease version.'
+        Prerelease = 'This module is a prerelease version.'
 
         # Flag to indicate whether the module requires explicit user acceptance for install/update/save
         # RequireLicenseAcceptance = $false

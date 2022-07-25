@@ -85,8 +85,7 @@ namespace Microsoft.PowerShell.Archive
             // Validate DestinationPath
             ValidateDestinationPath();
 
-            
-
+            DetermineArchiveFormat();
         }
 
         protected override void ProcessRecord()

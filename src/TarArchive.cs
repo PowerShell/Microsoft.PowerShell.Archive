@@ -26,7 +26,7 @@ namespace Microsoft.PowerShell.Archive
         {
             _mode = mode;
             _path = path;
-            _tarWriter = new TarWriter(archiveStream: fileStream, archiveFormat: TarFormat.Pax, leaveOpen: false);
+            _tarWriter = new TarWriter(archiveStream: fileStream, format: TarEntryFormat.Pax, leaveOpen: false);
             _fileStream = fileStream;
         }
 

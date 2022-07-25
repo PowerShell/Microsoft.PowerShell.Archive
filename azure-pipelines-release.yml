@@ -31,6 +31,13 @@ stages:
       - group: ESRP
     steps:
 
+    - task: UseDotNet@2
+      displayName: 'Get .NET 7.0 SDK'
+      inputs:
+        packageType: sdk
+        version: 7.0
+        includePreviewVersions: true
+
     - pwsh: |
         & $(Build.SourcesDirectory)\SimpleBuild.ps1
       displayName: Build Microsoft.PowerShell.Archive module
