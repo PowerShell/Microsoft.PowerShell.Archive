@@ -7,10 +7,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <None Remove="Microsoft.PowerShell.Archive.psd1" />
-  </ItemGroup>
-
-  <ItemGroup>
     <Content Include="Microsoft.PowerShell.Archive.psd1">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </Content>
