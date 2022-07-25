@@ -379,10 +379,26 @@ namespace Microsoft.PowerShell.Archive
             relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
             return !relativePath.Contains("..");
         }
-        internal static bool ArePathsSame(string path1, string path2)
+        internal static bool ArePathsSame(System.IO.FileSystemInfo fileSystemInfo1, System.IO.FileSystemInfo fileSystemInfo2)
         {
-            string fullPath1 = System.IO.Path.GetFullPath(path1);
-            string fullPath2 = System.IO.Path.GetFullPath(path2);
+            // If one is a file and the other is a directory, return false
+            if ((fileSystemInfo1.Attributes.HasFlag(FileAttributes.Directory) && !fileSystemInfo2.Attributes.HasFlag(FileAttributes.Directory)) ||
+                (!fileSystemInfo1.Attributes.HasFlag(FileAttributes.Directory) && fileSystemInfo2.Attributes.HasFlag(FileAttributes.Directory)))
+            {
+                return false;
+            }
+
+            string fullPath1 = fileSystemInfo1.FullName;
+            string fullPath2 = fileSystemInfo2.FullName;
+
+            // If both are directories, compare their paths
+            if (fileSystemInfo1.Attributes.HasFlag(FileAttributes.Directory) && fileSystemInfo2.Attributes.HasFlag(FileAttributes.Directory))
+            {
+                if (!System.IO.Path.EndsInDirectorySeparator(fullPath1)) fullPath1 += System.IO.Path.DirectorySeparatorChar;
+                if (!System.IO.Path.EndsInDirectorySeparator(fullPath2)) fullPath2 += System.IO.Path.DirectorySeparatorChar;
+            }
+
+            
             return fullPath1 == fullPath2;
         }
 

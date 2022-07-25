@@ -119,7 +119,7 @@ namespace Microsoft.PowerShell.Archive
 
             // Throw a terminating error if there is a source path as same as DestinationPath.
             // We don't want to overwrite the file or directory that we want to add to the archive.
-            var additionsWithSamePathAsDestination = archiveAddtions.Where(addition => addition.FileSystemInfo == _destinationPathInfo).ToList();
+            var additionsWithSamePathAsDestination = archiveAddtions.Where(addition => PathHelper.ArePathsSame(addition.FileSystemInfo, _destinationPathInfo)).ToList();
             if (additionsWithSamePathAsDestination.Count() > 0)
             {
                 // Since duplicate checking is performed earlier, there must a single ArchiveAddition such that ArchiveAddition.FullPath == DestinationPath
