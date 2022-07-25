@@ -3,7 +3,7 @@ RFC:
 Author: Abdullah Yousuf
 Status: Draft
 SupercededBy: 
-Version: 1.1
+Version: 1.2
 Area: Archive
 Comments Due: 8/6/2022
 Plan to implement: Yes
@@ -15,24 +15,30 @@ This RFC proposes new features and changes for the existing Microsoft.PowerShell
 The goal for the Archive module is to build a high-performing and maintainable module that offers high utility and works cross-platform (especially with regard to file paths).
 
 Currently, the archive module has a number of limitations.
-First, the module supports the zip32 format only.
-There is an opportunity to support additional formats by taking advantage of new .NET APIs.
+The module supports the zip32 format only.
+.NET 7 is planned to support the tar archive format, so there is an opportunity to support an additional archive format by taking advantage of these new APIs.
+Meanwhile, this opportunity can be leveraged not only to add tar support, but to rewrite the entire module in C# and address existing usability issues.
 
-Second, the module has limited performance compared to other archive software.
-Writing the next version of the module in C# instead of PowerShell Script is expected to improve the overall performance of the module.
-The module has limited cross-platform support because archive entries are written in an OS-specifc way due to different characters being used as path seperators in different OSs.
+The module has limited performance compared to other archive software.
+Although performance is dictated by the .NET APIs, a rewrite of the module in C# can reduce the overhead from script modules and address performance issues to an extent.
+
+The module has limited cross-platform support because archive entries are written in an OS-specifc way due to different characters being used as directory seperators in different OSs.
 This makes it difficult for Unix-based OS users to use archives compressed on a Windows computer or vice versa.
+The rewrite of the module can solve this problem by normalizing all paths to use Unix directory seperators (the '/' character) across all platforms.
 
-There are also a number of usability issues reported by users.
-For example, there are issues with wildcard characters in paths.
-Error reporting in some circumstances can be improved and more descriptive.
+There are a number of issues in regard to using wildcard characters in paths.
+For example, in some cases, wildcard characters are not interpreted literally, which makes it difficult to use paths containing wildcard characters to specify the location of the archive.
+
+In some circumstances, error reporting can be improved and more descriptive.
 Compatibility with other archive software can also be improved as there are cases where an archive program may not recognize an archive produced by this module as valid.
+Interactions with other parts of PowerShell, such as the job system, advanced functions, and common parameters can be further improved, so that users can have a seamless experience when using the module.
 
-Interactions with other parts of PowerShell, such as the job system, advanced functions, and common parameters can be further improved.
-
+Additionally, .NET has supported creating large archives and compressing large files, but the archive module has lacked support for this.
+It makes sense to support archive formats that are supported by .NET, such as zip64 and tar, and to provide options that .NET also provides.
 The next version of the archive module, Microsoft.PowerShell.Archive v2.0.0, plans on resolving these limitations and usability issues.
 
 As for non-goals, this RFC does not intend to support an exhaustive number of archive formats.
+It does not intend to go beyond the options provided by .NET for archive format parameters.
 This RFC also does not intend to support an exhaustive number of options for the user to finely control operation.
 For example, some cmdlets offer parameters to precisely choose which files and folders to use, such as parameters for file attributes, hidden files, symbolic links, etc.
 This RFC does not intend to support a cmdlet for listing the contents of an archive (e.g. Get-Archive).
@@ -74,7 +80,7 @@ Relative path structure refers to the hierarchial structure of a path relative t
 
     As a PowerShell user,
     I can expand archives quickly and compress files and folders quickly,
-    so that I can reduce the cost of operating my server.
+    so that I can save my time.
 
 ## User Experience
 
