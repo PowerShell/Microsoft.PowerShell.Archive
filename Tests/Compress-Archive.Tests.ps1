@@ -70,6 +70,29 @@
                 if ($null -ne $archiveFileStream) { $archiveFileStream.Dispose() }
             }
         }
+
+        # This function gets a list of a directories descendants formatted as archive entries
+        function Get-Descendants {
+            param (
+                [string] $Path
+            )
+            
+
+            # Get the folder name
+            $folderName =  Split-Path -Path $Path -Leaf
+
+            # Get descendents
+            $descendants = Get-ChildItem -Path $Path -Recurse -Name
+
+            $output = @()
+            
+            # Prefix each descendant name with folder name
+            foreach ($name in $descendants) {
+                $output += ($folderName + '/' + $name).Replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
+            }
+
+            return $output
+        }
     }
     
     AfterAll {
@@ -197,7 +220,7 @@
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "DuplicatePathFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "DuplicatePaths,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
@@ -214,7 +237,7 @@
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "DuplicatePathFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "DuplicatePaths,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
@@ -235,11 +258,13 @@
             }
         }
 
-        It "Throws an error when Path and DestinationPath are the same" {
-            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+        # This cannot happen in -WriteMode Create because another error will be throw before
+        It "Throws an error when Path and DestinationPath are the same" -Skip {
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
             $destinationPath = $sourcePath
 
             try {
+                # Note the cmdlet performs validation on $destinationPath
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
                 throw "Failed to detect an error when Path and DestinationPath are the same"
             } catch {
@@ -248,31 +273,31 @@
         }
 
         It "Throws an error when Path and DestinationPath are the same and -Update is specified" {
-            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
             $destinationPath = $sourcePath
 
             try {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Update
                 throw "Failed to detect an error when Path and DestinationPath are the same and -Update is specified"
             } catch {
                 $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
-        It "Throws an error when Path and DestinationPath are the same and -Overwrite is specified" {
+        It "Throws an error when Path and DestinationPath are the same and -Overwrite is specified" -Tag td {
             $sourcePath = "$TestDrive$($DS)EmptyDirectory"
             $destinationPath = $sourcePath
 
             try {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Overwrite
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite
                 throw "Failed to detect an error when Path and DestinationPath are the same and -Overwrite is specified"
             } catch {
                 $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
-        It "Throws an error when LiteralPath and DestinationPath are the same" {
-            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+        It "Throws an error when LiteralPath and DestinationPath are the same" -Skip {
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
             $destinationPath = $sourcePath
 
             try {
@@ -284,14 +309,14 @@
         }
 
         It "Throws an error when LiteralPath and DestinationPath are the same and -Update is specified" {
-            $sourcePath = "$TestDrive$($DS)EmptyDirectory"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
             $destinationPath = $sourcePath
 
             try {
-                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath -Update
+                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath -WriteMode Update
                 throw "Failed to detect an error when LiteralPath and DestinationPath are the same and -Update is specified"
             } catch {
-                $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "SameLiteralPathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
@@ -300,10 +325,10 @@
             $destinationPath = $sourcePath
 
             try {
-                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath -Overwrite
+                Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite
                 throw "Failed to detect an error when LiteralPath and DestinationPath are the same and -Overwrite is specified"
             } catch {
-                $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "SameLiteralPathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
@@ -347,6 +372,8 @@
             $destinationPath = "$TestDrive$($DS)archive3.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should -Exist
+            $contents = Get-Descendants -Path $sourcePath
+            $contents += "SourceDir/"
             Test-ZipArchive $destinationPath @("SourceDir/", "Sample-2.txt")
         }
     }
@@ -532,7 +559,7 @@
         }
     }
 
-    Contect "Special and Wildcard Characters Tests" {
+    Context "Special and Wildcard Characters Tests" {
         BeforeAll {
             New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
     

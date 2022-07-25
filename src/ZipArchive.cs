@@ -54,7 +54,7 @@ namespace Microsoft.PowerShell.Archive
             }
 
             // If the addition is a folder, only create the entry in the archive -- nothing else is needed
-            if (addition.Type == ArchiveAddition.ArchiveAdditionType.Directory)
+            if (addition.FileSystemInfo.Attributes.HasFlag(System.IO.FileAttributes.Directory))
             {
                 // If the archive does not have an entry with the same name, then add an entry for the directory
                 if (entryInArchive == null)
@@ -75,7 +75,7 @@ namespace Microsoft.PowerShell.Archive
                     entryInArchive.Delete();
                 }
                 // TODO: Add exception handling
-                _zipArchive.CreateEntryFromFile(sourceFileName: addition.FullPath, entryName: entryName, compressionLevel: _compressionLevel);
+                _zipArchive.CreateEntryFromFile(sourceFileName: addition.FileSystemInfo.FullName, entryName: entryName, compressionLevel: _compressionLevel);
             }
         }
 

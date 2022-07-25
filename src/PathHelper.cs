@@ -206,7 +206,7 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="shouldPreservePathStructure">If true, relative path structure will be preserved. If false, relative path structure will NOT be preserved.</param>
         private void AddAdditionForFullyQualifiedPath(string path, List<ArchiveAddition> additions, bool shouldPreservePathStructure)
         {
-            var additionType = ArchiveAddition.ArchiveAdditionType.File;
+            System.IO.FileSystemInfo fileSystemInfo = new System.IO.FileInfo(path);
             if (System.IO.Directory.Exists(path))
             {
                 // Add directory seperator to end if it does not already have it
@@ -214,7 +214,7 @@ namespace Microsoft.PowerShell.Archive
                 // Recurse through the child items and add them to additions
                 var directoryInfo = new System.IO.DirectoryInfo(path);
                 AddDescendentEntries(directoryInfo: directoryInfo, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
-                additionType = ArchiveAddition.ArchiveAdditionType.Directory;
+                fileSystemInfo = directoryInfo;
             }
             else if (!System.IO.File.Exists(path))
             {
@@ -224,7 +224,8 @@ namespace Microsoft.PowerShell.Archive
             }
 
             // Add an entry for the item
-            additions.Add(new ArchiveAddition(entryName: GetEntryName(path: path, shouldPreservePathStructure: shouldPreservePathStructure), fullPath: path, type: additionType));
+            var entryName = GetEntryName(fileSystemInfo: fileSystemInfo, shouldPreservePathStructure: shouldPreservePathStructure);
+            additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: fileSystemInfo));
         }
 
         /// <summary>
@@ -241,16 +242,16 @@ namespace Microsoft.PowerShell.Archive
                 var pathPrefix = GetPrefixForPath(directoryInfo: directoryInfo);
                 foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
                 {
-                    // childPath can either be a file or directory, and nothing else
-                    ArchiveAddition.ArchiveAdditionType type = ArchiveAddition.ArchiveAdditionType.File;
+                    /* childPath can either be a file or directory, and nothing else
+                    //ArchiveAddition.ArchiveAdditionType type = ArchiveAddition.ArchiveAdditionType.File;
                     if (childPath is System.IO.DirectoryInfo)
                     {
                         type = ArchiveAddition.ArchiveAdditionType.Directory;
-                    }
+                    }*/
                     
                     // Add an entry for each child path
                     var entryName = GetEntryName(path: childPath.FullName, prefix: pathPrefix);
-                    additions.Add(new ArchiveAddition(entryName: entryName, fullPath: childPath.FullName, type: type));
+                    additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childPath));
                 }
             } 
             // Write a non-terminating error if a securityException occurs
@@ -268,36 +269,20 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="path">A fully qualified path</param>
         /// <param name="shouldPreservePathStructure"></param>
         /// <returns></returns>
-        private string GetEntryName(string path, bool shouldPreservePathStructure)
+        private string GetEntryName(System.IO.FileSystemInfo fileSystemInfo, bool shouldPreservePathStructure)
         {
             // If the path is relative to the current working directory, return the relative path as name
-            if (shouldPreservePathStructure && TryGetPathRelativeToCurrentWorkingDirectory(path, out var relativePath))
+            if (shouldPreservePathStructure && TryGetPathRelativeToCurrentWorkingDirectory(path: fileSystemInfo.FullName, out var relativePath))
             {
                 return relativePath;
             }
             // Otherwise, return the name of the directory or file
-            if (path.EndsWith(System.IO.Path.DirectorySeparatorChar))
+            var entryName = fileSystemInfo.Name;
+            if (fileSystemInfo.Attributes.HasFlag(FileAttributes.Directory) && !entryName.EndsWith(System.IO.Path.DirectorySeparatorChar))
             {
-                // Get substring from second-last directory seperator char till end
-                if (path.Length - 2 < 0)
-                {
-                    return path;
-                }
-
-                int secondLastIndex = path.LastIndexOf(value: System.IO.Path.DirectorySeparatorChar, startIndex: path.Length - 2);
-                if (secondLastIndex == -1)
-                {
-                    return path;
-                }
-                else
-                {
-                    return path.Substring(secondLastIndex + 1);
-                }
+                entryName += System.IO.Path.DirectorySeparatorChar;
             }
-            else
-            {
-                return System.IO.Path.GetFileName(path);
-            }
+            return entryName;
         }
 
         private string GetEntryName(string path, string prefix)
@@ -343,7 +328,7 @@ namespace Microsoft.PowerShell.Archive
         /// <returns></returns>
         private IEnumerable<string> GetDuplicatePaths(List<ArchiveAddition> additions)
         {
-            return additions.GroupBy(x => x.FullPath)
+            return additions.GroupBy(x => x.FileSystemInfo.FullName)
                     .Where(group => group.Count() > 1)
                     .Select(x => x.Key);
         }
@@ -354,7 +339,7 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="path"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        internal string ResolveToSingleFullyQualifiedPath(string path)
+        internal System.IO.FileSystemInfo ResolveToSingleFullyQualifiedPath(string path)
         {
             // Currently, all this function does is return the literal fully qualified path of a path
 
@@ -368,7 +353,9 @@ namespace Microsoft.PowerShell.Archive
                 _cmdlet.ThrowTerminatingError(errorRecord);
             }
 
-            return fullyQualifiedPath;
+            // Return filesystem info
+
+            return GetFilesystemInfoForPath(fullyQualifiedPath);
         }
 
         /// <summary>
@@ -391,6 +378,26 @@ namespace Microsoft.PowerShell.Archive
         {
             relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
             return !relativePath.Contains("..");
+        }
+        internal static bool ArePathsSame(string path1, string path2)
+        {
+            string fullPath1 = System.IO.Path.GetFullPath(path1);
+            string fullPath2 = System.IO.Path.GetFullPath(path2);
+            return fullPath1 == fullPath2;
+        }
+
+        internal static System.IO.FileSystemInfo GetFilesystemInfoForPath(string path)
+        {
+            // Check if path exists
+            if (System.IO.File.Exists(path))
+            {
+                return new System.IO.FileInfo(path);
+            }
+            if (System.IO.Directory.Exists(path))
+            {
+                return new System.IO.DirectoryInfo(path);
+            }
+            return path.EndsWith(System.IO.Path.DirectorySeparatorChar) ? new System.IO.DirectoryInfo(path) : new System.IO.FileInfo(path);
         }
     }
 }

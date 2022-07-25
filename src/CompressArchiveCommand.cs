@@ -68,6 +68,8 @@ namespace Microsoft.PowerShell.Archive
 
         private PathHelper _pathHelper;
 
+        private System.IO.FileSystemInfo? _destinationPathInfo;
+
         private bool _didCreateNewArchive;
 
         public CompressArchiveCommand()
@@ -76,17 +78,18 @@ namespace Microsoft.PowerShell.Archive
             _pathHelper = new PathHelper(this);
             Messages.Culture = new System.Globalization.CultureInfo("en-US");
             _didCreateNewArchive = false;
+            _destinationPathInfo = null;
         }
 
         protected override void BeginProcessing()
         {
-            DestinationPath = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
+            _destinationPathInfo = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
 
-            // Validate DestinationPath
+            // Validate
             ValidateDestinationPath();
 
-            
-
+            // Determine archive format based on DestinationPath
+            DetermineArchiveFormat();
         }
 
         protected override void ProcessRecord()
@@ -116,12 +119,12 @@ namespace Microsoft.PowerShell.Archive
 
             // Throw a terminating error if there is a source path as same as DestinationPath.
             // We don't want to overwrite the file or directory that we want to add to the archive.
-            var additionsWithSamePathAsDestination = archiveAddtions.Where(addition => addition.FullPath == DestinationPath).ToList();
+            var additionsWithSamePathAsDestination = archiveAddtions.Where(addition => addition.FileSystemInfo == _destinationPathInfo).ToList();
             if (additionsWithSamePathAsDestination.Count() > 0)
             {
                 // Since duplicate checking is performed earlier, there must a single ArchiveAddition such that ArchiveAddition.FullPath == DestinationPath
                 var errorCode = ParameterSetName.StartsWith("Path") ? ErrorCode.SamePathAndDestinationPath : ErrorCode.SameLiteralPathAndDestinationPath;
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode, errorItem: additionsWithSamePathAsDestination[0].FullPath);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode, errorItem: additionsWithSamePathAsDestination[0].FileSystemInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
 
@@ -142,7 +145,7 @@ namespace Microsoft.PowerShell.Archive
             IArchive? archive = null;
             try
             {
-                if (ShouldProcess(target: DestinationPath, action: "Create"))
+                if (ShouldProcess(target: _destinationPathInfo.FullName, action: "Create"))
                 {
                     // If the WriteMode is overwrite, delete the existing archive
                     if (WriteMode == WriteMode.Overwrite)
@@ -162,7 +165,7 @@ namespace Microsoft.PowerShell.Archive
                 WriteProgress(progressRecord);
                 foreach (ArchiveAddition entry in archiveAddtions)
                 {
-                    if (ShouldProcess(target: entry.FullPath, action: "Add"))
+                    if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: "Add"))
                     {
                         archive?.AddFilesytemEntry(entry);
                         // Keep track of number of items added to the archive and use that to update progress
@@ -172,7 +175,7 @@ namespace Microsoft.PowerShell.Archive
                         WriteProgress(progressRecord);
 
                         // Write a verbose message saying this item was added to the archive
-                        var addedItemMessage = String.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FullPath);
+                        var addedItemMessage = String.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);
                         WriteVerbose(addedItemMessage);
                     } else
                     {
@@ -195,7 +198,7 @@ namespace Microsoft.PowerShell.Archive
             // If -PassThru is specified, write a System.IO.FileInfo object
             if (PassThru)
             {
-                var archiveInfo = new System.IO.FileInfo(DestinationPath);
+                var archiveInfo = new System.IO.FileInfo(_destinationPathInfo.FullName);
                 WriteObject(archiveInfo);
             }
         }
@@ -205,9 +208,9 @@ namespace Microsoft.PowerShell.Archive
             // If a new output archive was created, delete it (this does not delete an archive if -WriteMode Update is specified)
             if (_didCreateNewArchive)
             {
-                if (System.IO.File.Exists(DestinationPath))
+                if (System.IO.File.Exists(_destinationPathInfo.FullName))
                 {
-                    System.IO.File.Delete(DestinationPath);
+                    System.IO.File.Delete(_destinationPathInfo.FullName);
                 }
             }
         }
@@ -220,25 +223,17 @@ namespace Microsoft.PowerShell.Archive
             // TODO: Add tests cases for conditions below
             ErrorCode? errorCode = null;
 
-            var archiveAsFile = new System.IO.FileInfo(DestinationPath);
-            var archiveAsDirectory = new System.IO.DirectoryInfo(DestinationPath);
-
-            // Check if DestinationPath is an existing file
-            if (archiveAsFile.Exists)
+            // In this case, DestinationPath does not exist
+            if (!_destinationPathInfo.Exists)
             {
-                // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
-                if (WriteMode == WriteMode.Create)
+                // Throw an error if DestinationPath does not exist and cmdlet is in Update mode
+                if (WriteMode == WriteMode.Update)
                 {
-                    errorCode = ErrorCode.ArchiveExists;
+                    errorCode = ErrorCode.ArchiveDoesNotExist;
                 }
-                // Throw an error if the cmdlet is in Update mode but the archive is read only
-                if (WriteMode == WriteMode.Update && archiveAsFile.Attributes.HasFlag(FileAttributes.ReadOnly))
-                {
-                    errorCode = ErrorCode.ArchiveReadOnly;
-                }
-            } 
+            }
             // Check if DestinationPath is an existing directory
-            else if (archiveAsDirectory.Exists)
+            else if (_destinationPathInfo.Attributes.HasFlag(FileAttributes.Directory))
             {
                 // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
                 if (WriteMode == WriteMode.Create)
@@ -246,23 +241,28 @@ namespace Microsoft.PowerShell.Archive
                     errorCode = ErrorCode.ArchiveExistsAsDirectory;
                 }
                 // Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
-                if (WriteMode == WriteMode.Update)
+                else if (WriteMode == WriteMode.Update)
                 {
                     errorCode = ErrorCode.ArchiveExistsAsDirectory;
                 }
                 // Throw an error if the DestinationPath is a directory with at least item and the cmdlet is in Overwrite mode
-                if (WriteMode == WriteMode.Overwrite && archiveAsDirectory.GetFileSystemInfos().Length > 0)
+                else if (WriteMode == WriteMode.Overwrite && (_destinationPathInfo as System.IO.DirectoryInfo).GetFileSystemInfos().Length > 0)
                 {
                     errorCode = ErrorCode.ArchiveIsNonEmptyDirectory;
                 }
-            } 
-            // In this case, DestinationPath does not exist
+            }
+            // If DestinationPath is an existing file
             else
             {
-                // Throw an error if DestinationPath does not exist and cmdlet is in Update mode
-                if (WriteMode == WriteMode.Update)
+                // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
+                if (WriteMode == WriteMode.Create)
                 {
-                    errorCode = ErrorCode.ArchiveDoesNotExist;
+                    errorCode = ErrorCode.ArchiveExists;
+                }
+                // Throw an error if the cmdlet is in Update mode but the archive is read only
+                else if (WriteMode == WriteMode.Update && _destinationPathInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
+                {
+                    errorCode = ErrorCode.ArchiveReadOnly;
                 }
             }
 
@@ -282,6 +282,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     System.IO.File.Delete(DestinationPath);
                 }
+                // TODO: Ensure DestinationPath has no children when deleting it
                 if (System.IO.Directory.Exists(DestinationPath))
                 {
                     System.IO.Directory.Delete(DestinationPath);
@@ -306,7 +307,7 @@ namespace Microsoft.PowerShell.Archive
         private void DetermineArchiveFormat()
         {
             // Check if cmdlet is able to determine the format of the archive based on the extension of DestinationPath
-            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatForPath(path: DestinationPath, archiveFormat: out var archiveFormat);
+            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatForPath(path: _destinationPathInfo.FullName, archiveFormat: out var archiveFormat);
             // If the user did not specify which archive format to use, try to determine it automatically
             if (Format is null)
             {

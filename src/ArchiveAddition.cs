@@ -19,18 +19,19 @@ namespace Microsoft.PowerShell.Archive
         /// <summary>
         /// The fully qualified path of the file or directory to add to or update in the archive.
         /// </summary>
-        public string FullPath { get; set; }
+        //public string FullPath { get; set; }
+
+        public System.IO.FileSystemInfo FileSystemInfo { get; set; }
 
         /// <summary>
         /// The type of filesystem entry to add.
         /// </summary>
-        public ArchiveAdditionType Type { get; set; }
+        //public ArchiveAdditionType Type { get; set; }
 
-        public ArchiveAddition(string entryName, string fullPath, ArchiveAdditionType type)
+        public ArchiveAddition(string entryName, System.IO.FileSystemInfo fileSystemInfo)
         {
             EntryName = entryName;
-            FullPath = fullPath;
-            Type = type;
+            FileSystemInfo = fileSystemInfo;
         }
 
         /// <summary>
