@@ -22,7 +22,7 @@ namespace Microsoft.PowerShell.Archive
             return format switch
             {
                 ArchiveFormat.zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
-                ArchiveFormat.tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
+                //ArchiveFormat.tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
                 // TODO: Add archive types here
                 // TODO: Add message to exception
                 _ => throw new NotImplementedException()
@@ -36,11 +36,12 @@ namespace Microsoft.PowerShell.Archive
             {
                 archiveFormat = ArchiveFormat.zip;
             }
+            /* Disable support for tar and tar.gz for preview1 release 
             if (path.EndsWith(".tar"))
             {
                 archiveFormat = ArchiveFormat.tar;
             }
-            /*if (path.EndsWith(".tar.gz") || path.EndsWith(".tgz"))
+            if (path.EndsWith(".tar.gz") || path.EndsWith(".tgz"))
             {
                 archiveFormat = ArchiveFormat.tgz;
             }*/
