@@ -4,6 +4,10 @@ if ($null -ne $module)
 {
     Remove-Module $module
 }
+$env:Pipeline | Write-Output
+$($env:Pipeline).Workspace | Write-Output
+$env:Pipeline.Workspace | Write-Output
+
 Get-ChildItem $($env:Pipeline).Workspace | Format-Table "Name","FullName"
 Import-Module $($env:Pipeline).Workspace/ModuleBuild/Microsoft.PowerShell.Archive.psd1
 

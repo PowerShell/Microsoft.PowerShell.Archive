@@ -394,7 +394,7 @@
             New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
 
             # Create a read-only archive
-            $readOnlyArchivePath = $TestDrive$($DS)readonly.zip
+            $readOnlyArchivePath = "$TestDrive$($DS)readonly.zip"
             Compress-Archive -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt -DestinationPath $readOnlyArchivePath
             Set-ItemProperty -Path $readOnlyArchivePath -Name IsReadOnly -Value $true
         }
