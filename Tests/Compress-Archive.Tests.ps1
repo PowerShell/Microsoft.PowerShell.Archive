@@ -339,14 +339,6 @@
     
             $content = "Some Data"
             $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
-
-            New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
-
-            # Create $TestDrive$($DS)archive.zip
-            Compress-Archive -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt -DestinationPath "$TestDrive$($DS)archive.zip"
-
-            # Create Sample-2.txt
-            $content | Out-File -FilePath $TestDrive$($DS)Sample-2.txt
         }
 
         It "Throws a terminating error when an incorrect value is supplied to -WriteMode" {
@@ -365,9 +357,8 @@
             $destinationPath = "$TestDrive$($DS)archive1.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             Test-Path $destinationPath
+            Test-ZipArchive $destinationPath @('SourceDir/', 'SourceDir/Sample-1.txt')
         }
-
-
     }
 
     Context "Basic functional tests" {

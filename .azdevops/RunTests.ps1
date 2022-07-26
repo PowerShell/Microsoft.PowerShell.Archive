@@ -4,19 +4,12 @@ if ($null -ne $module)
 {
     Remove-Module $module
 }
-$env:Pipeline | Write-Output
-$($env:Pipeline).Workspace | Write-Output
-$env:Pipeline.Workspace | Write-Output
 
-Get-ChildItem Env: | Format-Table
-
-Get-ChildItem $($env:Pipeline).Workspace | Format-Table "Name","FullName"
-$j = $env:PIPELINE_WORKSPACE
-Resolve-Path "$j/ModuleBuild/Microsoft.PowerShell.Archive.psd1" | Write-Output
-Import-Module "$j/ModuleBuild/Microsoft.PowerShell.Archive.psd1"
+# Import the built module
+Import-Module "$env:PIPELINE_WORKSPACE/ModuleBuild/Microsoft.PowerShell.Archive.psd1"
 
 $module = Get-Module -Name "Microsoft.PowerShell.Archive"
-$module.Path | Write-Output
+$module.Path | Write-Verbose
 
 # Load Pester
 Install-Module -Name "Pester" -Force
