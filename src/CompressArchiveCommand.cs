@@ -84,7 +84,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void BeginProcessing()
         {
             _destinationPathInfo = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
-            //DestinationPath = _destinationPathInfo.FullName;
+            DestinationPath = _destinationPathInfo.FullName;
 
             // Validate
             ValidateDestinationPath();
