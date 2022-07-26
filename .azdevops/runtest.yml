@@ -51,12 +51,19 @@ jobs:
           } else {
             Expand-Archive -Path $destination -DestinationPath $powershellPreview
           }
+          # Print contents of $powershellPreview
+          Get-ChildItem $powershellPreview | Write-Output
+          $powershellPreview = Join-Path $powershellPreview "pwsh"
+          if ($vmImageName -eq 'windows-latest')
+          {
+            $powerShellPreview += ".exe"
+          }
           # Write the location of PowerShell Preview
-          Write-Host "##vso[task.setvariable variable=PowerShellPreviewDirectory;]$powershellPreview"
+          Write-Host "##vso[task.setvariable variable=PowerShellPreviewExecutablePath;]$powershellPreview"
         displayName: Download and Install PowerShell Preview
 
       - pwsh: |
-          .$(PowerShellPreviewDirectory)/pwsh .azdevops/RunTests.ps1        
+          .$(PPowerShellPreviewExecutablePath) .azdevops/RunTests.ps1        
         displayName: Run Tests
         
       - task: PublishTestResults@2
