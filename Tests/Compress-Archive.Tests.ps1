@@ -518,7 +518,7 @@
             {
                 Push-Location $TestDrive
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-        	    Test-Path $destinationPath | Should Be $true
+        	    Test-Path $destinationPath | Should -Be $true
             }
             finally
             {
@@ -534,7 +534,7 @@
             {
                 Push-Location $TestDrive
                 Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
-        	    Test-Path $destinationPath | Should Be $true
+        	    Test-Path $destinationPath | Should -Be $true
             }
             finally
             {
@@ -550,7 +550,7 @@
             {
                 Push-Location $TestDrive
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-        	    Test-Path $destinationPath | Should Be $true
+        	    Test-Path $destinationPath | Should -Be $true
             }
             finally
             {

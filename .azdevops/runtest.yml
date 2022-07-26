@@ -21,6 +21,7 @@ jobs:
         artifact: ModuleBuild
 
       - pwsh: |
+          Write-Output $env:vmImageName
           $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/PowerShell-7.3.0-preview.6-win-x64.zip"
           $isTar = $false
           if ($env:vmImageName -like 'macos-*')
