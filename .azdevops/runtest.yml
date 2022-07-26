@@ -66,7 +66,7 @@ jobs:
         displayName: Download and Install PowerShell Preview
 
       - pwsh: |
-        "$(PowerShellPreviewExecutablePath) .azdevops/RunTests.ps1" | Invoke-Expression
+          "$(PowerShellPreviewExecutablePath) .azdevops/RunTests.ps1" | Invoke-Expression
         displayName: Run Tests
         
       - task: PublishTestResults@2
