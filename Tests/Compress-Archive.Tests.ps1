@@ -284,7 +284,7 @@
             }
         }
 
-        It "Throws an error when Path and DestinationPath are the same and -Overwrite is specified" -Tag td {
+        It "Throws an error when Path and DestinationPath are the same and -Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)EmptyDirectory"
             $destinationPath = $sourcePath
 

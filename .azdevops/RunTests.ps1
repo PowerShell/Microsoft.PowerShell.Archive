@@ -4,6 +4,7 @@ if ($null -ne $module)
 {
     Remove-Module $module
 }
+Get-ChildItem $(env:Pipeline.Workspace) | Format-Table "Name","FullName"
 Import-Module $(env:Pipeline.Workspace)/ModuleBuild/Microsoft.PowerShell.Archive.psd1
 
 $module = Get-Module -Name "Microsoft.PowerShell.Archive"
