@@ -359,6 +359,15 @@
                 $_.FullyQualifiedErrorId | Should -Be "CannotConvertArgumentNoMessage,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
+
+        It "-WriteMode Create works" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive1.zip"
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Test-Path $destinationPath
+        }
+
+
     }
 
     Context "Basic functional tests" {

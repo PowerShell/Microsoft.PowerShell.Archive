@@ -11,7 +11,7 @@ $env:Pipeline.Workspace | Write-Output
 Get-ChildItem Env: | Format-Table
 
 Get-ChildItem $($env:Pipeline).Workspace | Format-Table "Name","FullName"
-$j = $($env:Pipeline).Workspace
+$j = $env:PIPELINE_WORKSPACE
 Resolve-Path "$j/ModuleBuild/Microsoft.PowerShell.Archive.psd1" | Write-Output
 Import-Module "$j/ModuleBuild/Microsoft.PowerShell.Archive.psd1"
 
