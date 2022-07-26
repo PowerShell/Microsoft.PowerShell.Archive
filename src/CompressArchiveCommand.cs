@@ -155,7 +155,7 @@ namespace Microsoft.PowerShell.Archive
                     }
 
                     // Create an archive -- this is where we will switch between different types of archives
-                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: _destinationPathInfo.FullName, archiveMode: archiveMode, compressionLevel: CompressionLevel);
+                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
                     _didCreateNewArchive = archiveMode == ArchiveMode.Update;
                 }
 

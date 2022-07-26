@@ -27,11 +27,13 @@ jobs:
           {
             $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-osx-x64.tar.gz"
             $isTar = $true
+            Write-Output "Choose macOS"
           }
           if ($env:vmImageName -like 'ubuntu-*')
           {
             $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-linux-x64.tar.gz"
             $isTar = $true
+            Write-Output "Choose Ubuntu"
           }
           $destination = "powershell-preview-archive"
           if ($isTar) {

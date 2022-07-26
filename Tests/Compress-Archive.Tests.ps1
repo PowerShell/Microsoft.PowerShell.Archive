@@ -500,7 +500,7 @@
         }
     }
 
-    Context "Relative Path tests" -Skip {
+    Context "Relative Path tests" {
         BeforeAll {
             New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
             New-Item $TestDrive$($DS)SourceDir$($DS)ChildDir-1 -Type Directory | Out-Null
