@@ -331,8 +331,34 @@
                 $_.FullyQualifiedErrorId | Should -Be "SameLiteralPathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
+    }
 
+    Context "WriteMode tests" {
+        BeforeAll {
+            New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
+    
+            $content = "Some Data"
+            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
 
+            New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
+
+            # Create $TestDrive$($DS)archive.zip
+            Compress-Archive -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt -DestinationPath "$TestDrive$($DS)archive.zip"
+
+            # Create Sample-2.txt
+            $content | Out-File -FilePath $TestDrive$($DS)Sample-2.txt
+        }
+
+        It "Throws a terminating error when an incorrect value is supplied to -WriteMode" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive1.zip"
+
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode mode
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "CannotConvertArgumentNoMessage,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
     }
 
     Context "Basic functional tests" {

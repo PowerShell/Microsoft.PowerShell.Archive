@@ -8,6 +8,8 @@ $env:Pipeline | Write-Output
 $($env:Pipeline).Workspace | Write-Output
 $env:Pipeline.Workspace | Write-Output
 
+Get-ChildItem Env: | Format-Table
+
 Get-ChildItem $($env:Pipeline).Workspace | Format-Table "Name","FullName"
 $j = $($env:Pipeline).Workspace
 Resolve-Path "$j/ModuleBuild/Microsoft.PowerShell.Archive.psd1" | Write-Output
