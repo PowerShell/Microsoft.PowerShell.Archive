@@ -10,7 +10,8 @@ $env:Pipeline.Workspace | Write-Output
 
 Get-ChildItem $($env:Pipeline).Workspace | Format-Table "Name","FullName"
 $j = $($env:Pipeline).Workspace
-Import-Module $j/ModuleBuild/Microsoft.PowerShell.Archive.psd1
+Resolve-Path "$j/ModuleBuild/Microsoft.PowerShell.Archive.psd1" | Write-Output
+Import-Module "$j/ModuleBuild/Microsoft.PowerShell.Archive.psd1"
 
 $module = Get-Module -Name "Microsoft.PowerShell.Archive"
 $module.Path | Write-Output
