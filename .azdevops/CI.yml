@@ -27,51 +27,52 @@ stages:
     displayName: Build module
     steps:
 
+    - task: UseDotNet@2
+      displayName: 'Get .NET 7.0 SDK'
+      inputs:
+        packageType: sdk
+        version: 7.x
+        includePreviewVersions: true
+
     - pwsh: |
         & $(Build.SourcesDirectory)\SimpleBuild.ps1
       displayName: Build Microsoft.PowerShell.Archive module
-      condition: succeededOrFailed()
-
+      
     - pwsh: |
-        dir "$(BuildOutDir)\*" -Recurse
+        dir "$(BuildOutDir)/*" -Recurse
       displayName: Show BuildOutDirectory
 
-    - template: Sbom.yml@ComplianceRepo
+    - task: CopyFiles@2
+      displayName: 'Copy build'
+      inputs:
+        sourceFolder: '$(BuildOutDir)'
+        contents: '**'
+        targetFolder: '$(Build.ArtifactStagingDirectory)/Microsoft.PowerShell.Archive'
+
+    - pwsh: |
+        dir "$(Build.ArtifactStagingDirectory)/*" -Recurse
+    - publish: '$(Build.ArtifactStagingDirectory)/Microsoft.PowerShell.Archive'
+      displayName: 'Publish module build'
+      artifact: ModuleBuild
+
+- stage: Test
+  dependsOn: Build
+  displayName: Run tests
+  jobs:
+    - template: runtest.yml
       parameters:
-        BuildDropPath: "$(BuildOutDir)"
-        Build_Repository_Uri: 'https://github.com/PowerShell/Microsoft.PowerShell.Archive'
-        PackageName: $(PackageName)
-        PackageVersion: $(PackageVersion)
+        vmImageName: windows-2019
+        jobName: run_test_windows
+        jobDisplayName: Run Windows tests
 
-    - pwsh: |
-        dir "$(BuildOutDir)\*" -Recurse
-      displayName: Show BuildOutDirectory
-
-    - pwsh: |
-        $signSrcPath = "$(BuildOutDir)"
-        # Set signing src path variable
-        $vstsCommandString = "vso[task.setvariable variable=signSrcPath]${signSrcPath}"
-        Write-Host "sending " + $vstsCommandString
-        Write-Host "##$vstsCommandString"
-        $signOutPath = "$(Build.SourcesDirectory)\signed\Microsoft.PowerShell.Archive"
-        $null = New-Item -ItemType Directory -Path $signOutPath
-        # Set signing out path variable
-        $vstsCommandString = "vso[task.setvariable variable=signOutPath]${signOutPath}"
-        Write-Host "sending " + $vstsCommandString
-        Write-Host "##$vstsCommandString"
-        # Set path variable for guardian codesign validation
-        $vstsCommandString = "vso[task.setvariable variable=GDN_CODESIGN_TARGETDIRECTORY]${signOutPath}"
-        Write-Host "sending " + $vstsCommandString
-        Write-Host "##$vstsCommandString"
-      displayName: Setup variables for signing
-
-    - pwsh: |
-        Copy-Item -Path "$(signSrcPath)\*" -Destination "$(signOutPath)"
-      displayName: Fake Signing
-
-    - pwsh: |
-        Compress-Archive -Path "$(signOutPath)\*" -DestinationPath "$(System.ArtifactsDirectory)\Microsoft.PowerShell.Archive.zip"
-      displayName: Create Microsoft.PowerShell.Archive.zip
-
-    - publish: $(System.ArtifactsDirectory)\Microsoft.PowerShell.Archive.zip
-      artifact: SignedModule
+    - template: runtest.yml
+      parameters:
+        vmImageName: ubuntu-latest
+        jobName: run_test_linux
+        jobDisplayName: Run Linux tests
+    
+    - template: runtest.yml
+      parameters:
+        vmImageName: macos-latest
+        jobName: run_test_macos
+        jobDisplayName: Run macOS tests

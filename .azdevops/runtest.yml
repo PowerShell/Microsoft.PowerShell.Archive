@@ -1,0 +1,70 @@
+parameters:
+  - name: vmImageName
+    type: string
+    default: 'windows-2019'
+
+  - name: jobName
+    type: string
+    default: 'run_test_windows'
+
+  - name: jobDisplayName
+    type: string
+    default: 'Run test'
+
+jobs:
+  - job: '${{ parameters.jobName }}'
+    pool:
+      vmImage: ${{ parameters.vmImageName }}
+    displayName: ${{ parameters.jobDisplayName }}
+    steps:
+      - download: current
+        artifact: ModuleBuild
+
+      - pwsh: |
+          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
+          if ($module -ne $null)
+          {
+            Remove-Module $module
+          }
+          Import-Module $(Pipeline.Workspace)/ModuleBuild/Microsoft.PowerShell.Archive.psd1
+          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
+          $module.Path | Write-Output
+        displayName: Import Module from Build
+      - pwsh: |
+          Install-Module -Name "Pester" -Force
+          $module = Get-Module -Name "Pester"
+          if ($module -ne $null)
+          {
+            Remove-Module "Pester"
+          } 
+          Import-Module -Name "Pester"
+        displayName: Install and Import Pester 4
+        
+      - pwsh: |
+          $OutputFile = "$PWD/build-unit-tests.xml"
+          $results = $null
+          $results = Invoke-Pester -Script ./Tests/Compress-Archive.Tests.ps1 -OutputFile $OutputFile -PassThru -OutputFormat NUnitXml -Show Failed, Context, Describe, Fails
+          Write-Host "##vso[artifact.upload containerfolder=testResults;artifactname=testResults]$OutputFile"
+          if(!$results -or $results.FailedCount -gt 0 -or !$results.TotalCount)
+          {
+              throw "Build or tests failed.  Passed: $($results.PassedCount) Failed: $($results.FailedCount) Total: $($results.TotalCount)"
+          }
+        displayName: Run Build Unit Tests
+
+      - pwsh: |
+          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
+          if ($module -ne $null)
+          {
+            Remove-Module $module
+          }
+        displayName: Remove Built Module from PSSession
+        condition: succeededOrFailed()
+        
+      - task: PublishTestResults@2
+        displayName: 'Publish Test Results **/*tests.xml'
+        inputs:
+          testResultsFormat: NUnit
+          testResultsFiles: '**/*tests.xml'
+          testRunTitle: 'Build Unit Tests'
+        continueOnError: true
+        condition: succeededOrFailed()
