@@ -23,12 +23,12 @@ jobs:
       - pwsh: |
           $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/PowerShell-7.3.0-preview.6-win-x64.zip"
           $isTar = $false
-          if ($vmImageName -eq 'macos-latest')
+          if ($vmImageName -like 'macos-*')
           {
             $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-osx-x64.tar.gz"
             $isTar = $true
           }
-          if ($vmImageName -eq 'ubuntu-latest')
+          if ($vmImageName -like 'ubuntu-*')
           {
             $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-linux-x64.tar.gz"
             $isTar = $true
@@ -52,9 +52,9 @@ jobs:
             Expand-Archive -Path $destination -DestinationPath $powershellPreview
           }
           # Print contents of $powershellPreview
-          Get-ChildItem $powershellPreview | Write-Output
+          Get-ChildItem $powershellPreview | Format-Table "Name"
           $powershellPreview = Join-Path $powershellPreview "pwsh"
-          if ($vmImageName -eq 'windows-latest')
+          if ($vmImageName -like 'windows-*')
           {
             $powerShellPreview += ".exe"
           }
@@ -63,7 +63,7 @@ jobs:
         displayName: Download and Install PowerShell Preview
 
       - pwsh: |
-          .($(PowerShellPreviewExecutablePath)) .azdevops/RunTests.ps1        
+          .$(PowerShellPreviewExecutablePath) .azdevops/RunTests.ps1        
         displayName: Run Tests
         
       - task: PublishTestResults@2
