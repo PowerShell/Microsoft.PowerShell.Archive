@@ -84,7 +84,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void BeginProcessing()
         {
             _destinationPathInfo = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
-            //DestinationPath = _destinationPathInfo.FullName;
+            DestinationPath = _destinationPathInfo.FullName;
 
             // Validate
             ValidateDestinationPath();
@@ -155,7 +155,7 @@ namespace Microsoft.PowerShell.Archive
                     }
 
                     // Create an archive -- this is where we will switch between different types of archives
-                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: _destinationPathInfo.FullName, archiveMode: archiveMode, compressionLevel: CompressionLevel);
+                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
                     _didCreateNewArchive = archiveMode == ArchiveMode.Update;
                 }
 
@@ -245,6 +245,11 @@ namespace Microsoft.PowerShell.Archive
                 else if (WriteMode == WriteMode.Update)
                 {
                     errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                }
+                // Throw an error if the DestinationPath is the current working directory and the cmdlet is in Overwrite mode
+                else if (WriteMode == WriteMode.Overwrite && _destinationPathInfo.FullName == SessionState.Path.CurrentFileSystemLocation.ProviderPath)
+                {
+                    errorCode = ErrorCode.CannotOverwriteWorkingDirectory;
                 }
                 // Throw an error if the DestinationPath is a directory with at least item and the cmdlet is in Overwrite mode
                 else if (WriteMode == WriteMode.Overwrite && (_destinationPathInfo as System.IO.DirectoryInfo).GetFileSystemInfos().Length > 0)

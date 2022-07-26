@@ -21,44 +21,53 @@ jobs:
         artifact: ModuleBuild
 
       - pwsh: |
-          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
-          if ($module -ne $null)
+          Write-Output ${{ parameters.vmImageName }}
+          $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/PowerShell-7.3.0-preview.6-win-x64.zip"
+          $isTar = $false
+          if ("${{ parameters.vmImageName }}" -like 'macos-*')
           {
-            Remove-Module $module
+            $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-osx-x64.tar.gz"
+            $isTar = $true
+            Write-Output "Choose macOS"
           }
-          Import-Module $(Pipeline.Workspace)/ModuleBuild/Microsoft.PowerShell.Archive.psd1
-          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
-          $module.Path | Write-Output
-        displayName: Import Module from Build
-      - pwsh: |
-          Install-Module -Name "Pester" -Force
-          $module = Get-Module -Name "Pester"
-          if ($module -ne $null)
+          if ("${{ parameters.vmImageName }}" -like 'ubuntu-*')
           {
-            Remove-Module "Pester"
-          } 
-          Import-Module -Name "Pester"
-        displayName: Install and Import Pester 4
-        
-      - pwsh: |
-          $OutputFile = "$PWD/build-unit-tests.xml"
-          $results = $null
-          $results = Invoke-Pester -Script ./Tests/Compress-Archive.Tests.ps1 -OutputFile $OutputFile -PassThru -OutputFormat NUnitXml -Show Failed, Context, Describe, Fails
-          Write-Host "##vso[artifact.upload containerfolder=testResults;artifactname=testResults]$OutputFile"
-          if(!$results -or $results.FailedCount -gt 0 -or !$results.TotalCount)
-          {
-              throw "Build or tests failed.  Passed: $($results.PassedCount) Failed: $($results.FailedCount) Total: $($results.TotalCount)"
+            $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-linux-x64.tar.gz"
+            $isTar = $true
+            Write-Output "Choose Ubuntu"
           }
-        displayName: Run Build Unit Tests
+          $destination = "powershell-preview-archive"
+          if ($isTar) {
+            $destination += ".tar.gz"
+          } else {
+            $destination += ".zip"
+          }
+          Invoke-WebRequest -Uri $url -OutFile $destination
+          ## unpack the downloaded file
+          $powershellPreview = Join-Path $pwd "powershell-preview"
+          mkdir $powershellPreview
+          if ($isTar)
+          {
+            gunzip -d $destination
+            $destination = $destination.Replace(".gz", "")
+            tar -x -f $destination -C $powershellPreview
+          } else {
+            Expand-Archive -Path $destination -DestinationPath $powershellPreview
+          }
+          # Print contents of $powershellPreview
+          #Get-ChildItem $powershellPreview | Format-Table "Name"
+          $powershellPreview = Join-Path $powershellPreview "pwsh"
+          if ("${{ parameters.vmImageName }}" -like 'windows-*')
+          {
+            $powerShellPreview += ".exe"
+          }
+          # Write the location of PowerShell Preview
+          Write-Host "##vso[task.setvariable variable=PowerShellPreviewExecutablePath;]$powershellPreview"
+        displayName: Download and Install PowerShell Preview
 
       - pwsh: |
-          $module = Get-Module -Name "Microsoft.PowerShell.Archive"
-          if ($module -ne $null)
-          {
-            Remove-Module $module
-          }
-        displayName: Remove Built Module from PSSession
-        condition: succeededOrFailed()
+          "$(PowerShellPreviewExecutablePath) .azdevops/RunTests.ps1" | Invoke-Expression
+        displayName: Run Tests
         
       - task: PublishTestResults@2
         displayName: 'Publish Test Results **/*tests.xml'

@@ -29,6 +29,7 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.SameLiteralPathAndDestinationPath => Messages.SameLiteralPathAndDestinationPathMessage,
                 ErrorCode.InsufficientPermissionsToAccessPath => Messages.InsufficientPermssionsToAccessPathMessage,
                 ErrorCode.OverwriteDestinationPathFailed => Messages.OverwriteDestinationPathFailed,
+                ErrorCode.CannotOverwriteWorkingDirectory => Messages.CannotOverwriteWorkingDirectoryMessage,
                 _ => throw new NotImplementedException("Error code has not been implemented")
             };
         }
@@ -59,6 +60,8 @@ namespace Microsoft.PowerShell.Archive
         // Used when the user does not have sufficient permissions to access a path
         InsufficientPermissionsToAccessPath,
         // Used when the cmdlet could not overwrite DestinationPath
-        OverwriteDestinationPathFailed
+        OverwriteDestinationPathFailed,
+        // Used when the user enters the working directory as DestinationPath and it is an existing folder and -WriteMode Overwrite is specified
+        CannotOverwriteWorkingDirectory
     }
 }

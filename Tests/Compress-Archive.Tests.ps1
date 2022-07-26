@@ -284,7 +284,7 @@
             }
         }
 
-        It "Throws an error when Path and DestinationPath are the same and -Overwrite is specified" -Tag td {
+        It "Throws an error when Path and DestinationPath are the same and -Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)EmptyDirectory"
             $destinationPath = $sourcePath
 
@@ -331,8 +331,34 @@
                 $_.FullyQualifiedErrorId | Should -Be "SameLiteralPathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
+    }
 
+    Context "WriteMode tests" {
+        BeforeAll {
+            New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
+    
+            $content = "Some Data"
+            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
+        }
 
+        It "Throws a terminating error when an incorrect value is supplied to -WriteMode" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive1.zip"
+
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode mode
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "CannotConvertArgumentNoMessage,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "-WriteMode Create works" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive1.zip"
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Test-Path $destinationPath
+            Test-ZipArchive $destinationPath @('SourceDir/', 'SourceDir/Sample-1.txt')
+        }
     }
 
     Context "Basic functional tests" {
@@ -382,7 +408,7 @@
         
     }
 
-    Context "DestinationPath tests" {
+    Context "DestinationPath and -WriteMode Overwrite tests" {
         BeforeAll {
             New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
     
@@ -392,6 +418,17 @@
             New-Item $TestDrive$($DS)archive3.zip -Type Directory | Out-Null
 
             New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
+
+            # Create a read-only archive
+            $readOnlyArchivePath = "$TestDrive$($DS)readonly.zip"
+            Compress-Archive -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt -DestinationPath $readOnlyArchivePath
+            Set-ItemProperty -Path $readOnlyArchivePath -Name IsReadOnly -Value $true
+
+            # Create $TestDrive$($DS)archive.zip
+            Compress-Archive -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt -DestinationPath "$TestDrive$($DS)archive.zip"
+
+            # Create Sample-2.txt
+            $content | Out-File -FilePath $TestDrive$($DS)Sample-2.txt
         }
 
         It "Throws an error when archive file already exists and -Update and -Overwrite parameters are not specified" {
@@ -410,18 +447,33 @@
             }
         }
 
-        It "Throws a terminating error when archive does not exist and -Update mode is specified" {
+        It "Throws a terminating error when archive file exists and -Update is specified but the archive is read-only" {
             $sourcePath = "$TestDrive$($DS)SourceDir"
-            $destinationPath = "$TestDrive$($DS)archive2.zip"
+            $destinationPath = "$TestDrive$($DS)readonly.zip"
 
             try
             {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Update
-                throw "Failed to validate that an archive file format $destinationPath does not exist and -Update switch parameter is specified."
+                throw "Failed to detect an that an error was thrown when archive $destinationPath already exists but it is read-only and -WriteMode Update is specified."
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveDoesNotExist,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveReadOnly,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws a terminating error when archive already exists as a directory and -Update and -Overwrite parameters are not specified" {
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
+            $destinationPath = "$TestDrive$($DS)SourceDir"
+
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                throw "Failed to detect an error was thrown when archive $destinationPath exists as a directory and -WriteMode Update or -WriteMode Overwrite is not specified."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
@@ -440,7 +492,7 @@
             }
         }
 
-        It "Throws a terminating error when DestinationPath is a folder containing at least 1 item and Overwrite is specified" -Tag td2 {
+        It "Throws a terminating error when DestinationPath is a folder containing at least 1 item and Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)SourceDir"
             $destinationPath = "$TestDrive"
 
@@ -454,22 +506,36 @@
                 $_.FullyQualifiedErrorId | Should -Be "ArchiveIsNonEmptyDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
-    }
 
-    Context "-Overwrite Tests" {
-        BeforeAll {
-            New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
-    
-            $content = "Some Data"
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
+        It "Throws a terminating error when archive does not exist and -Update mode is specified" {
+            $sourcePath = "$TestDrive$($DS)SourceDir"
+            $destinationPath = "$TestDrive$($DS)archive2.zip"
 
-            New-Item $TestDrive$($DS)EmptyDirectory -Type Directory | Out-Null
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Update
+                throw "Failed to validate that an archive file format $destinationPath does not exist and -Update switch parameter is specified."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveDoesNotExist,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
 
-            # Create $TestDrive$($DS)archive.zip
-            Compress-Archive -Path $TestDrive$($DS)SourceDir$($DS)Sample-1.txt -DestinationPath "$TestDrive$($DS)archive.zip"
+        ## Overwrite tests
+        It "Throws an error when trying to overwrite an empty directory, which is the working directory" {
+            $sourcePath = "$TestDrive$($DS)Sample-2.txt"
+            $destinationPath = "$TestDrive$($DS)EmptyDirectory"
 
-            # Create Sample-2.txt
-            $content | Out-File -FilePath $TestDrive$($DS)Sample-2.txt
+            Push-Location $destinationPath
+
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "CannotOverwriteWorkingDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+
+            Pop-Location
         }
 
         It "Overwrites a directory containing no items when -Overwrite is specified" {
@@ -500,7 +566,7 @@
         }
     }
 
-    Context "Relative Path tests" -Skip {
+    Context "Relative Path tests" {
         BeforeAll {
             New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
             New-Item $TestDrive$($DS)SourceDir$($DS)ChildDir-1 -Type Directory | Out-Null
@@ -518,7 +584,7 @@
             {
                 Push-Location $TestDrive
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-        	    Test-Path $destinationPath | Should Be $true
+        	    Test-Path $destinationPath | Should -Be $true
             }
             finally
             {
@@ -534,7 +600,7 @@
             {
                 Push-Location $TestDrive
                 Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
-        	    Test-Path $destinationPath | Should Be $true
+        	    Test-Path $destinationPath | Should -Be $true
             }
             finally
             {
@@ -550,7 +616,7 @@
             {
                 Push-Location $TestDrive
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-        	    Test-Path $destinationPath | Should Be $true
+        	    Test-Path $destinationPath | Should -Be $true
             }
             finally
             {

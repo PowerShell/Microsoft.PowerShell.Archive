@@ -144,6 +144,9 @@
   <data name="ArchiveIsReadOnlyMessage" xml:space="preserve">
     <value>The archive at {0} is read-only.</value>
   </data>
+  <data name="CannotOverwriteWorkingDirectoryMessage" xml:space="preserve">
+    <value>Unable to overwrite the path {0} because it is the same as the current working directory.</value>
+  </data>
   <data name="DuplicatePathsMessage" xml:space="preserve">
     <value>The path(s) {0} have been specified more than once.</value>
   </data>

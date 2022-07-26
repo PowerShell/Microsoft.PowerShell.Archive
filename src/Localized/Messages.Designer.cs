@@ -142,6 +142,15 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to Unable to overwrite the path {0} because it is the same as the current working directory..
+        /// </summary>
+        internal static string CannotOverwriteWorkingDirectoryMessage {
+            get {
+                return ResourceManager.GetString("CannotOverwriteWorkingDirectoryMessage", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The path(s) {0} have been specified more than once..
         /// </summary>
         internal static string DuplicatePathsMessage {
