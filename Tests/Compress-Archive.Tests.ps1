@@ -422,11 +422,26 @@
             try
             {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-                throw "Failed to validate that an archive file format $destinationPath already exists and -Update switch parameter is not specified."
+                throw "Failed to detect an that an error was thrown when archive $destinationPath already exists but it is read-only and -WriteMode Update is specified."
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveExists,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveReadOnly,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+        }
+
+        It "Throws a terminating error when archive already exists as a directory and -Update and -Overwrite parameters are not specified" {
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
+            $destinationPath = "$TestDrive$($DS)SourceDir"
+
+            try
+            {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                throw "Failed to detect an error was thrown when archive $destinationPath exists as a directory and -WriteMode Update or -WriteMode Overwrite is not specified."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveReadOnly,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
