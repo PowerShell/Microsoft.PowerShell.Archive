@@ -421,7 +421,7 @@
 
             try
             {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Update
                 throw "Failed to detect an that an error was thrown when archive $destinationPath already exists but it is read-only and -WriteMode Update is specified."
             }
             catch
@@ -441,7 +441,7 @@
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveReadOnly,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
