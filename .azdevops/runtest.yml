@@ -63,7 +63,7 @@ jobs:
         displayName: Download and Install PowerShell Preview
 
       - pwsh: |
-          .$(PPowerShellPreviewExecutablePath) .azdevops/RunTests.ps1        
+          .$(PowerShellPreviewExecutablePath) .azdevops/RunTests.ps1        
         displayName: Run Tests
         
       - task: PublishTestResults@2
