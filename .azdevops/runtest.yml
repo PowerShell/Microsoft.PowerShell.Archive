@@ -23,12 +23,12 @@ jobs:
       - pwsh: |
           $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/PowerShell-7.3.0-preview.6-win-x64.zip"
           $isTar = $false
-          if ($(vmImageName) -like 'macos-*')
+          if ($env:vmImageName -like 'macos-*')
           {
             $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-osx-x64.tar.gz"
             $isTar = $true
           }
-          if ($(vmImageName) -like 'ubuntu-*')
+          if ($env:vmImageName -like 'ubuntu-*')
           {
             $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-linux-x64.tar.gz"
             $isTar = $true
@@ -54,7 +54,7 @@ jobs:
           # Print contents of $powershellPreview
           Get-ChildItem $powershellPreview | Format-Table "Name"
           $powershellPreview = Join-Path $powershellPreview "pwsh"
-          if ($(vmImageName) -like 'windows-*')
+          if ($env:vmImageName -like 'windows-*')
           {
             $powerShellPreview += ".exe"
           }
