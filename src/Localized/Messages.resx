@@ -138,6 +138,9 @@
   <data name="ArchiveFormatDeterminedVerboseMessage" xml:space="preserve">
     <value>The -Format was not specified, so the archive format was determined to be {0} based on its extension.</value>
   </data>
+  <data name="ArchiveIsNonEmptyDirectory" xml:space="preserve">
+    <value>The archive {0} cannot be overwritten because it is a non-empty directory.</value>
+  </data>
   <data name="ArchiveIsReadOnlyMessage" xml:space="preserve">
     <value>The archive at {0} is read-only.</value>
   </data>

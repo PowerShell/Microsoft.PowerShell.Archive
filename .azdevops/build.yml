@@ -98,7 +98,7 @@ stages:
     - pwsh: |
         Set-Location "$(Build.SourcesDirectory)"
         # signOutPath points to directory with version number -- we want to point to the parent of that directory
-        $ModulePath = Split-Path $signOutPath -Parent
+        $ModulePath = Split-Path $(signOutPath) -Parent
         $(Build.SourcesDirectory)/Microsoft.PowerShell.Archive/.azdevops/build.ps1 -package -CopySBOM -signed -SignedPath $ModulePath
         Get-ChildItem -recurse -file -name | Write-Verbose -Verbose
       displayName: package build
@@ -126,7 +126,7 @@ stages:
     - template: script-module-compliance.yml@ComplianceRepo
       parameters:
         # component-governance
-        sourceScanPath: '$(Build.SourcesDirectory)/src'
+        sourceScanPath: '$(Build.SourcesDirectory)\Microsoft.PowerShell.Archive\src'
         # credscan
         suppressionsFile: ''
         # TermCheck

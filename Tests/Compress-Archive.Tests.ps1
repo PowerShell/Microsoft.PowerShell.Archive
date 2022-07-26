@@ -374,7 +374,7 @@
             $destinationPath | Should -Exist
             $contents = Get-Descendants -Path $sourcePath
             $contents += "SourceDir/"
-            Test-ZipArchive $destinationPath @("SourceDir/", "Sample-2.txt")
+            Test-ZipArchive $destinationPath $contents
         }
     }
 
@@ -416,7 +416,7 @@
 
             try
             {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Update
                 throw "Failed to validate that an archive file format $destinationPath does not exist and -Update switch parameter is specified."
             }
             catch
@@ -431,7 +431,7 @@
 
             try
             {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Update
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Update
                 throw "Failed to validate that a directory $destinationPath exists and -Update switch parameter is specified."
             }
             catch
@@ -440,18 +440,18 @@
             }
         }
 
-        It "Throws a terminating error when DestinationPath is a folder containing at least 1 item and Overwrite is specified" {
+        It "Throws a terminating error when DestinationPath is a folder containing at least 1 item and Overwrite is specified" -Tag td2 {
             $sourcePath = "$TestDrive$($DS)SourceDir"
             $destinationPath = "$TestDrive"
 
             try
             {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Overwrite
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite
                 throw "Failed to detect an error when $destinationPath is an existing directory containing at least 1 item and -Overwrite switch parameter is specified."
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveIsNonEmptyDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
     }
@@ -477,7 +477,7 @@
             $destinationPath = "$TestDrive$($DS)EmptyDirectory"
 
             (Get-Item $destinationPath) -is [System.IO.DirectoryInfo] | Should -Be $true
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Overwrite
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite
 
             # Ensure $destiationPath is now a file
             $destinationPathInfo = Get-Item $destinationPath
@@ -493,7 +493,7 @@
 
             # Overwrite the archive
             $sourcePath = "$TestDrive$($DS)Sample-2.txt"
-            Compress-Archive -Path $sourcePath -DestinationPath "$TestDrive$($DS)archive.zip" -Overwrite
+            Compress-Archive -Path $sourcePath -DestinationPath "$TestDrive$($DS)archive.zip" -WriteMode Overwrite
 
             # Ensure the original entries and different than the new entries
             Test-ZipArchive $destinationPath @("Sample-2.txt") 
@@ -569,17 +569,11 @@
 
 
         It "Accepts DestinationPath parameter with wildcard characters that resolves to one path" {
-            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
+            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt"
             $destinationPath = "$TestDrive$($DS)Sample[]SingleFile.zip"
-            try
-            {
-                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-        	    Test-Path -LiteralPath $destinationPath | Should Be $true
-            }
-            finally
-            {
-                Remove-Item -LiteralPath $destinationPath -Force
-            }
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+        	Test-Path -LiteralPath $destinationPath | Should -Be $true
+            Remove-Item -LiteralPath $destinationPath
         }
 
         It "Accepts DestinationPath parameter with [ but no matching ]" {
@@ -587,8 +581,9 @@
             $destinationPath = "$TestDrive$($DS)archive[2.zip"
 
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            Test-Path -LiteralPath $destinationPath | Should Be $true
+            Test-Path -LiteralPath $destinationPath | Should -Be $true
             Test-ZipArchive $destinationPath @("SourceDir/", "SourceDir/Sample-1.txt")
+            Remove-Item -LiteralPath $destinationPath
         }
     }
 }

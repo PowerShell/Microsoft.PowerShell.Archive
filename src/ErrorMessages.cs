@@ -24,6 +24,7 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.ArchiveExistsAsDirectory => Messages.ArchiveExistsAsDirectoryMessage,
                 ErrorCode.ArchiveReadOnly => Messages.ArchiveIsReadOnlyMessage,
                 ErrorCode.ArchiveDoesNotExist => Messages.ArchiveDoesNotExistMessage,
+                ErrorCode.ArchiveIsNonEmptyDirectory => Messages.ArchiveIsNonEmptyDirectory,
                 ErrorCode.SamePathAndDestinationPath => Messages.SamePathAndDestinationPathMessage,
                 ErrorCode.SameLiteralPathAndDestinationPath => Messages.SameLiteralPathAndDestinationPathMessage,
                 ErrorCode.InsufficientPermissionsToAccessPath => Messages.InsufficientPermssionsToAccessPathMessage,

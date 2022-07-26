@@ -19,6 +19,6 @@ rm "$buildOutputDirectory/*.json","$buildOutputDirectory/*.pdb"
 Write-Host "##vso[task.setvariable variable=BuildOutDir]$buildOutputDirectory"
 
 #$psd1ModuleVersion = (Get-Content -Path "$buildOutputDirectory\Microsoft.PowerShell.Archive.psd1" | Select-String 'ModuleVersion="(.*)"').Matches[0].Groups[1].Value
-$psd1ModuleVersion = '2.0.0'
+$psd1ModuleVersion = '2.0.1'
 "Setting VSTS variable 'PackageVersion' to '$psd1ModuleVersion'" | Write-Verbose -Verbose
 Write-Host "##vso[task.setvariable variable=PackageVersion]$psd1ModuleVersion"

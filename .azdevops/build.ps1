@@ -66,7 +66,7 @@ function Export-Module
     Publish-Module -Path $packageRoot -Repository $repoName
     Unregister-PSRepository -Name $repoName
     Get-ChildItem -Recurse -Name $packageRoot | Write-Verbose
-    $nupkgName = "{0}.{1}.nupkg" -f ${Name},${Version}
+    $nupkgName = "{0}.{1}-preview1.nupkg" -f ${Name},${Version}
     $nupkgPath = Join-Path $packageRoot $nupkgName
     if ($env:TF_BUILD) {
         # In Azure DevOps

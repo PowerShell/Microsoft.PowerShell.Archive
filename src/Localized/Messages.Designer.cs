@@ -124,6 +124,15 @@ namespace Microsoft.PowerShell.Archive.Localized {
         }
         
         /// <summary>
+        ///   Looks up a localized string similar to The archive {0} cannot be overwritten because it is a non-empty directory..
+        /// </summary>
+        internal static string ArchiveIsNonEmptyDirectory {
+            get {
+                return ResourceManager.GetString("ArchiveIsNonEmptyDirectory", resourceCulture);
+            }
+        }
+        
+        /// <summary>
         ///   Looks up a localized string similar to The archive at {0} is read-only..
         /// </summary>
         internal static string ArchiveIsReadOnlyMessage {

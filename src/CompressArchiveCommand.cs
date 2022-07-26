@@ -84,6 +84,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void BeginProcessing()
         {
             _destinationPathInfo = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
+            //DestinationPath = _destinationPathInfo.FullName;
 
             // Validate
             ValidateDestinationPath();
@@ -154,7 +155,7 @@ namespace Microsoft.PowerShell.Archive
                     }
 
                     // Create an archive -- this is where we will switch between different types of archives
-                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
+                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: _destinationPathInfo.FullName, archiveMode: archiveMode, compressionLevel: CompressionLevel);
                     _didCreateNewArchive = archiveMode == ArchiveMode.Update;
                 }
 
@@ -269,7 +270,7 @@ namespace Microsoft.PowerShell.Archive
             if (errorCode != null)
             {
                 // Throw an error -- since we are validating DestinationPath, the problem is with DestinationPath
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode.Value, errorItem: DestinationPath);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode.Value, errorItem: _destinationPathInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
         }
@@ -278,28 +279,28 @@ namespace Microsoft.PowerShell.Archive
         {
             try
             {
-                if (System.IO.File.Exists(DestinationPath))
+                if (System.IO.File.Exists(_destinationPathInfo.FullName))
                 {
-                    System.IO.File.Delete(DestinationPath);
+                    System.IO.File.Delete(_destinationPathInfo.FullName);
                 }
                 // TODO: Ensure DestinationPath has no children when deleting it
-                if (System.IO.Directory.Exists(DestinationPath))
+                if (System.IO.Directory.Exists(_destinationPathInfo.FullName))
                 {
-                    System.IO.Directory.Delete(DestinationPath);
+                    System.IO.Directory.Delete(_destinationPathInfo.FullName);
                 }
             }
             // Throw a terminating error if an IOException occurs
             catch (System.IO.IOException ioException)
             {
                 var errorRecord = new ErrorRecord(ioException, errorId: ErrorCode.OverwriteDestinationPathFailed.ToString(), 
-                    errorCategory: ErrorCategory.InvalidOperation, targetObject: DestinationPath);
+                    errorCategory: ErrorCategory.InvalidOperation, targetObject: _destinationPathInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
             // Throw a terminating error if an UnauthorizedAccessException occurs
             catch (System.UnauthorizedAccessException unauthorizedAccessException)
             {
                 var errorRecord = new ErrorRecord(unauthorizedAccessException, errorId: ErrorCode.InsufficientPermissionsToAccessPath.ToString(),
-                    errorCategory: ErrorCategory.PermissionDenied, targetObject: DestinationPath);
+                    errorCategory: ErrorCategory.PermissionDenied, targetObject: _destinationPathInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
         }
@@ -318,7 +319,7 @@ namespace Microsoft.PowerShell.Archive
                 else
                 {
                     // If the archive format could not be determined, use zip by default and emit a warning
-                    var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, DestinationPath);
+                    var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, _destinationPathInfo.FullName);
                     WriteWarning(warningMsg);
                     Format = ArchiveFormat.zip;
                 }
@@ -331,7 +332,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 if (archiveFormat is null || archiveFormat.Value != Format.Value)
                 {
-                    var warningMsg = String.Format(Messages.ArchiveExtensionDoesNotMatchArchiveFormatWarning, DestinationPath);
+                    var warningMsg = String.Format(Messages.ArchiveExtensionDoesNotMatchArchiveFormatWarning, _destinationPathInfo.FullName);
                     WriteWarning(warningMsg);
                 }
             }
