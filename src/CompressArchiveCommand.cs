@@ -16,12 +16,7 @@ namespace Microsoft.PowerShell.Archive
 {
     [Cmdlet("Compress", "Archive", SupportsShouldProcess = true)]
     [OutputType(typeof(FileInfo))]
-    public sealed class CompressArchiveCommand : PSCmdlet
-    {
-
-        // TODO: Add filter parameter
-        // TODO: Add flatten parameter
-        // TODO: Add comments to methods
+    public sealed class CompressArchiveCommand : PSCmdlet {
         // TODO: Add tar support
 
         private enum ParameterSet

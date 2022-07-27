@@ -30,8 +30,8 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.PathNotFound => Messages.PathNotFoundMessage,
                 ErrorCode.InvalidPath => Messages.InvalidPathMessage,
                 ErrorCode.DuplicatePaths => Messages.DuplicatePathsMessage,
-                ErrorCode.ArchiveExists => Messages.ArchiveExistsMessage,
-                ErrorCode.ArchiveExistsAsDirectory => Messages.ArchiveExistsAsDirectoryMessage,
+                ErrorCode.DestinationExists => Messages.DestinationExistsMessage,
+                ErrorCode.DestinationExistsAsDirectory => Messages.DestinationExistsAsDirectoryMessage,
                 ErrorCode.ArchiveReadOnly => Messages.ArchiveIsReadOnlyMessage,
                 ErrorCode.ArchiveDoesNotExist => Messages.ArchiveDoesNotExistMessage,
                 ErrorCode.ArchiveIsNonEmptyDirectory => Messages.ArchiveIsNonEmptyDirectory,
@@ -53,10 +53,10 @@ namespace Microsoft.PowerShell.Archive
         InvalidPath,
         // Used when when a path has been supplied to the cmdlet at least twice
         DuplicatePaths,
-        // Used when DestinationPath is an existing file
-        ArchiveExists,
+        // Used when DestinationPath is an existing file (used in Compress-Archive & Expand-Archive)
+        DestinationExists,
         // Used when DestinationPath is an existing directory
-        ArchiveExistsAsDirectory,
+        DestinationExistsAsDirectory,
         // Used when DestinationPath is a non-empty directory and Action Overwrite is specified
         ArchiveIsNonEmptyDirectory,
         // Used when Compress-Archive cmdlet is in Update mode but the archive is read-only
@@ -72,6 +72,9 @@ namespace Microsoft.PowerShell.Archive
         // Used when the cmdlet could not overwrite DestinationPath
         OverwriteDestinationPathFailed,
         // Used when the user enters the working directory as DestinationPath and it is an existing folder and -WriteMode Overwrite is specified
-        CannotOverwriteWorkingDirectory
+        // Used in Compress-Archive, Expand-Archive
+        CannotOverwriteWorkingDirectory,
+        // Expand-Archive: used when a path resolved to multiple paths when only one was needed
+        PathResolvedToMultiplePaths,
     }
 }

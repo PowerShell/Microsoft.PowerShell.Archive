@@ -405,7 +405,7 @@ BeforeDiscovery {
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveExists,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "DestinationExists,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
@@ -435,7 +435,7 @@ BeforeDiscovery {
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "DestinationExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
@@ -450,7 +450,7 @@ BeforeDiscovery {
             }
             catch
             {
-                $_.FullyQualifiedErrorId | Should -Be "ArchiveExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+                $_.FullyQualifiedErrorId | Should -Be "DestinationExistsAsDirectory,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
 
