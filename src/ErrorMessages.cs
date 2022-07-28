@@ -34,7 +34,7 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.DestinationExistsAsDirectory => Messages.DestinationExistsAsDirectoryMessage,
                 ErrorCode.ArchiveReadOnly => Messages.ArchiveIsReadOnlyMessage,
                 ErrorCode.ArchiveDoesNotExist => Messages.ArchiveDoesNotExistMessage,
-                ErrorCode.ArchiveIsNonEmptyDirectory => Messages.ArchiveIsNonEmptyDirectory,
+                ErrorCode.DestinationIsNonEmptyDirectory => Messages.DestinationIsNonEmptyDirectory,
                 ErrorCode.SamePathAndDestinationPath => Messages.SamePathAndDestinationPathMessage,
                 ErrorCode.SameLiteralPathAndDestinationPath => Messages.SameLiteralPathAndDestinationPathMessage,
                 ErrorCode.InsufficientPermissionsToAccessPath => Messages.InsufficientPermssionsToAccessPathMessage,
@@ -58,7 +58,7 @@ namespace Microsoft.PowerShell.Archive
         // Used when DestinationPath is an existing directory
         DestinationExistsAsDirectory,
         // Used when DestinationPath is a non-empty directory and Action Overwrite is specified
-        ArchiveIsNonEmptyDirectory,
+        DestinationIsNonEmptyDirectory,
         // Used when Compress-Archive cmdlet is in Update mode but the archive is read-only
         ArchiveReadOnly,
         // Used when DestinationPath does not exist and the Compress-Archive cmdlet is in Update mode

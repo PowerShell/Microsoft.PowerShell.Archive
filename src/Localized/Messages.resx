@@ -135,9 +135,6 @@
   <data name="ArchiveFormatDeterminedVerboseMessage" xml:space="preserve">
     <value>The -Format was not specified, so the archive format was determined to be {0} based on its extension.</value>
   </data>
-  <data name="ArchiveIsNonEmptyDirectory" xml:space="preserve">
-    <value>The archive {0} cannot be overwritten because it is a non-empty directory.</value>
-  </data>
   <data name="ArchiveIsReadOnlyMessage" xml:space="preserve">
     <value>The archive at {0} is read-only.</value>
   </data>
@@ -151,6 +148,9 @@
   </data>
   <data name="DestinationExistsMessage" xml:space="preserve">
     <value>The destination path {0} already exists.</value>
+  </data>
+  <data name="DestinationIsNonEmptyDirectory" xml:space="preserve">
+    <value>The destination {0} cannot be overwritten because it is a non-empty directory.</value>
   </data>
   <data name="DuplicatePathsMessage" xml:space="preserve">
     <value>The path(s) {0} have been specified more than once.</value>

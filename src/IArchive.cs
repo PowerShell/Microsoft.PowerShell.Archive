@@ -24,6 +24,8 @@ namespace Microsoft.PowerShell.Archive
         // Throws an exception if the archive is in create mode.
         internal string[] GetEntries();
 
+        internal IEntry? GetNextEntry();
+
         // Expands an archive to a destination folder.
         // Throws an exception if the archive is not in read mode.
         internal void Expand(string destinationPath);

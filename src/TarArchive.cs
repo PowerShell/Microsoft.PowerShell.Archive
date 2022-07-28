@@ -43,6 +43,11 @@ namespace Microsoft.PowerShell.Archive
             throw new NotImplementedException();
         }
 
+        IEntry? IArchive.GetNextEntry()
+        {
+            return null;
+        }
+
         void IArchive.Expand(string destinationPath)
         {
             throw new NotImplementedException();
