@@ -19,4 +19,3 @@ PrivateData = @{
         Prerelease = 'preview1'
     }
 }
-}

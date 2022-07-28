@@ -23,6 +23,7 @@ namespace Microsoft.PowerShell.Archive
         public string LiteralPath { get; set; } = String.Empty;
 
         [Parameter(Position = 2, Mandatory = true)]
+        [ValidateNotNullOrEmpty]
         public string DestinationPath { get; set; } = String.Empty;
 
         [Parameter]
@@ -222,7 +223,15 @@ namespace Microsoft.PowerShell.Archive
             // When the cmdlet is not in overwrite mode, other errors will be thrown when validating DestinationPath before it even gets to this line
             if (PathHelper.ArePathsSame(sourcePath, _destinationPathInfo) && WriteMode == ExpandArchiveWriteMode.Overwrite)
             {
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.SamePathAndDestinationPath, errorItem: sourcePath.FullName);
+                ErrorCode errorCode;
+                if (ParameterSetName == "Path")
+                {
+                    errorCode = ErrorCode.SamePathAndDestinationPath;
+                } else
+                {
+                    errorCode = ErrorCode.SameLiteralPathAndDestinationPath;
+                }
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode, errorItem: sourcePath.FullName);
                 ThrowTerminatingError(errorRecord);
             }
         }
