@@ -83,6 +83,7 @@ namespace Microsoft.PowerShell.Archive
             try
             {
                 // If the destination path is a file that needs to be overwriten, delete it
+
                 if (_destinationPathInfo.Exists && !_destinationPathInfo.Attributes.HasFlag(FileAttributes.Directory) && WriteMode == ExpandArchiveWriteMode.Overwrite)
                 {
                     if (ShouldProcess(target: _destinationPathInfo.FullName, action: "Overwrite"))
@@ -100,56 +101,11 @@ namespace Microsoft.PowerShell.Archive
                     _destinationPathInfo = new System.IO.DirectoryInfo(_destinationPathInfo.FullName);
                 }
 
-                // Get the next entry in the archive
+                // Get the next entry in the archive and process it
                 var nextEntry = archive.GetNextEntry();
                 while (nextEntry != null)
                 {
-                    // TODO: Refactor this part
-
-                    // The location of the entry post-expanding of the archive
-                    string postExpandPath = GetPostExpansionPath(entryName: nextEntry.Name, destinationPath: _destinationPathInfo.FullName);
-
-                    // If the entry name is invalid, write a non-terminating error
-                    if (IsPathInvalid(postExpandPath))
-                    {
-                        var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.InvalidPath, postExpandPath);
-                        WriteError(errorRecord);
-                        continue;
-                    }
-                    
-                    System.IO.FileSystemInfo postExpandPathInfo = new System.IO.FileInfo(postExpandPath);
-
-                    if (!postExpandPathInfo.Exists && System.IO.Directory.Exists(postExpandPath))
-                    {
-                        var directoryInfo = new System.IO.DirectoryInfo(postExpandPath);
-                        // If postExpandPath is an existing directory containing files and/or directories, then write an error
-                        if (directoryInfo.GetFileSystemInfos().Length > 0)
-                        {
-                            var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.DestinationIsNonEmptyDirectory, postExpandPath);
-                            WriteError(errorRecord);
-                            continue;
-                        }
-                        postExpandPathInfo = directoryInfo;
-                    }
-
-                    // Throw an error if the cmdlet is not in Overwrite mode but the postExpandPath exists
-                    if (postExpandPathInfo.Exists && WriteMode != ExpandArchiveWriteMode.Overwrite)
-                    {
-                        var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.DestinationExists, postExpandPath);
-                        WriteError(errorRecord);
-                        continue;
-                    }
-
-                    if (postExpandPathInfo.Exists && ShouldProcess(target: _destinationPathInfo.FullName, action: "Expand and Overwrite"))
-                    {
-                        postExpandPathInfo.Delete();
-                        nextEntry.ExpandTo(_destinationPathInfo.FullName);
-                    } else if (ShouldProcess(target: _destinationPathInfo.FullName, action: "Expand"))
-                    {
-                        nextEntry.ExpandTo(_destinationPathInfo.FullName);
-                    }
-                    
-
+                    ProcessArchiveEntry(nextEntry);
                     nextEntry = archive.GetNextEntry();
                 }
 
@@ -166,6 +122,68 @@ namespace Microsoft.PowerShell.Archive
         }
 
         #region PrivateMethods
+
+        private void ProcessArchiveEntry(IEntry entry)
+        {
+            // The location of the entry post-expanding of the archive
+            string postExpandPath = GetPostExpansionPath(entryName: entry.Name, destinationPath: _destinationPathInfo.FullName);
+
+            // If the entry name is invalid, write a non-terminating error and stop processing the entry
+            if (IsPathInvalid(postExpandPath))
+            {
+                var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.InvalidPath, postExpandPath);
+                WriteError(errorRecord);
+                return;
+            }
+
+            
+            System.IO.FileSystemInfo postExpandPathInfo = new System.IO.FileInfo(postExpandPath);
+
+            // Use this variable to keep track if there is a collision
+            // If the postExpandPath is a file, then no matter if the entry is a file or directory, it is a collision
+            bool hasCollision = postExpandPathInfo.Exists;
+
+            if (System.IO.Directory.Exists(postExpandPath))
+            {
+                var directoryInfo = new System.IO.DirectoryInfo(postExpandPath);
+
+                // If the entry is a directory and postExpandPath is a directory, no collision occurs (because there is no need to overwrite directories)
+                hasCollision = !entry.IsDirectory;
+
+                // If postExpandPath is an existing directory containing files and/or directories, then write an error
+                if (hasCollision && directoryInfo.GetFileSystemInfos().Length > 0)
+                {
+                    var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.DestinationIsNonEmptyDirectory, postExpandPath);
+                    WriteError(errorRecord);
+                    return;
+                }
+                postExpandPathInfo = directoryInfo;
+            }
+
+            // Throw an error if the cmdlet is not in Overwrite mode but the postExpandPath exists
+            if (hasCollision && WriteMode != ExpandArchiveWriteMode.Overwrite)
+            {
+                var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.DestinationExists, postExpandPath);
+                WriteError(errorRecord);
+                return;
+            }
+
+            string expandAction = hasCollision ? "Overwrite and Expand" : "Expand";
+            if (ShouldProcess(target: postExpandPath, action: expandAction))
+            {
+                if (hasCollision)
+                {
+                    postExpandPathInfo.Delete();
+                    System.Threading.Thread.Sleep(1000);
+                }
+                // Only expand the entry if there is a need to expand
+                // There is a need to expand unless the entry is a directory and the postExpandPath is also a directory
+                if (!(entry.IsDirectory && postExpandPathInfo.Attributes.HasFlag(FileAttributes.Directory)))
+                {
+                    entry.ExpandTo(_destinationPathInfo.FullName);
+                }
+            }
+        }
 
         private void ValidateDestinationPath()
         {

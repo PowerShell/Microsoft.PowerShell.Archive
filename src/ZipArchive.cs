@@ -94,13 +94,13 @@ namespace Microsoft.PowerShell.Archive
 
         IEntry? IArchive.GetNextEntry()
         {
-            if (_entryIndex < 0 || _entryIndex >= _zipArchive.Entries.Count)
+            if (_entryIndex < 0)
             {
                 _entryIndex = 0;
             }
 
             // If there are no entries, return null
-            if (_zipArchive.Entries.Count == 0)
+            if (_zipArchive.Entries.Count == 0 || _entryIndex >= _zipArchive.Entries.Count)
             {
                 return null;
             }
@@ -157,8 +157,12 @@ namespace Microsoft.PowerShell.Archive
 
             string IEntry.Name => _entry.FullName;
 
+            bool IEntry.IsDirectory => _entry.FullName.EndsWith(System.IO.Path.AltDirectorySeparatorChar);
+
             void IEntry.ExpandTo(string destinationPath)
             {
+                string postExpandPath = System.IO.Path.Combine(destinationPath, _entry.FullName);
+                System.Diagnostics.Debug.Assert(!System.IO.File.Exists(postExpandPath));
                 _entry.ExtractToFile(destinationPath);
             }
 

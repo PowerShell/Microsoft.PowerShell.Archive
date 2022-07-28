@@ -232,7 +232,9 @@ Describe("Expand-Archive Tests") {
 
         # overwrite file works
         # overwrite output file works done
+        #  overwrite file w/file done
         # overwrite output file w/directory
+        # overwrite directory w/file
         # overwrite non-existant path works
 
         # last write times
@@ -254,6 +256,15 @@ Describe("Expand-Archive Tests") {
             New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/file2" -ItemType File
             New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1" -ItemType Directory
             New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1/file1.txt" -ItemType File
+            New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir2" -ItemType Directory
+            New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir2/file1.txt" -ItemType Directory
+            New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir4" -ItemType Directory
+            New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir4/file1.txt" -ItemType Directory
+            New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir4/file1.txt/somefile" -ItemType File
+
+            # Create directory to override
+            New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3" -ItemType Directory
+            New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3/directory1" -ItemType File
         }
 
         It "Throws an error when DestinationPath is an existing file" {
@@ -300,11 +311,11 @@ Describe("Expand-Archive Tests") {
 
         It "Writes a non-terminating error when a file in the archive has a destination path that is an existing directory containing at least 1 item and -WriteMode Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)archive1.zip"
-            $destinationPath = "$TestDrive"
+            $destinationPath = "$TestDrive$($DS)ItemsToOverwriteContainer/subdir4"
 
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
             $error.Count | Should -Be 1
-            $error[0].FullyQualifiedErrorId | Should -Be "DestinationExists,$CmdletClassName"
+            $error[0].FullyQualifiedErrorId | Should -Be "DestinationIsNonEmptyDirectory,$CmdletClassName"
         }
 
         It "Writes a non-terminating error when a file in the archive has a destination path that is the working directory and -WriteMode Overwrite is specified" {
@@ -313,11 +324,13 @@ Describe("Expand-Archive Tests") {
 
             Push-Location $destinationPath
 
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
-            $error.Count | Should -Be 1
-            $error[0].FullyQualifiedErrorId | Should -Be "CannotOverwriteWorkingDirectory,$CmdletClassName"
-
-            Pop-Location
+            try {
+                Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
+                $error.Count | Should -Be 1
+                $error[0].FullyQualifiedErrorId | Should -Be "CannotOverwriteWorkingDirectory,$CmdletClassName"
+            } finally {
+                Pop-Location
+            }
         }
 
         It "Overwrites a file when it is DestinationPath and -WriteMode Overwrite is specified" {
@@ -328,10 +341,10 @@ Describe("Expand-Archive Tests") {
             $error.Count | Should -Be 0
 
             # Ensure the file in archive1.zip was expanded
-            Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/file2/file1.txt"
+            Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/file2/file1.txt" -PathType Leaf
         }
 
-        It "Overwrites a file whose path is the same as the destination path of a file in the archive when -WriteMode Overwrite is specified" {
+        It "Overwrites a file whose path is the same as the destination path of a file in the archive when -WriteMode Overwrite is specified" -Tag td {
             $sourcePath = "$TestDrive$($DS)archive1.zip"
             $destinationPath = "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1"
 
@@ -339,10 +352,34 @@ Describe("Expand-Archive Tests") {
             $error.Count | Should -Be 0
 
             # Ensure the file in archive1.zip was expanded
-            Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1/file1.txt"
+            Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1/file1.txt" -PathType Leaf
 
             # Ensure the contents of file1.txt is "Hello, World!"
             Get-Content -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1/file1.txt" | Should -Be "Hello, World!"
+        }
+
+        It "Overwrites a directory whose path is the same as the destination path of a file in the archive when -WriteMode Overwrite is specified" {
+            $sourcePath = "$TestDrive$($DS)archive1.zip"
+            $destinationPath = "$TestDrive$($DS)ItemsToOverwriteContainer/subdir2"
+
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
+            $error.Count | Should -Be 0
+
+            # Ensure the file in archive1.zip was expanded
+            Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir2/file1.txt" -PathType Leaf
+
+            # Ensure the contents of file1.txt is "Hello, World!"
+            Get-Content -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1/file1.txt" | Should -Be "Hello, World!"
+        }
+
+        It "Overwrites a file whose path is the same as the destination path of a directory in the archive when -WriteMode Overwrite is specified" {
+            $sourcePath = "$TestDrive$($DS)archive2.zip"
+            $destinationPath = "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3"
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
+            $error.Count | Should -Be 0
+
+            # Ensure the file in archive1.zip was expanded
+            Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3/directory1" -PathType Container
         }
     }
 }

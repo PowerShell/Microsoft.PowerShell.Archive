@@ -10,6 +10,8 @@ namespace Microsoft.PowerShell.Archive
     {
         public string Name { get; }
 
+        public bool IsDirectory { get; }
+
         public void ExpandTo(string destinationPath);
     }
 }
