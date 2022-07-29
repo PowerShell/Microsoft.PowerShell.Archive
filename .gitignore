@@ -6,6 +6,9 @@
 # VSCode 
 .vscode
 
+# Auto-generated resx code
+src/Localized/Messages.Designer.cs
+
 # Visual Studio Launch Settings
 src/Properties
 

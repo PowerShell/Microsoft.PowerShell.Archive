@@ -5,12 +5,12 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
-using System.Reflection;
+using System.IO.Compression;
 
 namespace Microsoft.PowerShell.Archive
 {
     [Cmdlet("Compress", "Archive", SupportsShouldProcess = true)]
-    [OutputType(typeof(System.IO.FileInfo))]
+    [OutputType(typeof(FileInfo))]
     public class CompressArchiveCommand : PSCmdlet
     {
 
@@ -38,7 +38,7 @@ namespace Microsoft.PowerShell.Archive
         /// The LiteralPath parameter - specifies paths of files or directories from the filesystem to add to or update in the archive.
         /// This parameter does not expand wildcard characters.
         /// </summary>
-        [Parameter(Mandatory = true, Position = 1, ParameterSetName = "LiteralPath", ValueFromPipeline = false, ValueFromPipelineByPropertyName = true)]
+        [Parameter(Mandatory = true, ParameterSetName = "LiteralPath", ValueFromPipeline = false, ValueFromPipelineByPropertyName = true)]
         [ValidateNotNullOrEmpty]
         [Alias("PSPath")]
         public string[]? LiteralPath { get; set; }
@@ -55,20 +55,20 @@ namespace Microsoft.PowerShell.Archive
         public WriteMode WriteMode { get; set; } = WriteMode.Create;
 
         [Parameter()]
-        public SwitchParameter PassThru { get; set; } = false;
+        public SwitchParameter PassThru { get; set; }
 
         [Parameter()]
         [ValidateNotNullOrEmpty]
-        public System.IO.Compression.CompressionLevel CompressionLevel { get; set; } = System.IO.Compression.CompressionLevel.Optimal;
+        public CompressionLevel CompressionLevel { get; set; }
 
         [Parameter()]
         public ArchiveFormat? Format { get; set; } = null;
 
         private List<string>? _sourcePaths;
 
-        private PathHelper _pathHelper;
+        private readonly PathHelper _pathHelper;
 
-        private System.IO.FileSystemInfo? _destinationPathInfo;
+        private FileSystemInfo? _destinationPathInfo;
 
         private bool _didCreateNewArchive;
 
@@ -96,7 +96,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void ProcessRecord()
         {
             // Add each path from -Path or -LiteralPath to _sourcePaths because they can get lost when the next item in the pipeline is sent
-            if (ParameterSetName.StartsWith("Path"))
+            if (ParameterSetName == "Path")
             {
                 _sourcePaths?.AddRange(Path);
             }
@@ -110,7 +110,7 @@ namespace Microsoft.PowerShell.Archive
         {
             // Get archive entries, validation is performed by PathHelper
             // _sourcePaths should not be null at this stage, but if it is, prevent a NullReferenceException by doing the following
-            List<ArchiveAddition> archiveAddtions = _sourcePaths != null ? _pathHelper.GetArchiveAdditionsForPath(_sourcePaths.ToArray(), ParameterSetName.StartsWith("LiteralPath")) : new List<ArchiveAddition>();
+            List<ArchiveAddition> archiveAddtions = _sourcePaths != null ? _pathHelper.GetArchiveAdditionsForPath(_sourcePaths.ToArray(), ParameterSetName == "LiteralPath") : new List<ArchiveAddition>();
 
             // Remove references to _sourcePaths, Path, and LiteralPath to free up memory
             // The user could have supplied a lot of paths, so we should do this
@@ -124,7 +124,7 @@ namespace Microsoft.PowerShell.Archive
             if (additionsWithSamePathAsDestination.Count() > 0)
             {
                 // Since duplicate checking is performed earlier, there must a single ArchiveAddition such that ArchiveAddition.FullPath == DestinationPath
-                var errorCode = ParameterSetName.StartsWith("Path") ? ErrorCode.SamePathAndDestinationPath : ErrorCode.SameLiteralPathAndDestinationPath;
+                var errorCode = ParameterSetName == "Path" ? ErrorCode.SamePathAndDestinationPath : ErrorCode.SameLiteralPathAndDestinationPath;
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode, errorItem: additionsWithSamePathAsDestination[0].FileSystemInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
@@ -155,7 +155,7 @@ namespace Microsoft.PowerShell.Archive
                     }
 
                     // Create an archive -- this is where we will switch between different types of archives
-                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
+                    archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
                     _didCreateNewArchive = archiveMode == ArchiveMode.Update;
                 }
 
@@ -199,8 +199,8 @@ namespace Microsoft.PowerShell.Archive
             // If -PassThru is specified, write a System.IO.FileInfo object
             if (PassThru)
             {
-                var archiveInfo = new System.IO.FileInfo(_destinationPathInfo.FullName);
-                WriteObject(archiveInfo);
+                _destinationPathInfo = new FileInfo(_destinationPathInfo.FullName);
+                WriteObject(_destinationPathInfo);
             }
         }
 
@@ -209,10 +209,7 @@ namespace Microsoft.PowerShell.Archive
             // If a new output archive was created, delete it (this does not delete an archive if -WriteMode Update is specified)
             if (_didCreateNewArchive)
             {
-                if (System.IO.File.Exists(_destinationPathInfo.FullName))
-                {
-                    System.IO.File.Delete(_destinationPathInfo.FullName);
-                }
+                _destinationPathInfo?.Delete();
             }
         }
 
@@ -251,8 +248,8 @@ namespace Microsoft.PowerShell.Archive
                 {
                     errorCode = ErrorCode.CannotOverwriteWorkingDirectory;
                 }
-                // Throw an error if the DestinationPath is a directory with at least item and the cmdlet is in Overwrite mode
-                else if (WriteMode == WriteMode.Overwrite && (_destinationPathInfo as System.IO.DirectoryInfo).GetFileSystemInfos().Length > 0)
+                // Throw an error if the DestinationPath is a directory with at 1 least item and the cmdlet is in Overwrite mode
+                else if (WriteMode == WriteMode.Overwrite && (_destinationPathInfo as DirectoryInfo).GetFileSystemInfos().Length > 0)
                 {
                     errorCode = ErrorCode.ArchiveIsNonEmptyDirectory;
                 }
@@ -284,18 +281,15 @@ namespace Microsoft.PowerShell.Archive
         {
             try
             {
-                if (System.IO.File.Exists(_destinationPathInfo.FullName))
+                // No need to ensure DestinationPath has no children when deleting it
+                // because ValidateDestinationPath should have already done this
+                if (_destinationPathInfo.Exists)
                 {
-                    System.IO.File.Delete(_destinationPathInfo.FullName);
-                }
-                // TODO: Ensure DestinationPath has no children when deleting it
-                if (System.IO.Directory.Exists(_destinationPathInfo.FullName))
-                {
-                    System.IO.Directory.Delete(_destinationPathInfo.FullName);
+                    _destinationPathInfo?.Delete();
                 }
             }
             // Throw a terminating error if an IOException occurs
-            catch (System.IO.IOException ioException)
+            catch (IOException ioException)
             {
                 var errorRecord = new ErrorRecord(ioException, errorId: ErrorCode.OverwriteDestinationPathFailed.ToString(), 
                     errorCategory: ErrorCategory.InvalidOperation, targetObject: _destinationPathInfo.FullName);
@@ -313,7 +307,7 @@ namespace Microsoft.PowerShell.Archive
         private void DetermineArchiveFormat()
         {
             // Check if cmdlet is able to determine the format of the archive based on the extension of DestinationPath
-            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatForPath(path: _destinationPathInfo.FullName, archiveFormat: out var archiveFormat);
+            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatFromExtension(path: _destinationPathInfo.FullName, archiveFormat: out var archiveFormat);
             // If the user did not specify which archive format to use, try to determine it automatically
             if (Format is null)
             {
@@ -326,7 +320,7 @@ namespace Microsoft.PowerShell.Archive
                     // If the archive format could not be determined, use zip by default and emit a warning
                     var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, _destinationPathInfo.FullName);
                     WriteWarning(warningMsg);
-                    Format = ArchiveFormat.zip;
+                    Format = ArchiveFormat.Zip;
                 }
                 // Write a verbose message saying that Format is not specified and a format was determined automatically
                 string verboseMessage = String.Format(Messages.ArchiveFormatDeterminedVerboseMessage, Format);

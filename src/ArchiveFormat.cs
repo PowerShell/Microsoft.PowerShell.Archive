@@ -6,9 +6,9 @@ namespace Microsoft.PowerShell.Archive
 {
     public enum ArchiveFormat
     {
-        zip,
+        Zip,
         /* Removing these formats for preview relase
-        tar,
-        tgz*/
+        Tar,
+        Tgz*/
     }
 }

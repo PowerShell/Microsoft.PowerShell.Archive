@@ -16,35 +16,30 @@ namespace Microsoft.PowerShell.Archive
                 ArchiveMode.Update => new System.IO.FileStream(archivePath, mode: System.IO.FileMode.Open, access: System.IO.FileAccess.ReadWrite, share: System.IO.FileShare.None),
                 ArchiveMode.Extract => new System.IO.FileStream(archivePath, mode: System.IO.FileMode.Open, access: System.IO.FileAccess.Read, share: System.IO.FileShare.Read),
                 // TODO: Add message to exception
-                _ => throw new NotImplementedException()
+                _ => throw new ArgumentOutOfRangeException(nameof(archiveMode))
             };
 
             return format switch
             {
-                ArchiveFormat.zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
+                ArchiveFormat.Zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
                 //ArchiveFormat.tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
                 // TODO: Add archive types here
                 // TODO: Add message to exception
-                _ => throw new NotImplementedException()
+                _ => throw new ArgumentOutOfRangeException(nameof(archiveMode))
             };
         }
 
-        internal static bool TryGetArchiveFormatForPath(string path, out ArchiveFormat? archiveFormat)
+        internal static bool TryGetArchiveFormatFromExtension(string path, out ArchiveFormat? archiveFormat)
         {
-            archiveFormat = null;
-            if (path.EndsWith(".zip"))
+            archiveFormat = System.IO.Path.GetExtension(path) switch
             {
-                archiveFormat = ArchiveFormat.zip;
-            }
-            /* Disable support for tar and tar.gz for preview1 release 
-            if (path.EndsWith(".tar"))
-            {
-                archiveFormat = ArchiveFormat.tar;
-            }
-            if (path.EndsWith(".tar.gz") || path.EndsWith(".tgz"))
-            {
-                archiveFormat = ArchiveFormat.tgz;
-            }*/
+                ".zip" => archiveFormat = ArchiveFormat.Zip,
+                /* Disable support for tar and tar.gz for preview1 release 
+                ".tar" => archiveFormat = ArchiveFormat.Tar,
+                ".gz" => archiveFormat = ArchiveFormat.Tgz,
+                 */
+                _ => null
+            };
             return archiveFormat != null;
         }
     }
