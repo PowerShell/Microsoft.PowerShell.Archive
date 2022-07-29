@@ -13,13 +13,10 @@ param (
 
 $root = (Resolve-Path -Path "${PSScriptRoot}/../")[0]
 $Name = "Microsoft.PowerShell.Archive"
-$BuildOutputDir = Join-Path $root "\src\bin\release\net7.0"
+$BuildOutputDir = Join-Path $root "\src\bin\Release"
 $ManifestPath = "${BuildOutputDir}\${Name}.psd1"
 $ManifestData = Import-PowerShellDataFile -Path $ManifestPath
 $Version = $ManifestData.ModuleVersion
-
-# Path for signed 
-#$SignedPath = Join-Path $(Build.SourcesDirectory) "signed"
 
 $SignRoot = "${root}\signed\${Name}"
 $SignVersion = "$SignRoot\$Version"
@@ -94,7 +91,6 @@ if ($publish) {
             $null = New-Item -ItemType Directory $targetDir -Force
         }
         Copy-Item -Path $src -destination $targetDir -Verbose:$verboseValue
-
 
     }
 }
