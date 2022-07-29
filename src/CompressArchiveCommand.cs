@@ -64,7 +64,10 @@ namespace Microsoft.PowerShell.Archive
         [Parameter()]
         public ArchiveFormat? Format { get; set; } = null;
 
-        private List<string>? _sourcePaths;
+        // Paths from -Path parameter
+        private List<string>? _literalPaths;
+
+        private List<string>? _nonliteralPaths;
 
         private readonly PathHelper _pathHelper;
 
@@ -74,7 +77,8 @@ namespace Microsoft.PowerShell.Archive
 
         public CompressArchiveCommand()
         {
-            _sourcePaths = new List<string>();
+            _literalPaths = new List<string>();
+            _nonliteralPaths = new List<string>();
             _pathHelper = new PathHelper(this);
             Messages.Culture = new System.Globalization.CultureInfo("en-US");
             _didCreateNewArchive = false;
@@ -95,32 +99,41 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void ProcessRecord()
         {
-            // Add each path from -Path or -LiteralPath to _sourcePaths because they can get lost when the next item in the pipeline is sent
+            // Add each path from -Path or -LiteralPath to _nonliteralPaths or _literalPaths because they can get lost when the next item in the pipeline is sent
             if (ParameterSetName == "Path")
             {
-                _sourcePaths?.AddRange(Path);
+                _nonliteralPaths?.AddRange(Path);
             }
             else
             {
-                _sourcePaths?.AddRange(LiteralPath);
+                _literalPaths?.AddRange(LiteralPath);
             }
         }
 
         protected override void EndProcessing()
         {
             // Get archive entries, validation is performed by PathHelper
-            // _sourcePaths should not be null at this stage, but if it is, prevent a NullReferenceException by doing the following
-            List<ArchiveAddition> archiveAddtions = _sourcePaths != null ? _pathHelper.GetArchiveAdditionsForPath(_sourcePaths.ToArray(), ParameterSetName == "LiteralPath") : new List<ArchiveAddition>();
+            // _literalPaths should not be null at this stage, but if it is, prevent a NullReferenceException by doing the following
+            List<ArchiveAddition> archiveAdditions = _literalPaths != null ? _pathHelper.GetArchiveAdditionsForPath(paths: _literalPaths.ToArray(), literalPath: true) : new List<ArchiveAddition>();
+
+            // Do the same as above for _nonliteralPaths
+            List<ArchiveAddition>? nonliteralArchiveAdditions = _nonliteralPaths != null ? _pathHelper.GetArchiveAdditionsForPath(paths: _nonliteralPaths.ToArray(), literalPath: false) : new List<ArchiveAddition>();
+
+            // Add nonliteralArchiveAdditions to archive additions, so we can keep track of one list only
+            archiveAdditions.AddRange(nonliteralArchiveAdditions);
 
             // Remove references to _sourcePaths, Path, and LiteralPath to free up memory
             // The user could have supplied a lot of paths, so we should do this
             Path = null;
             LiteralPath = null;
-            _sourcePaths = null;
+            _literalPaths = null;
+            _nonliteralPaths = null;
+            // Remove reference to nonliteralArchiveAdditions since we do not use it any more
+            nonliteralArchiveAdditions = null;
 
             // Throw a terminating error if there is a source path as same as DestinationPath.
             // We don't want to overwrite the file or directory that we want to add to the archive.
-            var additionsWithSamePathAsDestination = archiveAddtions.Where(addition => PathHelper.ArePathsSame(addition.FileSystemInfo, _destinationPathInfo)).ToList();
+            var additionsWithSamePathAsDestination = archiveAdditions.Where(addition => PathHelper.ArePathsSame(addition.FileSystemInfo, _destinationPathInfo)).ToList();
             if (additionsWithSamePathAsDestination.Count() > 0)
             {
                 // Since duplicate checking is performed earlier, there must a single ArchiveAddition such that ArchiveAddition.FullPath == DestinationPath
@@ -130,7 +143,7 @@ namespace Microsoft.PowerShell.Archive
             }
 
             // Warn the user if there are no items to add for some reason (e.g., no items matched the filter)
-            if (archiveAddtions.Count == 0)
+            if (archiveAdditions.Count == 0)
             {
                 WriteWarning(Messages.NoItemsToAddWarning);
             }
@@ -160,11 +173,11 @@ namespace Microsoft.PowerShell.Archive
                 }
 
                 // TODO: Update progress
-                long numberOfAdditions = archiveAddtions.Count;
+                long numberOfAdditions = archiveAdditions.Count;
                 long numberOfAddedItems = 0;
                 var progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", "0% complete");
                 WriteProgress(progressRecord);
-                foreach (ArchiveAddition entry in archiveAddtions)
+                foreach (ArchiveAddition entry in archiveAdditions)
                 {
                     if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: "Add"))
                     {

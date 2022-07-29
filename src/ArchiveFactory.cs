@@ -31,12 +31,11 @@ namespace Microsoft.PowerShell.Archive
 
         internal static bool TryGetArchiveFormatFromExtension(string path, out ArchiveFormat? archiveFormat)
         {
-            archiveFormat = System.IO.Path.GetExtension(path) switch
+            archiveFormat = System.IO.Path.GetExtension(path).ToLowerInvariant() switch
             {
-                ".zip" => archiveFormat = ArchiveFormat.Zip,
+                ".zip" => ArchiveFormat.Zip,
                 /* Disable support for tar and tar.gz for preview1 release 
-                ".tar" => archiveFormat = ArchiveFormat.Tar,
-                ".gz" => archiveFormat = ArchiveFormat.Tgz,
+                ".gz" => path.EndsWith(".tar.gz) ? ArchiveFormat.Tgz : null,
                  */
                 _ => null
             };
