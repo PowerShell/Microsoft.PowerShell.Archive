@@ -161,9 +161,15 @@ namespace Microsoft.PowerShell.Archive
 
             void IEntry.ExpandTo(string destinationPath)
             {
-                string postExpandPath = System.IO.Path.Combine(destinationPath, _entry.FullName);
-                System.Diagnostics.Debug.Assert(!System.IO.File.Exists(postExpandPath));
-                _entry.ExtractToFile(destinationPath);
+                // .NET APIs differentiate a file and directory by a terminating `/`
+                // If the entry name ends with `/`, it is a directory
+                if (_entry.FullName.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
+                {
+                    System.IO.Directory.CreateDirectory(destinationPath);
+                } else
+                {
+                    _entry.ExtractToFile(destinationPath);
+                }
             }
 
             internal ZipArchiveEntry(System.IO.Compression.ZipArchiveEntry entry)

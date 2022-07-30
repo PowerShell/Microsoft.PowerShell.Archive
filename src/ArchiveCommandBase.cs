@@ -16,7 +16,7 @@ namespace Microsoft.PowerShell.Archive
         protected ArchiveFormat DetermineArchiveFormat(string destinationPath, ArchiveFormat? archiveFormat)
         {
             // Check if cmdlet is able to determine the format of the archive based on the extension of DestinationPath
-            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatForPath(path: destinationPath, archiveFormat: out var archiveFormatBasedOnExt);
+            bool ableToDetermineArchiveFormat = ArchiveFactory.TryGetArchiveFormatFromExtension(path: destinationPath, archiveFormat: out var archiveFormatBasedOnExt);
             // If the user did not specify which archive format to use, try to determine it automatically
             if (archiveFormat is null)
             {
@@ -29,7 +29,7 @@ namespace Microsoft.PowerShell.Archive
                     // If the archive format could not be determined, use zip by default and emit a warning
                     var warningMsg = String.Format(Messages.ArchiveFormatCouldNotBeDeterminedWarning, destinationPath);
                     WriteWarning(warningMsg);
-                    archiveFormat = ArchiveFormat.zip;
+                    archiveFormat = ArchiveFormat.Zip;
                 }
                 // Write a verbose message saying that Format is not specified and a format was determined automatically
                 string verboseMessage = String.Format(Messages.ArchiveFormatDeterminedVerboseMessage, archiveFormat);

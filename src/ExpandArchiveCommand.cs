@@ -69,8 +69,8 @@ namespace Microsoft.PowerShell.Archive
         protected override void EndProcessing()
         {
             // Resolve Path or LiteralPath
-            bool checkForWildcards = ParameterSetName.StartsWith("Path");
-            string path = ParameterSetName.StartsWith("Path") ? Path : LiteralPath;
+            bool checkForWildcards = ParameterSetName == "Path";
+            string path = checkForWildcards ? Path : LiteralPath;
             System.IO.FileSystemInfo sourcePath = _pathHelper.ResolveToSingleFullyQualifiedPath(path: path, hasWildcards: checkForWildcards);
 
             ValidateSourcePath(sourcePath);
@@ -79,7 +79,7 @@ namespace Microsoft.PowerShell.Archive
             Format = DetermineArchiveFormat(destinationPath: sourcePath.FullName, archiveFormat: Format);
 
             // Get an archive from source path -- this is where we will switch between different types of archives
-            using IArchive? archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.zip, archivePath: sourcePath.FullName, archiveMode: ArchiveMode.Extract, compressionLevel: System.IO.Compression.CompressionLevel.NoCompression);
+            using IArchive? archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: sourcePath.FullName, archiveMode: ArchiveMode.Extract, compressionLevel: System.IO.Compression.CompressionLevel.NoCompression);
             try
             {
                 // If the destination path is a file that needs to be overwriten, delete it
@@ -110,9 +110,10 @@ namespace Microsoft.PowerShell.Archive
                 }
 
 
-            } catch
+            } catch (System.UnauthorizedAccessException unauthorizedAccessException)
             {
-
+                // TODO: Change this later to write an error
+                throw unauthorizedAccessException;
             }
         }
 
@@ -127,6 +128,12 @@ namespace Microsoft.PowerShell.Archive
         {
             // The location of the entry post-expanding of the archive
             string postExpandPath = GetPostExpansionPath(entryName: entry.Name, destinationPath: _destinationPathInfo.FullName);
+
+            // If postExpandPath has a terminating `/`, remove it (there is case where overwriting a file may fail because of this)
+            if (postExpandPath.EndsWith(System.IO.Path.DirectorySeparatorChar))
+            {
+                postExpandPath = postExpandPath.Remove(postExpandPath.Length - 1);
+            }
 
             // If the entry name is invalid, write a non-terminating error and stop processing the entry
             if (IsPathInvalid(postExpandPath))
@@ -157,6 +164,13 @@ namespace Microsoft.PowerShell.Archive
                     WriteError(errorRecord);
                     return;
                 }
+                // If postExpandPath is the same as the working directory, then write an error
+                if (hasCollision && postExpandPath == SessionState.Path.CurrentFileSystemLocation.ProviderPath)
+                {
+                    var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.CannotOverwriteWorkingDirectory, postExpandPath);
+                    WriteError(errorRecord);
+                    return;
+                }
                 postExpandPathInfo = directoryInfo;
             }
 
@@ -180,7 +194,7 @@ namespace Microsoft.PowerShell.Archive
                 // There is a need to expand unless the entry is a directory and the postExpandPath is also a directory
                 if (!(entry.IsDirectory && postExpandPathInfo.Attributes.HasFlag(FileAttributes.Directory)))
                 {
-                    entry.ExpandTo(_destinationPathInfo.FullName);
+                    entry.ExpandTo(postExpandPath);
                 }
             }
         }
@@ -197,11 +211,7 @@ namespace Microsoft.PowerShell.Archive
             // Check if DestinationPath is an existing directory
             else if (_destinationPathInfo.Attributes.HasFlag(FileAttributes.Directory))
             {
-                // Throw an error if the DestinationPath is the current working directory and the cmdlet is in Overwrite mode
-                if (WriteMode == ExpandArchiveWriteMode.Overwrite && _destinationPathInfo.FullName == SessionState.Path.CurrentFileSystemLocation.ProviderPath)
-                {
-                    errorCode = ErrorCode.CannotOverwriteWorkingDirectory;
-                }
+                // Do nothing
             }
             // If DestinationPath is an existing file
             else

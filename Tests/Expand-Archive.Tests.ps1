@@ -240,6 +240,7 @@ Describe("Expand-Archive Tests") {
         # last write times
 
         BeforeAll {
+            New-Item -Path "$TestDrive$($DS)file1.txt" -ItemType File
             "Hello, World!" | Out-File -FilePath "$TestDrive$($DS)file1.txt"
             Compress-Archive -Path "$TestDrive$($DS)file1.txt" -DestinationPath "$TestDrive$($DS)archive1.zip"
 
@@ -265,6 +266,14 @@ Describe("Expand-Archive Tests") {
             # Create directory to override
             New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3" -ItemType Directory
             New-Item -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3/directory1" -ItemType File
+
+            # Set the error action preference so non-terminating errors aren't displayed
+            $ErrorActionPreference = 'SilentlyContinue'
+        }
+
+        AfterAll {
+            # Reset to default value
+            $ErrorActionPreference = 'Continue'
         }
 
         It "Throws an error when DestinationPath is an existing file" {
@@ -320,9 +329,9 @@ Describe("Expand-Archive Tests") {
 
         It "Writes a non-terminating error when a file in the archive has a destination path that is the working directory and -WriteMode Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)archive1.zip"
-            $destinationPath = "$TestDrive$($DS)ParentDir/file1.txt"
+            $destinationPath = "$TestDrive$($DS)ParentDir"
 
-            Push-Location $destinationPath
+            Push-Location "$destinationPath/file1.txt"
 
             try {
                 Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
@@ -369,10 +378,10 @@ Describe("Expand-Archive Tests") {
             Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir2/file1.txt" -PathType Leaf
 
             # Ensure the contents of file1.txt is "Hello, World!"
-            Get-Content -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir1/file1.txt" | Should -Be "Hello, World!"
+            Get-Content -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir2/file1.txt" | Should -Be "Hello, World!"
         }
 
-        It "Overwrites a file whose path is the same as the destination path of a directory in the archive when -WriteMode Overwrite is specified" {
+        It "Overwrites a file whose path is the same as the destination path of a directory in the archive when -WriteMode Overwrite is specified" -Tag this1 {
             $sourcePath = "$TestDrive$($DS)archive2.zip"
             $destinationPath = "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3"
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
@@ -382,4 +391,67 @@ Describe("Expand-Archive Tests") {
             Test-Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3/directory1" -PathType Container
         }
     }
+
+    Context "Basic functionality tests" {
+        # extract to a directory works
+        # extract to working directory works when DestinationPath is specified
+        # expand archive works when -DestinationPath is not specified (and a single top level item which is a directory)
+        # expand archive works when -DestinationPath is not specified (and there are mutiple top level items)
+
+        BeforeAll {
+            New-Item -Path "$TestDrive/file1.txt" -ItemType File
+            "Hello, World!" | Out-File -FilePath "$TestDrive/file1.txt"
+            Compress-Archive -Path "$TestDrive/file1.txt" -DestinationPath "$TestDrive/archive1.zip"
+
+            New-Item -Path "$TestDrive/directory2" -ItemType Directory
+
+            New-Item -Path "$TestDrive/DirectoryToArchive" -ItemType Directory
+            Compress-Archive -Path "$TestDrive/DirectoryToArchive" -DestinationPath "$TestDrive/archive2.zip"
+        }
+
+        It "Expands an archive when a non-existant directory is specified as -DestinationPath" {
+            $sourcePath = "$TestDrive/archive1.zip"
+            $destinationPath = "$TestDrive/directory1"
+
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+
+            $itemsInDestinationPath = Get-ChildItem $destinationPath -Name
+            $itemsInDestinationPath.Count | Should -Be 1
+            $itemsInDestinationPath[0] | Should -Be "file1.txt"
+        }
+
+        It "Expands an archive to the working directory when it is specified as -DestinationPath" {
+            $sourcePath = "$TestDrive/archive1.zip"
+            $destinationPath = "$TestDrive/directory2"
+
+            Push-Location $destinationPath
+
+            Expand-Archive -Path $sourcePath -DestinationPath $PWD
+
+            $itemsInDestinationPath = Get-ChildItem $PWD -Name
+            $itemsInDestinationPath.Count | Should -Be 1
+            $itemsInDestinationPath[0] | Should -Be "file1.txt"
+
+            Pop-Location
+        }
+
+        It "Expands an archive containing a single top-level directory and no other top-level items to a directory with that directory's name when -DestinationPath is not specified" {
+            $sourcePath = "$TestDrive/archive2.zip"
+            $destinationPath = "$TestDrive/directory2"
+
+            Push-Location $destinationPath
+
+            Expand-Archive -Path $sourcePath
+
+            $itemsInDestinationPath = Get-ChildItem "$TestDrive/directory2" -Name -Recurse
+            $itemsInDestinationPath.Count | Should -Be 1
+            $itemsInDestinationPath[0] | Should -Be "DirectoryToArchive"
+
+            Test-Path -Path "$TestDrive/directory2/DirectoryToArchive" -PathType Container
+
+            Pop-Location
+        }
+    }
+
+    
 }
