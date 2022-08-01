@@ -15,7 +15,7 @@ namespace Microsoft.PowerShell.Archive
         // Add a file or folder to the archive. The entry name of the added item in the
         // will be ArchiveEntry.Name.
         // Throws an exception if the archive is in read mode.
-        internal void AddFilesytemEntry(ArchiveAddition entry);
+        internal void AddFileSystemEntry(ArchiveAddition entry);
 
         // Get the entries in the archive.
         // Throws an exception if the archive is in create mode.

@@ -9,10 +9,9 @@ using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
-    // TODO: Add exception handling
     internal class PathHelper
     {
-        private PSCmdlet _cmdlet;
+        private readonly PSCmdlet _cmdlet;
 
         private const string FileSystemProviderName = "FileSystem";
 
@@ -50,17 +49,17 @@ namespace Microsoft.PowerShell.Archive
             if (nonfilesystemPaths.Count > 0)
             {
                 // Get an error record and throw it
-                var commaSperatedPaths = String.Join(separator: ',', values: nonfilesystemPaths);
+                var commaSperatedPaths = string.Join(separator: ',', values: nonfilesystemPaths);
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InvalidPath, errorItem: commaSperatedPaths);
                 _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
             }
 
             // If there are duplicate paths, throw an error
             var duplicates = GetDuplicatePaths(additions);
-            if (duplicates.Count() > 0)
+            if (duplicates.Any())
             {
                 // Get an error record and throw it
-                var commaSperatedPaths = String.Join(separator: ',', values: duplicates);
+                var commaSperatedPaths = string.Join(separator: ',', values: duplicates);
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.DuplicatePaths, errorItem: commaSperatedPaths);
                 _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
             }
@@ -124,15 +123,15 @@ namespace Microsoft.PowerShell.Archive
             // Throw a terminating error if the path could not be found
             catch (System.Management.Automation.ItemNotFoundException notFoundException)
             {
-                var errorRecord = new ErrorRecord(exception: notFoundException, errorId: ErrorCode.PathNotFound.ToString(), errorCategory: ErrorCategory.InvalidArgument,
+                var errorRecord = new ErrorRecord(exception: notFoundException, errorId: nameof(ErrorCode.PathNotFound), errorCategory: ErrorCategory.InvalidArgument,
                     targetObject: path);
                 _cmdlet.ThrowTerminatingError(errorRecord);
             }
 
             // If an exception (besides ItemNotFoundException) was caught, write a non-terminating error
-            if (exception != null)
+            if (exception is not null)
             {
-                var errorRecord = new ErrorRecord(exception: exception, errorId: ErrorCode.InvalidPath.ToString(), errorCategory: ErrorCategory.InvalidArgument,
+                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument,
                     targetObject: path);
                 _cmdlet.WriteError(errorRecord);
             }
@@ -190,9 +189,9 @@ namespace Microsoft.PowerShell.Archive
             }
 
             // If an exception was caught, write a non-terminating error
-            if (exception != null)
+            if (exception is not null)
             {
-                var errorRecord = new ErrorRecord(exception: exception, errorId: ErrorCode.InvalidPath.ToString(), errorCategory: ErrorCategory.InvalidArgument, 
+                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
                     targetObject: path);
                 _cmdlet.WriteError(errorRecord);
             }
@@ -241,14 +240,7 @@ namespace Microsoft.PowerShell.Archive
                 // pathPrefix is used to construct the entry names of the descendents of the directory
                 var pathPrefix = GetPrefixForPath(directoryInfo: directoryInfo);
                 foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
-                {
-                    /* childPath can either be a file or directory, and nothing else
-                    //ArchiveAddition.ArchiveAdditionType type = ArchiveAddition.ArchiveAdditionType.File;
-                    if (childPath is System.IO.DirectoryInfo)
-                    {
-                        type = ArchiveAddition.ArchiveAdditionType.Directory;
-                    }*/
-                    
+                {                    
                     // Add an entry for each child path
                     var entryName = GetEntryName(path: childPath.FullName, prefix: pathPrefix);
                     additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childPath));
@@ -257,7 +249,7 @@ namespace Microsoft.PowerShell.Archive
             // Write a non-terminating error if a securityException occurs
             catch (System.Security.SecurityException securityException)
             {
-                var errorId = ErrorCode.InsufficientPermissionsToAccessPath.ToString();
+                var errorId = nameof(ErrorCode.InsufficientPermissionsToAccessPath);
                 var errorRecord = new ErrorRecord(securityException, errorId: errorId, ErrorCategory.SecurityError, targetObject: directoryInfo);
                 _cmdlet.WriteError(errorRecord);
             }
@@ -285,9 +277,17 @@ namespace Microsoft.PowerShell.Archive
             return entryName;
         }
 
-        private string GetEntryName(string path, string prefix)
+        /// <summary>
+        /// Determines the entry name of a file or directory based on its path and a prefix.
+        /// The prefix is removed from the path and the remaining portion is the entry name.
+        /// </summary>
+        /// <param name="path"></param>
+        /// <param name="prefix"></param>
+        /// <returns></returns>
+        /// <exception cref="ArgumentException"></exception>
+        private static string GetEntryName(string path, string prefix)
         {
-            if (prefix == String.Empty) return path;
+            if (prefix == string.Empty) return path;
 
             // If the path does not start with the prefix, throw an exception
             if (!path.StartsWith(prefix))
@@ -306,12 +306,18 @@ namespace Microsoft.PowerShell.Archive
             return entryName;
         }
 
-        private string GetPrefixForPath(System.IO.DirectoryInfo directoryInfo)
+        /// <summary>
+        /// Gets the prefix from the path to a directory. This prefix is necessary to determine the entry names of all
+        /// descendents of the directory.
+        /// </summary>
+        /// <param name="directoryInfo"></param>
+        /// <returns></returns>
+        private static string GetPrefixForPath(System.IO.DirectoryInfo directoryInfo)
         {
             // Get the parent directory of the path
             if (directoryInfo.Parent is null)
             {
-                return String.Empty;
+                return string.Empty;
             }
             var prefix = directoryInfo.Parent.FullName;
             if (!prefix.EndsWith(System.IO.Path.DirectorySeparatorChar))
@@ -326,7 +332,7 @@ namespace Microsoft.PowerShell.Archive
         /// </summary>
         /// <param name="additions"></param>
         /// <returns></returns>
-        private IEnumerable<string> GetDuplicatePaths(List<ArchiveAddition> additions)
+        private static IEnumerable<string> GetDuplicatePaths(List<ArchiveAddition> additions)
         {
             return additions.GroupBy(x => x.FileSystemInfo.FullName)
                     .Where(group => group.Count() > 1)
@@ -363,7 +369,7 @@ namespace Microsoft.PowerShell.Archive
         /// </summary>
         /// <param name="path"></param>
         /// <returns></returns>
-        private bool CanPreservePathStructure(string path)
+        private static bool CanPreservePathStructure(string path)
         {
             return !System.IO.Path.IsPathRooted(path);
         }
@@ -379,6 +385,13 @@ namespace Microsoft.PowerShell.Archive
             relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
             return !relativePath.Contains("..");
         }
+
+        /// <summary>
+        /// Determines if two paths are the same
+        /// </summary>
+        /// <param name="fileSystemInfo1"></param>
+        /// <param name="fileSystemInfo2"></param>
+        /// <returns></returns>
         internal static bool ArePathsSame(System.IO.FileSystemInfo fileSystemInfo1, System.IO.FileSystemInfo fileSystemInfo2)
         {
             // If one is a file and the other is a directory, return false

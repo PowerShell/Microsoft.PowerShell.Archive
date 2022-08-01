@@ -15,7 +15,6 @@ namespace Microsoft.PowerShell.Archive
                 ArchiveMode.Create => new System.IO.FileStream(archivePath, mode: System.IO.FileMode.CreateNew, access: System.IO.FileAccess.Write, share: System.IO.FileShare.None),
                 ArchiveMode.Update => new System.IO.FileStream(archivePath, mode: System.IO.FileMode.Open, access: System.IO.FileAccess.ReadWrite, share: System.IO.FileShare.None),
                 ArchiveMode.Extract => new System.IO.FileStream(archivePath, mode: System.IO.FileMode.Open, access: System.IO.FileAccess.Read, share: System.IO.FileShare.Read),
-                // TODO: Add message to exception
                 _ => throw new ArgumentOutOfRangeException(nameof(archiveMode))
             };
 
@@ -23,8 +22,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 ArchiveFormat.Zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
                 //ArchiveFormat.tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
-                // TODO: Add archive types here
-                // TODO: Add message to exception
+                // TODO: Add Tar.gz here
                 _ => throw new ArgumentOutOfRangeException(nameof(archiveMode))
             };
         }
@@ -39,7 +37,7 @@ namespace Microsoft.PowerShell.Archive
                  */
                 _ => null
             };
-            return archiveFormat != null;
+            return archiveFormat is not null;
         }
     }
 }

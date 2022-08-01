@@ -8,7 +8,7 @@ namespace Microsoft.PowerShell.Archive
     {
         internal static ErrorRecord GetErrorRecord(ErrorCode errorCode, string errorItem)
         {
-            var errorMsg = String.Format(GetErrorMessage(errorCode: errorCode), errorItem);
+            var errorMsg = string.Format(GetErrorMessage(errorCode: errorCode), errorItem);
             var exception = new ArgumentException(errorMsg);
             return new ErrorRecord(exception, errorCode.ToString(), ErrorCategory.InvalidArgument, errorItem);
         }
@@ -30,7 +30,7 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.InsufficientPermissionsToAccessPath => Messages.InsufficientPermssionsToAccessPathMessage,
                 ErrorCode.OverwriteDestinationPathFailed => Messages.OverwriteDestinationPathFailed,
                 ErrorCode.CannotOverwriteWorkingDirectory => Messages.CannotOverwriteWorkingDirectoryMessage,
-                _ => throw new NotImplementedException("Error code has not been implemented")
+                _ => throw new ArgumentOutOfRangeException(nameof(errorCode))
             };
         }
     }

@@ -14,33 +14,14 @@ namespace Microsoft.PowerShell.Archive
         /// The name of the file or directory in the archive.
         /// This is a path of the file or directory in the archive (e.g., 'file1.txt` means the file is a top-level file in the archive).
         /// </summary>
-        public string EntryName { get; set; }
+        internal string EntryName { get; set; }
 
-        /// <summary>
-        /// The fully qualified path of the file or directory to add to or update in the archive.
-        /// </summary>
-        //public string FullPath { get; set; }
+        internal System.IO.FileSystemInfo FileSystemInfo { get; set; }
 
-        public System.IO.FileSystemInfo FileSystemInfo { get; set; }
-
-        /// <summary>
-        /// The type of filesystem entry to add.
-        /// </summary>
-        //public ArchiveAdditionType Type { get; set; }
-
-        public ArchiveAddition(string entryName, System.IO.FileSystemInfo fileSystemInfo)
+        internal ArchiveAddition(string entryName, System.IO.FileSystemInfo fileSystemInfo)
         {
             EntryName = entryName;
             FileSystemInfo = fileSystemInfo;
-        }
-
-        /// <summary>
-        /// This enum tracks types of filesystem entries
-        /// </summary>
-        internal enum ArchiveAdditionType
-        {
-            File,
-            Directory,
         }
     }
 }

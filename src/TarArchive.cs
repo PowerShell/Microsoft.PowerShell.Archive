@@ -10,13 +10,13 @@ namespace Microsoft.PowerShell.Archive
     {
         private bool disposedValue;
 
-        private ArchiveMode _mode;
+        private readonly ArchiveMode _mode;
 
-        private string _path;
+        private readonly string _path;
 
-        private TarWriter _tarWriter;
+        private readonly TarWriter _tarWriter;
 
-        private FileStream _fileStream;
+        private readonly FileStream _fileStream;
 
         ArchiveMode IArchive.Mode => _mode;
 
@@ -30,7 +30,7 @@ namespace Microsoft.PowerShell.Archive
             _fileStream = fileStream;
         }
 
-        void IArchive.AddFilesytemEntry(ArchiveAddition entry)
+        void IArchive.AddFileSystemEntry(ArchiveAddition entry)
         {
             _tarWriter.WriteEntry(fileName: entry.FileSystemInfo.FullName, entryName: entry.EntryName);
         }

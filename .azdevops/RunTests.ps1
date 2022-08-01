@@ -9,16 +9,16 @@ if ($null -ne $module)
 Import-Module "$env:PIPELINE_WORKSPACE/ModuleBuild/Microsoft.PowerShell.Archive.psd1"
 
 $module = Get-Module -Name "Microsoft.PowerShell.Archive"
-$module.Path | Write-Verbose
+$module.Path | Write-Verbose -Verbose
 
 # Load Pester
-Install-Module -Name "Pester" -Force
+Install-Module -Name "Pester" -RequiredVersion "5.3.3" -Force
 $module = Get-Module -Name "Pester"
 if ($null -ne $module)
 {
     Remove-Module "Pester"
 } 
-Import-Module -Name "Pester"
+Import-Module -Name "Pester" -RequiredVersion "5.3.3"
 
 # Run tests
 $OutputFile = "$PWD/build-unit-tests.xml"
@@ -32,7 +32,7 @@ if(!$results -or $results.FailedCount -gt 0 -or !$results.TotalCount)
 
 # Unload module
 $module = Get-Module -Name "Microsoft.PowerShell.Archive"
-if ($module -ne $null)
+if ($null -ne $module)
 {
     Remove-Module $module
 }
