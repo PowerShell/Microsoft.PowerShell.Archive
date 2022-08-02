@@ -192,7 +192,7 @@ namespace Microsoft.PowerShell.Archive
                 }
                 // Only expand the entry if there is a need to expand
                 // There is a need to expand unless the entry is a directory and the postExpandPath is also a directory
-                if (!(entry.IsDirectory && postExpandPathInfo.Attributes.HasFlag(FileAttributes.Directory)))
+                if (!(entry.IsDirectory && postExpandPathInfo.Attributes.HasFlag(FileAttributes.Directory) && postExpandPathInfo.Exists))
                 {
                     entry.ExpandTo(postExpandPath);
                 }
@@ -281,6 +281,27 @@ namespace Microsoft.PowerShell.Archive
                 }
             }
             return false;
+        }
+        
+        // Used to determine what the DestinationPath should be when it is not specified
+        private string DetermineDestinationPath(IArchive archive)
+        {
+            var workingDirectory = SessionState.Path.CurrentFileSystemLocation.ProviderPath;
+            if (archive.HasTopLevelDirectoryOnly())
+            {
+
+            } else
+            {
+                // destination path will be "working directory/archive file name"
+                var filename = System.IO.Path.GetFileName(archive.Path);
+                // If filename does not have an extension, throw a terminating error because the cmdlet
+                // cannot determine what destination path should be
+                if (System.IO.Path.GetExtension(filename) == String.Empty)
+                {
+                    var errorRecord =  
+                }
+                return System.IO.Path.Combine(workingDirectory, filename);
+            }
         }
 
         #endregion

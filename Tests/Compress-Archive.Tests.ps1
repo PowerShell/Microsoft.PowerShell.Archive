@@ -379,7 +379,7 @@ BeforeDiscovery {
             $destinationPath = "$TestDrive$($DS)archive11.zip"
 
             # Assert the last write time of the file is before 1980
-            $dateProperty = Get-ItemProperty -Path $sourcePath -Name "LastWriteTime"
+            $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
             $dateProperty.Year | Should -BeLessThan 1980
 
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
@@ -392,6 +392,38 @@ BeforeDiscovery {
             $zipArchiveMode = [System.IO.Compression.ZipArchiveMode]::Read
             $archive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $archiveStream,$zipArchiveMode
             $entry = $archive.GetEntry("OldFile.txt")
+            $entry | Should -Not -BeNullOrEmpty
+
+            $entry.LastWriteTime.Year | Should -BeExactly 1980
+            $entry.LastWriteTime.Month| Should -BeExactly 1
+            $entry.LastWriteTime.Day | Should -BeExactly 1
+            $entry.LastWriteTime.Hour | Should -BeExactly 0
+            $entry.LastWriteTime.Minute | Should -BeExactly 0
+            $entry.LastWriteTime.Second | Should -BeExactly 0
+            $entry.LastWriteTime.Millisecond | Should -BeExactly 0
+
+
+            $archive.Dispose()
+            $archiveStream.Dispose()
+        }
+
+        It "Compresses a directory whose last write time is before 1980" {
+            New-Item -Path "$TestDrive/olddirectory" -ItemType Directory
+            Set-ItemProperty -Path "$TestDrive/olddirectory" -Name "LastWriteTime" -Value '1974-01-16 14:44'
+
+            $sourcePath = "$TestDrive$($DS)olddirectory"
+            $destinationPath = "$TestDrive$($DS)archive12.zip"
+
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should -Exist
+            Test-ZipArchive $destinationPath @('olddirectory/')
+
+            # Get the archive
+            $fileMode = [System.IO.FileMode]::Open
+            $archiveStream = New-Object -TypeName System.IO.FileStream -ArgumentList $destinationPath,$fileMode
+            $zipArchiveMode = [System.IO.Compression.ZipArchiveMode]::Read
+            $archive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $archiveStream,$zipArchiveMode
+            $entry = $archive.GetEntry("olddirectory/")
             $entry | Should -Not -BeNullOrEmpty
 
             $entry.LastWriteTime.Year | Should -BeExactly 1980

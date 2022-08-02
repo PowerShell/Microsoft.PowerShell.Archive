@@ -30,6 +30,8 @@ namespace Microsoft.PowerShell.Archive
 
         string IArchive.Path => _archivePath;
 
+        int IArchive.NumberOfEntries => _zipArchive.Entries.Count;
+
         public ZipArchive(string archivePath, ArchiveMode mode, System.IO.FileStream archiveStream, CompressionLevel compressionLevel)
         {
             _disposedValue = false;
@@ -71,7 +73,18 @@ namespace Microsoft.PowerShell.Archive
                         entryName += ZipArchiveDirectoryPathTerminator;
                     }
 
-                    _zipArchive.CreateEntry(entryName);
+                    entryInArchive = _zipArchive.CreateEntry(entryName);
+
+                    // Set the last write time
+                    if (entryInArchive != null)
+                    {
+                        var lastWriteTime = addition.FileSystemInfo.LastWriteTime;
+                        if (lastWriteTime.Year < 1980 || lastWriteTime.Year > 2107)
+                        {
+                            lastWriteTime = new DateTime(1980, 1, 1, 0, 0, 0);
+                        }
+                        entryInArchive.LastWriteTime = lastWriteTime;
+                    }
                 }
             }
             else
@@ -149,6 +162,18 @@ namespace Microsoft.PowerShell.Archive
             GC.SuppressFinalize(this);
         }
 
+        bool IArchive.HasTopLevelDirectoryOnly()
+        {
+            if (_zipArchive.Entries.Count == 0 || _zipArchive.Entries.Count > 1)
+            {
+                return false;
+            }
+
+            // At this point, we know the archive has one entry only
+            // We can determine if the entry is a directory by checking if the entry name ends with '/'
+            return _zipArchive.Entries[0].FullName.EndsWith(ZipArchiveDirectoryPathTerminator);
+        }
+
         internal class ZipArchiveEntry : IEntry
         {
             // Underlying object is System.IO.Compression.ZipArchiveEntry
@@ -166,6 +191,8 @@ namespace Microsoft.PowerShell.Archive
                 if (_entry.FullName.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
                 {
                     System.IO.Directory.CreateDirectory(destinationPath);
+                    var lastWriteTime = _entry.LastWriteTime;
+                    System.IO.Directory.SetLastWriteTime(destinationPath, lastWriteTime.DateTime);
                 } else
                 {
                     _entry.ExtractToFile(destinationPath);

@@ -15,6 +15,9 @@ namespace Microsoft.PowerShell.Archive
         // Get the fully qualified path of the archive
         internal string Path { get; }
 
+        // Number of entries
+        internal int NumberOfEntries { get; }
+
         // Add a file or folder to the archive. The entry name of the added item in the
         // will be ArchiveEntry.Name.
         // Throws an exception if the archive is in read mode.
@@ -29,5 +32,8 @@ namespace Microsoft.PowerShell.Archive
         // Expands an archive to a destination folder.
         // Throws an exception if the archive is not in read mode.
         internal void Expand(string destinationPath);
+
+        // Does the archive have only a top-level directory?
+        internal bool HasTopLevelDirectoryOnly();
     }
 }
