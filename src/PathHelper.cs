@@ -86,7 +86,10 @@ namespace Microsoft.PowerShell.Archive
                 if (providerInfo?.Name != FileSystemProviderName)
                 {
                     // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
-                    nonfilesystemPaths.Add(path);
+                    foreach (var resolvedPath in resolvedPaths)
+                    {
+                        nonfilesystemPaths.Add(resolvedPath);
+                    }
                     return;
                 }
 

@@ -1,12 +1,13 @@
-﻿using Microsoft.PowerShell.Archive.Localized;
-using System;
+﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Management.Automation;
-using System.IO.Compression;
-using System.Diagnostics;
+
+using Microsoft.PowerShell.Archive.Localized;
 
 namespace Microsoft.PowerShell.Archive
 {
@@ -20,11 +21,17 @@ namespace Microsoft.PowerShell.Archive
         // TODO: Add comments to methods
         // TODO: Add tar support
 
+        private enum ParameterSet
+        {
+            Path,
+            LiteralPath
+        }
+
         /// <summary>
         /// The Path parameter - specifies paths of files or directories from the filesystem to add to or update in the archive.
         /// This parameter does expand wildcard characters.
         /// </summary>
-        [Parameter(Mandatory = true, Position = 0, ParameterSetName = "Path", ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
+        [Parameter(Mandatory = true, Position = 0, ParameterSetName = nameof(ParameterSet.Path), ValueFromPipeline = true, ValueFromPipelineByPropertyName = true)]
         [ValidateNotNullOrEmpty]
         public string[]? Path { get; set; }
 
@@ -32,7 +39,7 @@ namespace Microsoft.PowerShell.Archive
         /// The LiteralPath parameter - specifies paths of files or directories from the filesystem to add to or update in the archive.
         /// This parameter does not expand wildcard characters.
         /// </summary>
-        [Parameter(Mandatory = true, ParameterSetName = "LiteralPath", ValueFromPipelineByPropertyName = true)]
+        [Parameter(Mandatory = true, ParameterSetName = nameof(ParameterSet.LiteralPath), ValueFromPipelineByPropertyName = true)]
         [ValidateNotNullOrEmpty]
         [Alias("PSPath")]
         public string[]? LiteralPath { get; set; }
@@ -93,7 +100,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void ProcessRecord()
         {
             // Add each path from -Path or -LiteralPath to _nonliteralPaths or _literalPaths because they can get lost when the next item in the pipeline is sent
-            if (ParameterSetName == "Path")
+            if (ParameterSetName == nameof(ParameterSet.Path))
             {
                 Debug.Assert(Path is not null);
                 _nonliteralPaths?.AddRange(Path);
@@ -136,7 +143,7 @@ namespace Microsoft.PowerShell.Archive
             if (additionsWithSamePathAsDestination.Count > 0)
             {
                 // Since duplicate checking is performed earlier, there must a single ArchiveAddition such that ArchiveAddition.FullPath == DestinationPath
-                var errorCode = ParameterSetName == "Path" ? ErrorCode.SamePathAndDestinationPath : ErrorCode.SameLiteralPathAndDestinationPath;
+                var errorCode = ParameterSetName == nameof(ParameterSet.Path) ? ErrorCode.SamePathAndDestinationPath : ErrorCode.SameLiteralPathAndDestinationPath;
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode, errorItem: additionsWithSamePathAsDestination[0].FileSystemInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
@@ -148,22 +155,19 @@ namespace Microsoft.PowerShell.Archive
             }
 
             // Get the ArchiveMode for the archive to be created or updated
-            ArchiveMode archiveMode = ArchiveMode.Create;
-            if (WriteMode == WriteMode.Update)
-            {
-                archiveMode = ArchiveMode.Update;
-            }
+            ArchiveMode archiveMode = WriteMode == WriteMode.Update ? ArchiveMode.Update : ArchiveMode.Create;
 
             // Don't create the archive object yet because the user could have specified -WhatIf or -Confirm
             IArchive? archive = null;
             try
             {
-                if (ShouldProcess(target: _destinationPathInfo.FullName, action: "Create"))
+                if (ShouldProcess(target: _destinationPathInfo.FullName, action: Messages.Create))
                 {
                     // If the WriteMode is overwrite, delete the existing archive
                     if (WriteMode == WriteMode.Overwrite)
                     {
                         DeleteDestinationPathIfExists();
+                        _destinationPathInfo = new FileInfo(_destinationPathInfo.FullName);
                     }
 
                     // Create an archive -- this is where we will switch between different types of archives
@@ -174,33 +178,30 @@ namespace Microsoft.PowerShell.Archive
                 
                 long numberOfAdditions = archiveAdditions.Count;
                 long numberOfAddedItems = 0;
-                var progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", "0% complete");
+                var progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", statusDescription: string.Format(Messages.ProgressDisplay, "0.0"));
                 WriteProgress(progressRecord);
 
                 foreach (ArchiveAddition entry in archiveAdditions)
                 {
-                    if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: "Add"))
+                    if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: Messages.Add))
                     {
                         archive?.AddFileSystemEntry(entry);
-                        // Keep track of number of items added to the archive and use that to update progress
-                        numberOfAddedItems++;
-                        var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
-                        progressRecord.StatusDescription = $"{percentComplete:0.0}% complete";
-                        WriteProgress(progressRecord);
-
                         // Write a verbose message saying this item was added to the archive
                         var addedItemMessage = string.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);
                         WriteVerbose(addedItemMessage);
-                    } else
-                    {
-                        numberOfAdditions--;
                     }
+
+                    // Keep track of number of items added to the archive and use that to update progress
+                    numberOfAddedItems++;
+                    var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
+                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "{percentComplete:0.0}");
+                    WriteProgress(progressRecord);
                 }
 
                 // If there were no items to add, show progress as 100%
                 if (numberOfAdditions == 0)
                 {
-                    progressRecord.StatusDescription = "100% complete";
+                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "100.0");
                     WriteProgress(progressRecord);
                 }
             }
@@ -212,7 +213,6 @@ namespace Microsoft.PowerShell.Archive
             // If -PassThru is specified, write a System.IO.FileInfo object
             if (PassThru)
             {
-                _destinationPathInfo = new FileInfo(_destinationPathInfo.FullName);
                 WriteObject(_destinationPathInfo);
             }
         }

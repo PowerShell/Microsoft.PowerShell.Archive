@@ -7,7 +7,7 @@ namespace Microsoft.PowerShell.Archive
 {
     internal class ZipArchive : IArchive
     {
-        private bool disposedValue;
+        private bool _disposedValue;
 
         private readonly ArchiveMode _mode;
 
@@ -27,7 +27,7 @@ namespace Microsoft.PowerShell.Archive
 
         public ZipArchive(string archivePath, ArchiveMode mode, System.IO.FileStream archiveStream, CompressionLevel compressionLevel)
         {
-            disposedValue = false;
+            _disposedValue = false;
             _mode = mode;
             _archivePath = archivePath;
             _archiveStream = archiveStream;
@@ -64,6 +64,7 @@ namespace Microsoft.PowerShell.Archive
                     {
                         addition.EntryName += ZipArchiveDirectoryPathTerminator;
                     }
+
                     _zipArchive.CreateEntry(entryName);
                 }
             }
@@ -74,6 +75,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     entryInArchive.Delete();
                 }
+
                 // TODO: Add exception handling
                 _zipArchive.CreateEntryFromFile(sourceFileName: addition.FileSystemInfo.FullName, entryName: entryName, compressionLevel: _compressionLevel);
             }
@@ -102,7 +104,7 @@ namespace Microsoft.PowerShell.Archive
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
@@ -110,7 +112,7 @@ namespace Microsoft.PowerShell.Archive
                     _archiveStream.Dispose();
                 }
 
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 

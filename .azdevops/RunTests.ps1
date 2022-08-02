@@ -8,17 +8,26 @@ if ($null -ne $module)
 # Import the built module
 Import-Module "$env:PIPELINE_WORKSPACE/ModuleBuild/Microsoft.PowerShell.Archive.psd1"
 
-$module = Get-Module -Name "Microsoft.PowerShell.Archive"
-$module.Path | Write-Verbose -Verbose
+$pesterRequiredVersion = "5.3.3"
+
+# If Pester 5.3.3 is not installed, install it
+$shouldInstallPester = $true
+
+if ($pesterModules = Get-Module -Name "Pester" -ListAvailable) {
+    foreach ($module in $pesterModules) {
+        if ($module.Version.ToString() -eq $pesterRequiredVersion) {
+            $shouldInstallPester = $false
+            break
+        }
+    }
+}
+
+if ($shouldInstallPester) {
+    Install-Module -Name "Pester" -RequiredVersion $pesterRequiredVersion -Force
+}
 
 # Load Pester
-Install-Module -Name "Pester" -RequiredVersion "5.3.3" -Force
-$module = Get-Module -Name "Pester"
-if ($null -ne $module)
-{
-    Remove-Module "Pester"
-} 
-Import-Module -Name "Pester" -RequiredVersion "5.3.3"
+Import-Module -Name "Pester" -RequiredVersion $pesterRequiredVersion
 
 # Run tests
 $OutputFile = "$PWD/build-unit-tests.xml"

@@ -32,8 +32,8 @@ if (-not $test -and -not $build -and -not $publish -and -not $package) {
 [bool]$verboseValue = $PSBoundParameters['Verbose'].IsPresent ? $PSBoundParameters['Verbose'].ToBool() : $false
 
 $FileManifest = @(
-    @{ SRC = "${$BuildOutputDir}"; NAME = "Microsoft.PowerShell.Archive.dll"         ; SIGN = $true ; DEST = "OUTDIR" }
-    @{ SRC = "${$BuildOutputDir}"; NAME = "Microsoft.PowerShell.Archive.psm1"                  ; SIGN = $true ; DEST = "OUTDIR" }
+    @{ SRC = "${$BuildOutputDir}"; NAME = "Microsoft.PowerShell.Archive.dll"; SIGN = $true ; DEST = "OUTDIR" }
+    @{ SRC = "${$BuildOutputDir}"; NAME = "Microsoft.PowerShell.Archive.psm1"; SIGN = $true ; DEST = "OUTDIR" }
 )
 
 if ($build) {
