@@ -1,4 +1,7 @@
-﻿using System;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
@@ -41,7 +44,7 @@ namespace Microsoft.PowerShell.Archive
         /// </summary>
         [Parameter(Mandatory = true, ParameterSetName = nameof(ParameterSet.LiteralPath), ValueFromPipelineByPropertyName = true)]
         [ValidateNotNullOrEmpty]
-        [Alias("PSPath")]
+        [Alias("PSPath", "LP")]
         public string[]? LiteralPath { get; set; }
 
         /// <summary>
@@ -92,9 +95,6 @@ namespace Microsoft.PowerShell.Archive
             _destinationPathInfo = _pathHelper.ResolveToSingleFullyQualifiedPath(DestinationPath);
             DestinationPath = _destinationPathInfo.FullName;
             ValidateDestinationPath();
-
-            // Determine archive format based on DestinationPath
-            DetermineArchiveFormat();
         }
 
         protected override void ProcessRecord()
@@ -178,11 +178,16 @@ namespace Microsoft.PowerShell.Archive
                 
                 long numberOfAdditions = archiveAdditions.Count;
                 long numberOfAddedItems = 0;
-                var progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", statusDescription: string.Format(Messages.ProgressDisplay, "0.0"));
-                WriteProgress(progressRecord);
+                // Messages.ProgressDisplay does not need to be formatted here because progressRecord.StautsDescription will be updated in the for-loop
+                var progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", statusDescription: Messages.ProgressDisplay);
 
                 foreach (ArchiveAddition entry in archiveAdditions)
                 {
+                    // Update progress
+                    var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
+                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "{percentComplete:0.0}");
+                    WriteProgress(progressRecord);
+
                     if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: Messages.Add))
                     {
                         archive?.AddFileSystemEntry(entry);
@@ -190,20 +195,14 @@ namespace Microsoft.PowerShell.Archive
                         var addedItemMessage = string.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);
                         WriteVerbose(addedItemMessage);
                     }
-
-                    // Keep track of number of items added to the archive and use that to update progress
+                    // Keep track of number of items added to the archive
                     numberOfAddedItems++;
-                    var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
-                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "{percentComplete:0.0}");
-                    WriteProgress(progressRecord);
                 }
 
-                // If there were no items to add, show progress as 100%
-                if (numberOfAdditions == 0)
-                {
-                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "100.0");
-                    WriteProgress(progressRecord);
-                }
+                // Once all items in the archive are processed, show progress as 100%
+                // This code is here and not in the loop because we want it to run even if there are no items to add to the archive
+                progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "100.0");
+                WriteProgress(progressRecord);
             }
             finally
             {
@@ -227,59 +226,58 @@ namespace Microsoft.PowerShell.Archive
         }
 
         /// <summary>
-        /// Validate DestinationPath parameter
+        /// Validate DestinationPath parameter and determine the archive format based on the extension of DestinationPath
         /// </summary>
         private void ValidateDestinationPath()
         {
             Debug.Assert(_destinationPathInfo is not null);
             ErrorCode? errorCode = null;
 
-            // In this case, DestinationPath does not exist
-            if (!_destinationPathInfo.Exists)
+            if (_destinationPathInfo.Exists)
             {
-                // Throw an error if DestinationPath does not exist and cmdlet is in Update mode
-                if (WriteMode == WriteMode.Update)
+                // Check if DestinationPath is an existing directory
+                if (_destinationPathInfo.Attributes.HasFlag(FileAttributes.Directory))
                 {
-                    errorCode = ErrorCode.ArchiveDoesNotExist;
+                    // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
+                    if (WriteMode == WriteMode.Create)
+                    {
+                        errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                    }
+                    // Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
+                    else if (WriteMode == WriteMode.Update)
+                    {
+                        errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                    }
+                    // Throw an error if the DestinationPath is the current working directory and the cmdlet is in Overwrite mode
+                    else if (WriteMode == WriteMode.Overwrite && _destinationPathInfo.FullName == SessionState.Path.CurrentFileSystemLocation.ProviderPath)
+                    {
+                        errorCode = ErrorCode.CannotOverwriteWorkingDirectory;
+                    }
+                    // Throw an error if the DestinationPath is a directory with at 1 least item and the cmdlet is in Overwrite mode
+                    else if (WriteMode == WriteMode.Overwrite && _destinationPathInfo is DirectoryInfo directory && directory.GetFileSystemInfos().Length > 0)
+                    {
+                        errorCode = ErrorCode.ArchiveIsNonEmptyDirectory;
+                    }
+                }
+                // If DestinationPath is an existing file
+                else
+                {
+                    // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
+                    if (WriteMode == WriteMode.Create)
+                    {
+                        errorCode = ErrorCode.ArchiveExists;
+                    }
+                    // Throw an error if the cmdlet is in Update mode but the archive is read only
+                    else if (WriteMode == WriteMode.Update && _destinationPathInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
+                    {
+                        errorCode = ErrorCode.ArchiveReadOnly;
+                    }
                 }
             }
-            // Check if DestinationPath is an existing directory
-            else if (_destinationPathInfo.Attributes.HasFlag(FileAttributes.Directory))
+            // Throw an error if DestinationPath does not exist and cmdlet is in Update mode
+            else if (WriteMode == WriteMode.Update)
             {
-                // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
-                if (WriteMode == WriteMode.Create)
-                {
-                    errorCode = ErrorCode.ArchiveExistsAsDirectory;
-                }
-                // Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
-                else if (WriteMode == WriteMode.Update)
-                {
-                    errorCode = ErrorCode.ArchiveExistsAsDirectory;
-                }
-                // Throw an error if the DestinationPath is the current working directory and the cmdlet is in Overwrite mode
-                else if (WriteMode == WriteMode.Overwrite && _destinationPathInfo.FullName == SessionState.Path.CurrentFileSystemLocation.ProviderPath)
-                {
-                    errorCode = ErrorCode.CannotOverwriteWorkingDirectory;
-                }
-                // Throw an error if the DestinationPath is a directory with at 1 least item and the cmdlet is in Overwrite mode
-                else if (WriteMode == WriteMode.Overwrite && _destinationPathInfo is DirectoryInfo directory && directory.GetFileSystemInfos().Length > 0)
-                {
-                    errorCode = ErrorCode.ArchiveIsNonEmptyDirectory;
-                }
-            }
-            // If DestinationPath is an existing file
-            else
-            {
-                // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
-                if (WriteMode == WriteMode.Create)
-                {
-                    errorCode = ErrorCode.ArchiveExists;
-                }
-                // Throw an error if the cmdlet is in Update mode but the archive is read only
-                else if (WriteMode == WriteMode.Update && _destinationPathInfo.Attributes.HasFlag(FileAttributes.ReadOnly))
-                {
-                    errorCode = ErrorCode.ArchiveReadOnly;
-                }
+                errorCode = ErrorCode.ArchiveDoesNotExist;
             }
 
             if (errorCode is not null)
@@ -288,6 +286,9 @@ namespace Microsoft.PowerShell.Archive
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode.Value, errorItem: _destinationPathInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
+
+            // Determine archive format based on the extension of DestinationPath
+            DetermineArchiveFormat();
         }
 
         private void DeleteDestinationPathIfExists()

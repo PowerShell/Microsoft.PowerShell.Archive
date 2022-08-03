@@ -42,7 +42,7 @@ stages:
       displayName: Build Microsoft.PowerShell.Archive module
     
     - pwsh: |
-        dir "$(BuildOutDir)\*" -Recurse
+        Get-ChildItem "$(BuildOutDir)\*" -Recurse | Write-Verbose -Verbose
       displayName: Show BuildOutDirectory
     
     - pwsh: |
@@ -99,7 +99,7 @@ stages:
         Set-Location "$(Build.SourcesDirectory)"
         # signOutPath points to directory with version number -- we want to point to the parent of that directory
         $ModulePath = Split-Path $(signOutPath) -Parent
-        $(Build.SourcesDirectory)/Microsoft.PowerShell.Archive/.azdevops/build.ps1 -package -CopySBOM -signed -SignedPath $ModulePath
+        $(Build.SourcesDirectory)/Microsoft.PowerShell.Archive/.azdevops/SignAndPackageModule.ps1 -SignedPath $ModulePath
         Get-ChildItem -recurse -file -name | Write-Verbose -Verbose
       displayName: package build
     

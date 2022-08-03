@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
 $buildOutputDirectory = "$PSScriptRoot\src\bin\Release"
 
 if ((Test-Path $buildOutputDirectory)) {
@@ -7,7 +10,7 @@ if ((Test-Path $buildOutputDirectory)) {
 # Perform dotnet build
 dotnet build "$PSScriptRoot\src\Microsoft.PowerShell.Archive.csproj" -c Release
 
-"Build module location:   $buildOutputDirectory" | Write-Verbose -Verbose
+"Build module location: $buildOutputDirectory" | Write-Verbose -Verbose
 
 # Get module version
 $ManifestData = Import-PowerShellDataFile -Path "$buildOutputDirectory\Microsoft.PowerShell.Archive.psd1"

@@ -1,4 +1,7 @@
-﻿using Microsoft.PowerShell.Archive.Localized;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+using Microsoft.PowerShell.Archive.Localized;
 using System;
 using System.Management.Automation;
 

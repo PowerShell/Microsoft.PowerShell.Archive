@@ -1,11 +1,12 @@
-﻿using Microsoft.PowerShell.Archive.Localized;
+﻿// Copyright (c) Microsoft Corporation.
+// Licensed under the MIT License.
+
+using Microsoft.PowerShell.Archive.Localized;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
-using System.Net.NetworkInformation;
-using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {

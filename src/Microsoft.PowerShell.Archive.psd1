@@ -1,5 +1,4 @@
 @{
-RootModule = ''
 ModuleVersion = '2.0.1'
 GUID = '06a335eb-dd10-4d25-b753-4f6a80163516'
 Author = 'Microsoft'
@@ -8,10 +7,7 @@ Copyright = '(c) Microsoft. All rights reserved.'
 Description = 'PowerShell module for creating and expanding archives.'
 PowerShellVersion = '7.2.5'
 NestedModules = @('Microsoft.PowerShell.Archive.dll')
-FunctionsToExport = ''
 CmdletsToExport = @('Compress-Archive')
-VariablesToExport = ''
-AliasesToExport = ''
 PrivateData = @{
     PSData = @{
         Tags = @('Archive', 'Zip', 'Compress')

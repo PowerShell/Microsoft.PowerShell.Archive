@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
 # Load the module
 $module = Get-Module -Name "Microsoft.PowerShell.Archive"
 if ($null -ne $module)
@@ -8,7 +11,7 @@ if ($null -ne $module)
 # Import the built module
 Import-Module "$env:PIPELINE_WORKSPACE/ModuleBuild/Microsoft.PowerShell.Archive.psd1"
 
-$pesterRequiredVersion = "5.3.3"
+$pesterRequiredVersion = "5.3"
 
 # If Pester 5.3.3 is not installed, install it
 $shouldInstallPester = $true
@@ -37,11 +40,4 @@ Write-Host "##vso[artifact.upload containerfolder=testResults;artifactname=testR
 if(!$results -or $results.FailedCount -gt 0 -or !$results.TotalCount)
 {
     throw "Build or tests failed.  Passed: $($results.PassedCount) Failed: $($results.FailedCount) Total: $($results.TotalCount)"
-}
-
-# Unload module
-$module = Get-Module -Name "Microsoft.PowerShell.Archive"
-if ($null -ne $module)
-{
-    Remove-Module $module
 }

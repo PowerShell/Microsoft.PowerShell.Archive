@@ -35,12 +35,8 @@ stages:
         includePreviewVersions: true
 
     - pwsh: |
-        & $(Build.SourcesDirectory)\SimpleBuild.ps1
+        & "$(Build.SourcesDirectory)\SimpleBuild.ps1"
       displayName: Build Microsoft.PowerShell.Archive module
-      
-    - pwsh: |
-        dir "$(BuildOutDir)/*" -Recurse
-      displayName: Show BuildOutDirectory
 
     - task: CopyFiles@2
       displayName: 'Copy build'
@@ -59,19 +55,19 @@ stages:
   dependsOn: Build
   displayName: Run tests
   jobs:
-    - template: runtest.yml
+    - template: TestsTemplate.yml
       parameters:
         vmImageName: windows-2019
         jobName: run_test_windows
         jobDisplayName: Run Windows tests
 
-    - template: runtest.yml
+    - template: TestsTemplate.yml
       parameters:
         vmImageName: ubuntu-latest
         jobName: run_test_linux
         jobDisplayName: Run Linux tests
     
-    - template: runtest.yml
+    - template: TestsTemplate.yml
       parameters:
         vmImageName: macos-latest
         jobName: run_test_macos
