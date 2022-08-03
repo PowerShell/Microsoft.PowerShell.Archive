@@ -287,17 +287,6 @@ Describe("Expand-Archive Tests") {
             }
         }
 
-        It "Does not throw an error when DestinationPath is an existing directory" {
-            $sourcePath = "$TestDrive$($DS)archive1.zip"
-            $destinationPath = "$TestDrive$($DS)directory1"
-
-            try {
-                Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -ErrorAction Stop
-            } catch {
-                throw "An error was thrown but an error was not expected"
-            }
-        }
-
         It "Does not throw an error when a directory in the archive has the same destination path as an existing directory" {
             $sourcePath = "$TestDrive$($DS)archive2.zip"
             $destinationPath = "$TestDrive"
@@ -381,7 +370,7 @@ Describe("Expand-Archive Tests") {
             Get-Content -Path "$TestDrive$($DS)ItemsToOverwriteContainer/subdir2/file1.txt" | Should -Be "Hello, World!"
         }
 
-        It "Overwrites a file whose path is the same as the destination path of a directory in the archive when -WriteMode Overwrite is specified" -Tag this1 {
+        It "Overwrites a file whose path is the same as the destination path of a directory in the archive when -WriteMode Overwrite is specified" {
             $sourcePath = "$TestDrive$($DS)archive2.zip"
             $destinationPath = "$TestDrive$($DS)ItemsToOverwriteContainer/subdir3"
             Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite -ErrorVariable error
@@ -426,6 +415,17 @@ Describe("Expand-Archive Tests") {
             $itemsInDestinationPath[0].Name | Should -Be "file1.txt"
         }
 
+        It "Expands an archive when DestinationPath is an existing directory" {
+            $sourcePath = "$TestDrive$($DS)archive1.zip"
+            $destinationPath = "$TestDrive$($DS)directory1"
+
+            try {
+                Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -ErrorAction Stop
+            } catch {
+                throw "An error was thrown but an error was not expected"
+            }
+        }
+
         It "Expands an archive to the working directory when it is specified as -DestinationPath" {
             $sourcePath = "$TestDrive/archive1.zip"
             $destinationPath = "$TestDrive/directory2"
@@ -441,7 +441,7 @@ Describe("Expand-Archive Tests") {
             Pop-Location
         }
 
-        It "Expands an archive containing a single top-level directory and no other top-level items to a directory with that directory's name when -DestinationPath is not specified" {
+        It "Expands an archive containing a single top-level directory and no other top-level items to a directory with that directory's name when -DestinationPath is not specified" -Tag this1{
             $sourcePath = "$TestDrive/archive2.zip"
             $destinationPath = "$TestDrive/directory3"
 
@@ -449,9 +449,9 @@ Describe("Expand-Archive Tests") {
 
             Expand-Archive -Path $sourcePath
 
-            $itemsInDestinationPath = Get-ChildItem "$TestDrive/directory3" -Name -Recurse
+            $itemsInDestinationPath = Get-ChildItem "$TestDrive/directory3" -Recurse
             $itemsInDestinationPath.Count | Should -Be 1
-            $itemsInDestinationPath[0] | Should -Be "DirectoryToArchive"
+            $itemsInDestinationPath[0].Name | Should -Be "DirectoryToArchive"
 
             Test-Path -Path "$TestDrive/directory3/DirectoryToArchive" -PathType Container
 
@@ -467,9 +467,11 @@ Describe("Expand-Archive Tests") {
             Expand-Archive -Path $sourcePath
 
             $itemsInDestinationPath = Get-ChildItem $destinationPath -Name -Recurse
-            $itemsInDestinationPath.Count | Should -Be 2
-            $itemsInDestinationPath.Contains("DirectoryToArchive") | Should -Be $true
-            $itemsInDestinationPath.Contains("file1.txt") | Should -Be $true
+            $itemsInDestinationPath.Count | Should -Be 3
+            "archive3" | Should -BeIn $itemsInDestinationPath
+            "archive3${DS}DirectoryToArchive" | Should -BeIn $itemsInDestinationPath
+            "archive3${DS}file1.txt" | Should -BeIn $itemsInDestinationPath
+           
 
             Pop-Location
         }
@@ -502,8 +504,9 @@ Describe("Expand-Archive Tests") {
 
             $expandedItems = Get-ChildItem $destinationPath -Recurse -Name
 
-            $itemsInArchive = @("file2.txt", "file3.txt", "emptydirectory1", "emptydirectory2", "nonemptydirectory1", "nonemptydirectory1/subfile1.txt", "nonemptydirectory2/subemptydirectory1")
+            $itemsInArchive = @("file2.txt", "file3.txt", "emptydirectory1", "emptydirectory2", "nonemptydirectory1", "nonemptydirectory2", "nonemptydirectory1${DS}subfile1.txt", "nonemptydirectory2${DS}subemptydirectory1")
 
+            $expandedItems.Length | Should -Be $itemsInArchive.Count
             foreach ($item in $itemsInArchive) {
                 $item | Should -BeIn $expandedItems
             }
@@ -547,6 +550,20 @@ Describe("Expand-Archive Tests") {
             $lastWriteTime.Minute | Should -Be 44
             $lastWriteTime.Second | Should -Be 0
             $lastWriteTime.Millisecond | Should -Be 0
+        }
+    }
+
+    Context "PassThru tests" {
+        BeforeAll {
+            New-Item -Path TestDrive:/file1.txt -ItemType File
+            "Hello, World!" | Out-File -Path Test:/file1.txt
+            $archivePath = "TestDrive:/archive.zip"
+            Compress-Archive -Path TestDrive:/file1.txt -DestinationPath
+        }
+
+        It "Returns a System.IO.FileInfo object when PassThru is specified" {
+            $output = Expand-Archive -Path $archivePath -DestinationPath TestDrive:/archive_contents -PassThru
+            $output.GetType()
         }
     }
 

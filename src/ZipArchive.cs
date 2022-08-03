@@ -3,8 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
-using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
@@ -16,11 +16,11 @@ namespace Microsoft.PowerShell.Archive
 
         private readonly string _archivePath;
 
-        private readonly System.IO.FileStream _archiveStream;
+        private readonly FileStream _archiveStream;
 
         private readonly System.IO.Compression.ZipArchive _zipArchive;
 
-        private readonly System.IO.Compression.CompressionLevel _compressionLevel;
+        private readonly CompressionLevel _compressionLevel;
 
         private const char ZipArchiveDirectoryPathTerminator = '/';
 
@@ -32,7 +32,7 @@ namespace Microsoft.PowerShell.Archive
 
         int IArchive.NumberOfEntries => _zipArchive.Entries.Count;
 
-        public ZipArchive(string archivePath, ArchiveMode mode, System.IO.FileStream archiveStream, CompressionLevel compressionLevel)
+        public ZipArchive(string archivePath, ArchiveMode mode, FileStream archiveStream, CompressionLevel compressionLevel)
         {
             _disposedValue = false;
             _mode = mode;
@@ -162,16 +162,26 @@ namespace Microsoft.PowerShell.Archive
             GC.SuppressFinalize(this);
         }
 
-        bool IArchive.HasTopLevelDirectoryOnly()
+        bool IArchive.HasTopLevelDirectory()
         {
-            if (_zipArchive.Entries.Count == 0 || _zipArchive.Entries.Count > 1)
+            int topLevelDirectoriesCount = 0;
+            foreach (var entry in _zipArchive.Entries)
             {
-                return false;
+                if (entry.FullName.EndsWith(ZipArchiveDirectoryPathTerminator) &&
+                    entry.FullName.LastIndexOf(ZipArchiveDirectoryPathTerminator, entry.FullName.Length - 2) == -1)
+                {
+                    topLevelDirectoriesCount++;
+                    if (topLevelDirectoriesCount > 1)
+                    {
+                        break;
+                    }
+                } else
+                {
+                    return false;
+                }
             }
 
-            // At this point, we know the archive has one entry only
-            // We can determine if the entry is a directory by checking if the entry name ends with '/'
-            return _zipArchive.Entries[0].FullName.EndsWith(ZipArchiveDirectoryPathTerminator);
+            return topLevelDirectoriesCount == 1;
         }
 
         internal class ZipArchiveEntry : IEntry
@@ -195,6 +205,12 @@ namespace Microsoft.PowerShell.Archive
                     System.IO.Directory.SetLastWriteTime(destinationPath, lastWriteTime.DateTime);
                 } else
                 {
+                    // If the parent directory does not exist, create it
+                    string? parentDirectory = Path.GetDirectoryName(destinationPath);
+                    if (parentDirectory is not null && !Directory.Exists(parentDirectory))
+                    {
+                        Directory.CreateDirectory(parentDirectory);
+                    }
                     _entry.ExtractToFile(destinationPath);
                 }
             }

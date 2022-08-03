@@ -1,8 +1,10 @@
 ﻿using Microsoft.PowerShell.Archive.Localized;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.IO.Compression;
+using System.IO.Enumeration;
 using System.Linq;
 using System.Management.Automation;
 using System.Text;
@@ -22,9 +24,9 @@ namespace Microsoft.PowerShell.Archive
         [ValidateNotNullOrEmpty]
         public string LiteralPath { get; set; } = String.Empty;
 
-        [Parameter(Position = 2, Mandatory = true)]
+        [Parameter(Position = 2)]
         [ValidateNotNullOrEmpty]
-        public string DestinationPath { get; set; } = String.Empty;
+        public string? DestinationPath { get; set; }
 
         [Parameter]
         public ExpandArchiveWriteMode WriteMode { get; set; } = ExpandArchiveWriteMode.Expand;
@@ -54,11 +56,7 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void BeginProcessing()
         {
-            // Resolve DestinationPath
-            _destinationPathInfo = _pathHelper.ResolveToSingleFullyQualifiedPath(path: DestinationPath, hasWildcards: false);
-            DestinationPath = _destinationPathInfo.FullName;
-
-            ValidateDestinationPath();
+            
         }
 
         protected override void ProcessRecord()
@@ -78,12 +76,23 @@ namespace Microsoft.PowerShell.Archive
             // Determine archive format based on sourcePath
             Format = DetermineArchiveFormat(destinationPath: sourcePath.FullName, archiveFormat: Format);
 
-            // Get an archive from source path -- this is where we will switch between different types of archives
-            using IArchive? archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: sourcePath.FullName, archiveMode: ArchiveMode.Extract, compressionLevel: System.IO.Compression.CompressionLevel.NoCompression);
             try
             {
-                // If the destination path is a file that needs to be overwriten, delete it
+                // Get an archive from source path -- this is where we will switch between different types of archives
+                using IArchive? archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: sourcePath.FullName, archiveMode: ArchiveMode.Extract, compressionLevel: System.IO.Compression.CompressionLevel.NoCompression);
 
+                if (DestinationPath is null)
+                {
+                    // If DestinationPath was not specified, try to determine it automatically based on the source path
+                    // We should do this here because the destination path depends on whether the archive contains a single top-level directory or not
+                    DestinationPath = DetermineDestinationPath(archive);
+                }
+                // Resolve DestinationPath and validate it
+                _destinationPathInfo = _pathHelper.ResolveToSingleFullyQualifiedPath(path: DestinationPath, hasWildcards: false);
+                DestinationPath = _destinationPathInfo.FullName;
+                ValidateDestinationPath(sourcePath);
+
+                // If the destination path is a file that needs to be overwriten, delete it
                 if (_destinationPathInfo.Exists && !_destinationPathInfo.Attributes.HasFlag(FileAttributes.Directory) && WriteMode == ExpandArchiveWriteMode.Overwrite)
                 {
                     if (ShouldProcess(target: _destinationPathInfo.FullName, action: "Overwrite"))
@@ -142,7 +151,6 @@ namespace Microsoft.PowerShell.Archive
                 WriteError(errorRecord);
                 return;
             }
-
             
             System.IO.FileSystemInfo postExpandPathInfo = new System.IO.FileInfo(postExpandPath);
 
@@ -199,7 +207,8 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
-        private void ValidateDestinationPath()
+        // TODO: Refactor this
+        private void ValidateDestinationPath(FileSystemInfo sourcePath)
         {
             ErrorCode? errorCode = null;
 
@@ -229,6 +238,22 @@ namespace Microsoft.PowerShell.Archive
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode.Value, errorItem: _destinationPathInfo.FullName);
                 ThrowTerminatingError(errorRecord);
             }
+
+            // Ensure sourcePath is not the same as the destination path when the cmdlet is in overwrite mode
+            // When the cmdlet is not in overwrite mode, other errors will be thrown when validating DestinationPath before it even gets to this line
+            if (PathHelper.ArePathsSame(sourcePath, _destinationPathInfo) && WriteMode == ExpandArchiveWriteMode.Overwrite)
+            {
+                if (ParameterSetName == "Path")
+                {
+                    errorCode = ErrorCode.SamePathAndDestinationPath;
+                }
+                else
+                {
+                    errorCode = ErrorCode.SameLiteralPathAndDestinationPath;
+                }
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode.Value, errorItem: sourcePath.FullName);
+                ThrowTerminatingError(errorRecord);
+            }
         }
 
         private void ValidateSourcePath(System.IO.FileSystemInfo sourcePath)
@@ -244,22 +269,6 @@ namespace Microsoft.PowerShell.Archive
             if (sourcePath.Attributes.HasFlag(FileAttributes.Directory))
             {
                 var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.DestinationExistsAsDirectory, errorItem: sourcePath.FullName);
-                ThrowTerminatingError(errorRecord);
-            }
-
-            // Ensure sourcePath is not the same as the destination path when the cmdlet is in overwrite mode
-            // When the cmdlet is not in overwrite mode, other errors will be thrown when validating DestinationPath before it even gets to this line
-            if (PathHelper.ArePathsSame(sourcePath, _destinationPathInfo) && WriteMode == ExpandArchiveWriteMode.Overwrite)
-            {
-                ErrorCode errorCode;
-                if (ParameterSetName == "Path")
-                {
-                    errorCode = ErrorCode.SamePathAndDestinationPath;
-                } else
-                {
-                    errorCode = ErrorCode.SameLiteralPathAndDestinationPath;
-                }
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: errorCode, errorItem: sourcePath.FullName);
                 ThrowTerminatingError(errorRecord);
             }
         }
@@ -287,21 +296,32 @@ namespace Microsoft.PowerShell.Archive
         private string DetermineDestinationPath(IArchive archive)
         {
             var workingDirectory = SessionState.Path.CurrentFileSystemLocation.ProviderPath;
-            if (archive.HasTopLevelDirectoryOnly())
+            string? destinationDirectory = null;
+            
+            // If the archive has a single top-level directory only, the destination will be: "working directory"
+            // This makes it easier for the cmdlet to expand the directory without needing addition checks
+            if (archive.HasTopLevelDirectory())
             {
-
-            } else
-            {
-                // destination path will be "working directory/archive file name"
-                var filename = System.IO.Path.GetFileName(archive.Path);
-                // If filename does not have an extension, throw a terminating error because the cmdlet
-                // cannot determine what destination path should be
-                if (System.IO.Path.GetExtension(filename) == String.Empty)
-                {
-                    var errorRecord =  
-                }
-                return System.IO.Path.Combine(workingDirectory, filename);
+                destinationDirectory = workingDirectory;
             }
+            // Otherwise, the destination path will be: "working directory/archive file name"
+            else
+            {
+                var filename = System.IO.Path.GetFileName(archive.Path);
+                // If filename does have an exension, remove the extension and set the filename minus extension as destinationDirectory
+                if (System.IO.Path.GetExtension(filename) != string.Empty)
+                {
+                    destinationDirectory = System.IO.Path.ChangeExtension(path: filename, extension: string.Empty);
+                }
+            }
+
+            if (destinationDirectory is null)
+            {
+                var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.CannotDetermineDestinationPath);
+                ThrowTerminatingError(errorRecord);
+            }
+            Debug.Assert(destinationDirectory is not null);
+            return System.IO.Path.Combine(workingDirectory, destinationDirectory);
         }
 
         #endregion

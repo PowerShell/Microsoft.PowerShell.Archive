@@ -40,6 +40,8 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.InsufficientPermissionsToAccessPath => Messages.InsufficientPermssionsToAccessPathMessage,
                 ErrorCode.OverwriteDestinationPathFailed => Messages.OverwriteDestinationPathFailed,
                 ErrorCode.CannotOverwriteWorkingDirectory => Messages.CannotOverwriteWorkingDirectoryMessage,
+                ErrorCode.PathResolvedToMultiplePaths => Messages.PathResolvedToMultiplePathsMessage,
+                ErrorCode.CannotDetermineDestinationPath => Messages.CannotDetermineDestinationPath,
                 _ => throw new ArgumentOutOfRangeException(nameof(errorCode))
             };
         }
@@ -76,5 +78,7 @@ namespace Microsoft.PowerShell.Archive
         CannotOverwriteWorkingDirectory,
         // Expand-Archive: used when a path resolved to multiple paths when only one was needed
         PathResolvedToMultiplePaths,
+        // Expand-Archive: used when the DestinationPath could not be determined
+        CannotDetermineDestinationPath
     }
 }

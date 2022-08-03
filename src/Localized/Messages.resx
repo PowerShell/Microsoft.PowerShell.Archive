@@ -152,6 +152,9 @@
   <data name="DestinationIsNonEmptyDirectory" xml:space="preserve">
     <value>The destination {0} cannot be overwritten because it is a non-empty directory.</value>
   </data>
+  <data name="Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
   <data name="DuplicatePathsMessage" xml:space="preserve">
     <value>The path(s) {0} have been specified more than once.</value>
   </data>
@@ -170,6 +173,9 @@
   <data name="PathNotFoundMessage" xml:space="preserve">
     <value>The path {0} could not be found.</value>
   </data>
+  <data name="PathResolvedToMultiplePathsMessage" xml:space="preserve">
+    <value>The path {0} refers to multiple paths, but only one was expected. Perhaps this occured because multiple paths matched the wildcard (if applicable).</value>
+  </data>
   <data name="ProgressDisplay" xml:space="preserve">
     <value>{0}% complete</value>
   </data>
@@ -181,5 +187,8 @@
   </data>
   <data name="SamePathAndDestinationPathMessage" xml:space="preserve">
     <value>A path supplied to -Path is the same as the path supplied to -DestinationPath.</value>
+  </data>
+  <data name="CannotDetermineDestinationPath" xml:space="preserve">
+    <value>The destination path cannot be determined automatically. Please use the -DestinationPath parameter to enter a destination path.</value>
   </data>
 </root>

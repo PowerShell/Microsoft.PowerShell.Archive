@@ -34,6 +34,6 @@ namespace Microsoft.PowerShell.Archive
         internal void Expand(string destinationPath);
 
         // Does the archive have only a top-level directory?
-        internal bool HasTopLevelDirectoryOnly();
+        internal bool HasTopLevelDirectory();
     }
 }
