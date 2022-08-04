@@ -35,7 +35,7 @@ stages:
         includePreviewVersions: true
 
     - pwsh: |
-        & "$(Build.SourcesDirectory)\SimpleBuild.ps1"
+        & "$(Build.SourcesDirectory)\Build.ps1"
       displayName: Build Microsoft.PowerShell.Archive module
 
     - task: CopyFiles@2
@@ -45,8 +45,6 @@ stages:
         contents: '**'
         targetFolder: '$(Build.ArtifactStagingDirectory)/Microsoft.PowerShell.Archive'
 
-    - pwsh: |
-        dir "$(Build.ArtifactStagingDirectory)/*" -Recurse
     - publish: '$(Build.ArtifactStagingDirectory)/Microsoft.PowerShell.Archive'
       displayName: 'Publish module build'
       artifact: ModuleBuild

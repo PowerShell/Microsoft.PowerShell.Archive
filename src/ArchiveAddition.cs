@@ -16,6 +16,15 @@ namespace Microsoft.PowerShell.Archive
         /// <summary>
         /// The name of the file or directory in the archive.
         /// This is a path of the file or directory in the archive (e.g., 'file1.txt` means the file is a top-level file in the archive).
+        ///
+        /// Does EntryName == FileSystemInfo.Name? This is not always true because EntryName can contain ancestor directories due to path directory structure preservation or due to the user
+        /// archiving parent directories.
+        /// For example, supoose we have the following directory
+        ///     grandparent
+        ///     |---parent
+        ///         |---file.txt
+        /// If we want to add or update grandparent to/in the archive, grandparent would be recursed for its descendents. This means the EntryName of file.txt would become
+        /// `grandparent/parent/file.txt` so that when expanding the archive, file.txt is put in the correct location (directly under parent and under grandparent).
         /// </summary>
         internal string EntryName { get; set; }
 
