@@ -175,9 +175,9 @@
     <value>{0}% complete</value>
   </data>
   <data name="SameLiteralPathAndDestinationPathMessage" xml:space="preserve">
-    <value>A path {0} supplied to -LiteralPath is the same as the path supplied to -DestinationPath.</value>
+    <value>A path supplied to -LiteralPath is the same as the path supplied to -DestinationPath.</value>
   </data>
   <data name="SamePathAndDestinationPathMessage" xml:space="preserve">
-    <value>A path {0} supplied to -Path is the same as the path supplied to -DestinationPath.</value>
+    <value>A path supplied to -Path is the same as the path supplied to -DestinationPath.</value>
   </data>
 </root>

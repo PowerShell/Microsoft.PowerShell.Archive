@@ -4,6 +4,7 @@
 using Microsoft.PowerShell.Archive.Localized;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Management.Automation;
@@ -21,184 +22,17 @@ namespace Microsoft.PowerShell.Archive
             _cmdlet = cmdlet;
         }
 
-        /// <summary>
-        /// Get a list of ArchiveAddition objects from an array of paths depending on whether we want to use the path literally or not.
-        /// </summary>
-        /// <param name="paths">An array of paths, relative or absolute -- they do not necessarily have to be fully qualifed paths.</param>
-        /// <param name="literalPath">If true, wildcard characters in each path are expanded. If false, wildcard characters are not expanded.</param>
-        /// <returns></returns>
-        internal List<ArchiveAddition> GetArchiveAdditionsForPath(string[] paths, bool literalPath)
+        internal List<ArchiveAddition> GetArchiveAdditions(HashSet<string> fullyQualifiedPaths)
         {
-            List<ArchiveAddition> additions = new List<ArchiveAddition>();
-
-            // Used to keep track of non-filesystem paths
-            HashSet<string> nonfilesystemPaths = new HashSet<string>();
-
-            foreach (var path in paths)
+            List<ArchiveAddition> archiveAdditions = new List<ArchiveAddition>(fullyQualifiedPaths.Count);
+            foreach (var path in fullyQualifiedPaths)
             {
-                // Based on the value of literalPath, call the appropriate method
-                if (literalPath)
-                {
-                    AddArchiveAdditionForUserEnteredLiteralPath(path: path, archiveAdditions: additions, nonfilesystemPaths: nonfilesystemPaths);
-                } else
-                {
-                    AddArchiveAdditionForUserEnteredNonLiteralPath(path: path, archiveAdditions: additions, nonfilesystemPaths: nonfilesystemPaths);
-                }
+                // Assume each path is valid, fully qualified, and existing
+                Debug.Assert(Path.Exists(path));
+                Debug.Assert(Path.IsPathFullyQualified(path));
+                AddAdditionForFullyQualifiedPath(path, archiveAdditions);
             }
-
-            // If there is at least 1 non-filesystem path, throw an invalid path error
-            if (nonfilesystemPaths.Count > 0)
-            {
-                // Get an error record and throw it
-                var commaSperatedPaths = string.Join(separator: ',', values: nonfilesystemPaths);
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InvalidPath, errorItem: commaSperatedPaths);
-                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
-            }
-
-            // If there are duplicate paths, throw an error
-            var duplicates = GetDuplicatePaths(additions);
-            if (duplicates.Any())
-            {
-                // Get an error record and throw it
-                var commaSperatedPaths = string.Join(separator: ',', values: duplicates);
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.DuplicatePaths, errorItem: commaSperatedPaths);
-                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
-            }
-
-            return additions;
-        }
-
-        /// <summary>
-        /// Resolves a user-entered path while expanding wildcards, creates an ArchiveAddition object for it, and its to the list of ArchiveAddition objects
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="archiveAdditions"></param>
-        /// <param name="nonfilesystemPaths"></param>
-        private void AddArchiveAdditionForUserEnteredNonLiteralPath(string path, List<ArchiveAddition> archiveAdditions, HashSet<string> nonfilesystemPaths)
-        {
-            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
-            Exception? exception = null;
-            try
-            {
-                // Resolve the path -- I don't think we need to handle exceptions here as no special behavior occurs when an exception occurs
-                var resolvedPaths = _cmdlet.SessionState.Path.GetResolvedProviderPathFromPSPath(path: path, provider: out var providerInfo);
-
-                // Check if the path if from the filesystem
-                if (providerInfo?.Name != FileSystemProviderName)
-                {
-                    // If not, add the path to the set of non-filesystem paths. We will throw an error later so we can show the user all invalid paths at once
-                    foreach (var resolvedPath in resolvedPaths)
-                    {
-                        nonfilesystemPaths.Add(resolvedPath);
-                    }
-                    return;
-                }
-
-                // Check if the cmdlet can preserve paths based on path variable
-                bool shouldPreservePathStructure = CanPreservePathStructure(path);
-
-                // Go through each resolved path and add an ArchiveAddition for it to additions
-                for (int i = 0; i < resolvedPaths.Count; i++)
-                {
-                    var resolvedPath = resolvedPaths[i];
-                    AddAdditionForFullyQualifiedPath(path: resolvedPath, additions: archiveAdditions, shouldPreservePathStructure: shouldPreservePathStructure);
-                }
-            }
-            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
-            {
-                exception = providerNotFoundException;
-            }
-            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
-            {
-                exception = driveNotFoundException;
-            }
-            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
-            {
-                exception = providerInvocationException;
-            }
-            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
-            {
-                exception = notSupportedException;
-            }
-            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
-            {
-                exception = invalidOperationException;
-            }
-            // Throw a terminating error if the path could not be found
-            catch (System.Management.Automation.ItemNotFoundException notFoundException)
-            {
-                var errorRecord = new ErrorRecord(exception: notFoundException, errorId: nameof(ErrorCode.PathNotFound), errorCategory: ErrorCategory.InvalidArgument,
-                    targetObject: path);
-                _cmdlet.ThrowTerminatingError(errorRecord);
-            }
-
-            // If an exception (besides ItemNotFoundException) was caught, write a non-terminating error
-            if (exception is not null)
-            {
-                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument,
-                    targetObject: path);
-                _cmdlet.WriteError(errorRecord);
-            }
-        }
-
-        /// <summary>
-        /// Resolves a user-entered path without expanding wildcards, creates an ArchiveAddition object for it, and its to the list of ArchiveAddition objects
-        /// </summary>
-        /// <param name="path"></param>
-        /// <param name="archiveAdditions"></param>
-        /// <param name="nonfilesystemPaths"></param>
-        private void AddArchiveAdditionForUserEnteredLiteralPath(string path, List<ArchiveAddition> archiveAdditions, HashSet<string> nonfilesystemPaths)
-        {
-            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
-            Exception? exception = null;
-            try
-            {
-                // Resolve the path -- gets the fully qualified path
-                string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
-
-                // Check if the path is from the filesystem
-                if (providerInfo.Name != FileSystemProviderName)
-                {
-                    nonfilesystemPaths.Add(path);
-                    return;
-                }
-
-                // We do not need to check if the path exists here because it is done in AddAdditionForFullyQualifiedMethod call
-
-                // Check if we can preserve the path structure -- this is based on the original path the user entered (not fully qualified)
-                bool canPreservePathStructure = CanPreservePathStructure(path: path);
-
-                // Add an ArchiveAddition for the path to the list of additions
-                AddAdditionForFullyQualifiedPath(path: fullyQualifiedPath, additions: archiveAdditions, shouldPreservePathStructure: canPreservePathStructure);
-            } 
-            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
-            {
-                exception = providerNotFoundException;
-            } 
-            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
-            {
-                exception = driveNotFoundException;
-            } 
-            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
-            {
-                exception = providerInvocationException;
-            } 
-            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
-            {
-                exception = notSupportedException;
-            } 
-            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
-            {
-                exception = invalidOperationException;
-            }
-
-            // If an exception was caught, write a non-terminating error
-            if (exception is not null)
-            {
-                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
-                    targetObject: path);
-                _cmdlet.WriteError(errorRecord);
-            }
+            return archiveAdditions;
         }
 
         /// <summary>
@@ -207,28 +41,35 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="path">The fully qualified path</param>
         /// <param name="additions">The list where to add the ArchiveAddition object for the path</param>
         /// <param name="shouldPreservePathStructure">If true, relative path structure will be preserved. If false, relative path structure will NOT be preserved.</param>
-        private void AddAdditionForFullyQualifiedPath(string path, List<ArchiveAddition> additions, bool shouldPreservePathStructure)
+        private void AddAdditionForFullyQualifiedPath(string path, List<ArchiveAddition> additions)
         {
-            System.IO.FileSystemInfo fileSystemInfo = new System.IO.FileInfo(path);
-            if (System.IO.Directory.Exists(path))
+            Debug.Assert(Path.Exists(path));
+            FileSystemInfo fileSystemInfo;
+
+            if (Directory.Exists(path))
             {
-                // Add directory seperator to end if it does not already have it
-                if (!path.EndsWith(System.IO.Path.DirectorySeparatorChar)) path += System.IO.Path.DirectorySeparatorChar;
-                // Recurse through the child items and add them to additions
-                var directoryInfo = new System.IO.DirectoryInfo(path);
-                AddDescendentEntries(directoryInfo: directoryInfo, additions: additions, shouldPreservePathStructure: shouldPreservePathStructure);
-                fileSystemInfo = directoryInfo;
+                // If the path is a directory, ensure it does not have a trailing DirectorySeperatorChar and if it does, remove it
+                // This will make path comparisons easier because the cmdlet won't have to consider whether or not a path has a DirectorySeperatorChar at the end
+                // i.e., we will avoid the scenario where 1 path has a trailing DirectorySeperatorChar and the other does not (this is not a big deal, but makes life easier)
+                if (path.EndsWith(Path.DirectorySeparatorChar)) {
+                    path = path.Substring(0, path.Length - 1);
+                }
+                fileSystemInfo = new DirectoryInfo(path);
             }
-            else if (!System.IO.File.Exists(path))
+            else
             {
-                // Throw an error if the path does not exist
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.PathNotFound, errorItem: path);
-                _cmdlet.ThrowTerminatingError(errorRecord: errorRecord);
+                fileSystemInfo = new FileInfo(path);
             }
 
-            // Add an entry for the item
-            var entryName = GetEntryName(fileSystemInfo: fileSystemInfo, shouldPreservePathStructure: shouldPreservePathStructure);
+            // Get the entry name of the file or directory in the archive
+            // The cmdlet will preserve the directory structure as long as the path is relative to the working directory
+            var entryName = GetEntryName(fileSystemInfo, out bool doesPreservePathStructure);
             additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: fileSystemInfo));
+
+            // Recurse through the child items and add them to additions
+            if (fileSystemInfo.Attributes.HasFlag(FileAttributes.Directory) && fileSystemInfo is DirectoryInfo directoryInfo) {
+                AddDescendentEntries(directoryInfo: directoryInfo, additions: additions, shouldPreservePathStructure: doesPreservePathStructure);
+            }
         }
 
         /// <summary>
@@ -243,11 +84,22 @@ namespace Microsoft.PowerShell.Archive
             {
                 // pathPrefix is used to construct the entry names of the descendents of the directory
                 var pathPrefix = GetPrefixForPath(directoryInfo: directoryInfo);
-                foreach (var childPath in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
-                {                    
-                    // Add an entry for each child path
-                    var entryName = GetEntryName(path: childPath.FullName, prefix: pathPrefix);
-                    additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childPath));
+                foreach (var childFileSystemInfo in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
+                {
+                    string entryName;
+                    // If the cmdlet should preserve the path structure, then use the relative path
+                    if (shouldPreservePathStructure)
+                    {
+                        entryName = GetEntryName(childFileSystemInfo, out bool doesPreservePathStructure);
+                        Debug.Assert(doesPreservePathStructure);
+                    }
+                    // Otherwise, get the entry name using the prefix 
+                    else
+                    {
+                        entryName = GetEntryNameUsingPrefix(path: childFileSystemInfo.FullName, prefix: pathPrefix);
+                    }
+                    // Add an entry for each descendent of the directory                 
+                    additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childFileSystemInfo));
                 }
             } 
             // Write a non-terminating error if a securityException occurs
@@ -265,16 +117,24 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="path">A fully qualified path</param>
         /// <param name="shouldPreservePathStructure"></param>
         /// <returns></returns>
-        private string GetEntryName(System.IO.FileSystemInfo fileSystemInfo, bool shouldPreservePathStructure)
+        private string GetEntryName(FileSystemInfo fileSystemInfo, out bool doesPreservePathStructure)
         {
+            string entryName;
+            doesPreservePathStructure = false;
             // If the path is relative to the current working directory, return the relative path as name
-            if (shouldPreservePathStructure && TryGetPathRelativeToCurrentWorkingDirectory(path: fileSystemInfo.FullName, out var relativePath))
+            if (TryGetPathRelativeToCurrentWorkingDirectory(path: fileSystemInfo.FullName, out var relativePath))
             {
-                return relativePath;
+                Debug.Assert(relativePath is not null);
+                doesPreservePathStructure = true;
+                entryName = relativePath;
             }
             // Otherwise, return the name of the directory or file
-            var entryName = fileSystemInfo.Name;
-            if (fileSystemInfo.Attributes.HasFlag(FileAttributes.Directory) && !entryName.EndsWith(System.IO.Path.DirectorySeparatorChar))
+            else 
+            {
+                entryName = fileSystemInfo.Name;
+            }
+            
+            if (fileSystemInfo.Attributes.HasFlag(FileAttributes.Directory) && !entryName.EndsWith(Path.DirectorySeparatorChar))
             {
                 entryName += System.IO.Path.DirectorySeparatorChar;
             }
@@ -289,7 +149,7 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="prefix"></param>
         /// <returns></returns>
         /// <exception cref="ArgumentException"></exception>
-        private static string GetEntryName(string path, string prefix)
+        private static string GetEntryNameUsingPrefix(string path, string prefix)
         {
             if (prefix == string.Empty) return path;
 
@@ -330,107 +190,188 @@ namespace Microsoft.PowerShell.Archive
             }
             return prefix;
         }
-
-        /// <summary>
-        /// Get the duplicate fully qualified paths from a list of ArchiveAdditions
-        /// </summary>
-        /// <param name="additions"></param>
-        /// <returns></returns>
-        private static IEnumerable<string> GetDuplicatePaths(List<ArchiveAddition> additions)
-        {
-            return additions.GroupBy(x => x.FileSystemInfo.FullName)
-                    .Where(group => group.Count() > 1)
-                    .Select(x => x.Key);
-        }
-
-        /// <summary>
-        /// Resolve a path that may contain wildcard characters and could be a literal or non-literal path to a single fully qualified path.
-        /// </summary>
-        /// <param name="path"></param>
-        /// <returns></returns>
-        /// <exception cref="ArgumentException"></exception>
-        internal System.IO.FileSystemInfo ResolveToSingleFullyQualifiedPath(string path)
-        {
-            // Currently, all this function does is return the literal fully qualified path of a path
-
-            // First, get non-literal path
-            string fullyQualifiedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
-
-            // If the path is not from the filesystem, throw an error
-            if (providerInfo.Name != FileSystemProviderName)
-            {
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.InvalidPath, errorItem: path);
-                _cmdlet.ThrowTerminatingError(errorRecord);
-            }
-
-            // Return filesystem info
-
-            return GetFilesystemInfoForPath(fullyQualifiedPath);
-        }
-
-        /// <summary>
-        /// Determines if the relative path structure can be preserved
-        /// </summary>
-        /// <param name="path"></param>
-        /// <returns></returns>
-        private static bool CanPreservePathStructure(string path)
-        {
-            return !System.IO.Path.IsPathRooted(path);
-        }
-
+        
         /// <summary>
         /// Tries to get a path relative to the current working directory as long as the relative path does not contain ".."
         /// </summary>
         /// <param name="path"></param>
         /// <param name="relativePath"></param>
         /// <returns></returns>
-        private bool TryGetPathRelativeToCurrentWorkingDirectory(string path, out string relativePath)
+        private bool TryGetPathRelativeToCurrentWorkingDirectory(string path, out string? relativePathToWorkingDirectory)
         {
-            relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
-            return !relativePath.Contains("..");
+            string relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
+            relativePathToWorkingDirectory = relativePath.Contains("..") ? null : relativePath;
+            return relativePathToWorkingDirectory is not null;
         }
 
-        /// <summary>
-        /// Determines if two paths are the same
-        /// </summary>
-        /// <param name="fileSystemInfo1"></param>
-        /// <param name="fileSystemInfo2"></param>
-        /// <returns></returns>
-        internal static bool ArePathsSame(System.IO.FileSystemInfo fileSystemInfo1, System.IO.FileSystemInfo fileSystemInfo2)
-        {
-            // If one is a file and the other is a directory, return false
-            if ((fileSystemInfo1.Attributes.HasFlag(FileAttributes.Directory) && !fileSystemInfo2.Attributes.HasFlag(FileAttributes.Directory)) ||
-                (!fileSystemInfo1.Attributes.HasFlag(FileAttributes.Directory) && fileSystemInfo2.Attributes.HasFlag(FileAttributes.Directory)))
+        internal string[]? GetResolvedPathFromPSProviderPath(string path, HashSet<string> nonexistentPaths) {
+            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
+            Exception? exception = null;
+            string[]? fullyQualifiedPaths = null;
+            try
             {
-                return false;
+                // Resolve path
+                var resolvedPaths = _cmdlet.SessionState.Path.GetResolvedProviderPathFromPSPath(path, out var providerInfo);
+
+                // If the path is from the filesystem, set it to fullyQualifiedPaths so it can be returned
+                // Otherwise, create an exception so an error will be written
+                if (providerInfo.Name != FileSystemProviderName)
+                {
+                    var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.InvalidPath);
+                    exception = new ArgumentException(exceptionMsg);
+                } else {
+                    fullyQualifiedPaths = resolvedPaths.ToArray();
+                }
+            } 
+            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
+            {
+                exception = providerNotFoundException;
+            } 
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                exception = driveNotFoundException;
+            } 
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                exception = providerInvocationException;
+            } 
+            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
+            {
+                exception = notSupportedException;
+            } 
+            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
+            {
+                exception = invalidOperationException;
+            }
+            // If a path can't be found, write an error
+            catch (System.Management.Automation.ItemNotFoundException)
+            {
+                nonexistentPaths.Add(path);
             }
 
-            string fullPath1 = fileSystemInfo1.FullName;
-            string fullPath2 = fileSystemInfo2.FullName;
-
-            // If both are directories, compare their paths
-            if (fileSystemInfo1.Attributes.HasFlag(FileAttributes.Directory) && fileSystemInfo2.Attributes.HasFlag(FileAttributes.Directory))
+            // If an exception was caught, write a non-terminating error
+            if (exception is not null)
             {
-                if (!System.IO.Path.EndsInDirectorySeparator(fullPath1)) fullPath1 += System.IO.Path.DirectorySeparatorChar;
-                if (!System.IO.Path.EndsInDirectorySeparator(fullPath2)) fullPath2 += System.IO.Path.DirectorySeparatorChar;
+                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
+                    targetObject: path);
+                _cmdlet.WriteError(errorRecord);
             }
 
-            
-            return fullPath1 == fullPath2;
+            return fullyQualifiedPaths;
         }
 
-        internal static System.IO.FileSystemInfo GetFilesystemInfoForPath(string path)
-        {
-            // Check if path exists
-            if (System.IO.File.Exists(path))
+        // Resolves a literal path. Does not check if the path exists.
+        // If an exception occurs with a provider, it throws a terminating error
+        internal string? GetUnresolvedPathFromPSProviderPath(string path) {
+            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
+            Exception? exception = null;
+            string? fullyQualifiedPath = null;
+            try
             {
-                return new System.IO.FileInfo(path);
-            }
-            if (System.IO.Directory.Exists(path))
+                // Resolve path
+                var resolvedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
+
+                // If the path is from the filesystem, set fullyQualifiedPath to resolvedPath so it can be returned
+                // Otherwise, create an exception so an error will be written
+                if (providerInfo.Name != FileSystemProviderName)
+                {
+                    var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.InvalidPath);
+                    exception = new ArgumentException(exceptionMsg);
+                }
+                else
+                {
+                    fullyQualifiedPath = resolvedPath;
+                }
+            } 
+            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
             {
-                return new System.IO.DirectoryInfo(path);
+                exception = providerNotFoundException;
+            } 
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                exception = driveNotFoundException;
+            } 
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                exception = providerInvocationException;
+            } 
+            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
+            {
+                exception = notSupportedException;
+            } 
+            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
+            {
+                exception = invalidOperationException;
             }
-            return path.EndsWith(System.IO.Path.DirectorySeparatorChar) ? new System.IO.DirectoryInfo(path) : new System.IO.FileInfo(path);
+
+            // If an exception was caught, write a non-terminating error of throwError == false. Otherwise, throw a terminating errror
+            if (exception is not null)
+            {
+                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
+                    targetObject: path);
+                _cmdlet.ThrowTerminatingError(errorRecord);
+            }
+
+            return fullyQualifiedPath;
+        }
+
+        // Resolves a literal path. If it does not exist, it adds the path to nonexistentPaths.
+        // If an exception occurs with a provider, it writes a non-terminating error
+        internal string? GetUnresolvedPathFromPSProviderPath(string path, HashSet<string> nonexistentPaths) {
+            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
+            Exception? exception = null;
+            string? fullyQualifiedPath = null;
+            try
+            {
+                // Resolve path
+                var resolvedPath = _cmdlet.SessionState.Path.GetUnresolvedProviderPathFromPSPath(path, out var providerInfo, out var psDriveInfo);
+
+                // If the path is from the filesystem, set fullyQualifiedPath to resolvedPath so it can be returned
+                // Otherwise, create an exception so an error will be written
+                if (providerInfo.Name != FileSystemProviderName)
+                {
+                    var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.InvalidPath);
+                    exception = new ArgumentException(exceptionMsg);
+                }
+                // If the path does not exist, create an exception 
+                else if (!Path.Exists(resolvedPath)) {
+                    nonexistentPaths.Add(resolvedPath);
+                }
+                else
+                {
+                    fullyQualifiedPath = resolvedPath;
+                }
+            } 
+            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
+            {
+                exception = providerNotFoundException;
+            } 
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                exception = driveNotFoundException;
+            } 
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                exception = providerInvocationException;
+            } 
+            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
+            {
+                exception = notSupportedException;
+            } 
+            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
+            {
+                exception = invalidOperationException;
+            }
+
+            // If an exception was caught, write a non-terminating error
+            if (exception is not null)
+            {
+                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
+                    targetObject: path);
+                _cmdlet.WriteError(errorRecord);
+            }
+
+            return fullyQualifiedPath;
         }
     }
 }

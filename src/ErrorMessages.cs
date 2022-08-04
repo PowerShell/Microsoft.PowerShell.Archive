@@ -16,6 +16,13 @@ namespace Microsoft.PowerShell.Archive
             return new ErrorRecord(exception, errorCode.ToString(), ErrorCategory.InvalidArgument, errorItem);
         }
 
+        internal static ErrorRecord GetErrorRecord(ErrorCode errorCode)
+        {
+            var errorMsg = GetErrorMessage(errorCode: errorCode);
+            var exception = new ArgumentException(errorMsg);
+            return new ErrorRecord(exception, errorCode.ToString(), ErrorCategory.InvalidArgument, null);
+        }
+
         internal static string GetErrorMessage(ErrorCode errorCode)
         {
             return errorCode switch
