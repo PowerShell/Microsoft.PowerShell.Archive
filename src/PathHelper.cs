@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
-using System.Linq;
 using System.Management.Automation;
 
 namespace Microsoft.PowerShell.Archive
@@ -204,10 +203,10 @@ namespace Microsoft.PowerShell.Archive
             return relativePathToWorkingDirectory is not null;
         }
 
-        internal string[]? GetResolvedPathFromPSProviderPath(string path, HashSet<string> nonexistentPaths) {
+        internal System.Collections.ObjectModel.Collection<string>? GetResolvedPathFromPSProviderPath(string path, HashSet<string> nonexistentPaths) {
             // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
             Exception? exception = null;
-            string[]? fullyQualifiedPaths = null;
+            System.Collections.ObjectModel.Collection<string>? fullyQualifiedPaths = null;
             try
             {
                 // Resolve path
@@ -220,7 +219,7 @@ namespace Microsoft.PowerShell.Archive
                     var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.InvalidPath);
                     exception = new ArgumentException(exceptionMsg);
                 } else {
-                    fullyQualifiedPaths = resolvedPaths.ToArray();
+                    fullyQualifiedPaths = resolvedPaths;
                 }
             } 
             catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)

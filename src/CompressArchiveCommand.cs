@@ -138,7 +138,7 @@ namespace Microsoft.PowerShell.Archive
             if (_nonexistentPaths.Count > 0) {
                 // Get a comma-seperated string containg the non-existent paths
                 string commaSeperatedNonExistentPaths = string.Join(',', _nonexistentPaths);
-                var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.InvalidPath, commaSeperatedNonExistentPaths);
+                var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.PathNotFound, commaSeperatedNonExistentPaths);
                 ThrowTerminatingError(errorRecord);
             }
 

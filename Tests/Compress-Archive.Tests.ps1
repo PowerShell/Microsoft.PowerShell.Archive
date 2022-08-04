@@ -136,31 +136,48 @@
             }
         }
 
-        It "Validate errors from Compress-Archive when invalid path (non-existing path / non-filesystem path) is supplied for Path or LiteralPath parameters" -ForEach @(
-            @{ Path = "TestDrive:/InvalidPath" }
-            @{ Path = @("TestDrive:/", "TestDrive:/InvalidPath") }
-        ) {
+        It "Validate errors from Compress-Archive when invalid path is supplied for Path or LiteralPath parameters" -ForEach @(
+            @{ Path = "Env:/Path" }
+            @{ Path = @("TestDrive:/", "Env:/Path") }
+        ) -Tag this1 {
             $DestinationPath = "TestDrive:/archive2.zip"
 
-            try
-                {
-                    Compress-Archive -Path $Path -DestinationPath $DestinationPath
-                    throw "Failed to validate that an invalid Path was supplied as input to Compress-Archive cmdlet."
-                }
-                catch
-                {
-                    $_.FullyQualifiedErrorId | Should -Be "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
-                }
+            Compress-Archive -Path $Path -DestinationPath $DestinationPath -ErrorAction SilentlyContinue -ErrorVariable error
+            $error.Count | Should -Be 1
+            $error[0].FullyQualifiedErrorId | Should -Be "InvalidPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            Remove-Item -Path $DestinationPath
 
-                try
-                {
-                    Compress-Archive -LiteralPath $Path -DestinationPath $DestinationPath
-                    throw "Failed to validate that an invalid LiteralPath was supplied as input to Compress-Archive cmdlet."
-                }
-                catch
-                {
-                    $_.FullyQualifiedErrorId | Should -Be "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
-                }
+            Compress-Archive -LiteralPath $Path -DestinationPath $DestinationPath -ErrorAction SilentlyContinue -ErrorVariable error
+            $error.Count | Should -Be 1
+            $error[0].FullyQualifiedErrorId | Should -Be "InvalidPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            Remove-Item -Path $DestinationPath
+        }
+
+        It "Throws terminating error when non-existing path is supplied for Path or LiteralPath parameters" -ForEach @(
+            @{ Path = "TestDrive:/DoesNotExist" }
+            @{ Path = @("TestDrive:/", "TestDrive:/DoesNotExist") }
+        ) -Tag this2 {
+            $DestinationPath = "TestDrive:/archive3.zip"
+
+            try
+            {
+                Compress-Archive -Path $Path -DestinationPath $DestinationPath
+                throw "Failed to validate that an invalid Path was supplied as input to Compress-Archive cmdlet."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
+
+            try
+            {
+                Compress-Archive -LiteralPath $Path -DestinationPath $DestinationPath
+                throw "Failed to validate that an invalid LiteralPath was supplied as input to Compress-Archive cmdlet."
+            }
+            catch
+            {
+                $_.FullyQualifiedErrorId | Should -Be "PathNotFound,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
         }
 
         It "Validate error from Compress-Archive when duplicate paths are supplied as input to Path parameter" {
