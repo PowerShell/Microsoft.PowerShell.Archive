@@ -1,96 +1,17 @@
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
 
+BeforeDiscovery {
+      # Loads and registers custom assertion. Ignores usage of unapproved verb with -DisableNameChecking
+      Import-Module "$PSScriptRoot/Assertions/Should-BeZipArchiveOnlyContaining.psm1" -DisableNameChecking
+}
+
  Describe("Microsoft.PowerShell.Archive tests") {
     BeforeAll {
 
         $originalProgressPref = $ProgressPreference
         $ProgressPreference = "SilentlyContinue"
         $originalPSModulePath = $env:PSModulePath
-
-        # Add compression assemblies
-        function Add-CompressionAssemblies {
-            Add-Type -AssemblyName System.IO.Compression
-            if ($psedition -eq "Core")
-            {
-                Add-Type -AssemblyName System.IO.Compression.ZipFile
-            }
-            else
-            {
-                Add-Type -AssemblyName System.IO.Compression.FileSystem
-            }
-        }
-
-        Add-CompressionAssemblies
-
-        # Used for validating an archive's contents
-        function Test-ZipArchive {
-            param
-            (
-                [string] $archivePath,
-                [string[]] $expectedEntries,
-                [switch] $Literal
-            )
-    
-            try
-            {
-                if ($Literal) {
-                    $archivePath = Convert-Path -LiteralPath $archivePath
-                } else {
-                    $archivePath = Convert-Path -Path $archivePath
-                }
-                
-
-                $archiveFileStreamArgs = @($archivePath, [System.IO.FileMode]::Open)
-                $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
-    
-                $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
-                $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
-    
-                $actualEntryCount = $zipArchive.Entries.Count
-                $actualEntryCount | Should -Be $expectedEntries.Length
-
-                # Get a list of entry names in the zip archive
-                $archiveEntries = @()
-                ForEach ($archiveEntry in $zipArchive.Entries) {
-                    $archiveEntries += $archiveEntry.FullName
-                }
-
-                # Ensure each entry in the archive is in the list of expected entries
-                ForEach ($expectedEntry in $expectedEntries) {
-                    $expectedEntry | Should -BeIn $archiveEntries
-                }
-                
-            }
-            finally
-            {
-                if ($null -ne $zipArchive) { $zipArchive.Dispose()}
-                if ($null -ne $archiveFileStream) { $archiveFileStream.Dispose() }
-            }
-        }
-
-        # This function gets a list of a directories descendants formatted as archive entries
-        function Get-Descendants {
-            param (
-                [string] $Path
-            )
-            
-
-            # Get the folder name
-            $folderName =  Split-Path -Path $Path -Leaf
-
-            # Get descendents
-            $descendants = Get-ChildItem -Path $Path -Recurse -Name
-
-            $output = @()
-            
-            # Prefix each descendant name with folder name
-            foreach ($name in $descendants) {
-                $output += ($folderName + '/' + $name).Replace([System.IO.Path]::DirectorySeparatorChar, [System.IO.Path]::AltDirectorySeparatorChar)
-            }
-
-            return $output
-        }
     }
     
     AfterAll {
@@ -325,12 +246,11 @@
             }
         }
 
-        It "-WriteMode Create works" -Tag this2 {
+        It "-WriteMode Create works" -Tag td1 {
             $sourcePath = "TestDrive:/SourceDir"
             $destinationPath = "TestDrive:/archive1.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            Test-Path $destinationPath
-            Test-ZipArchive $destinationPath @('SourceDir/', 'SourceDir/Sample-1.txt')
+            $destinationPath | Should -BeZipArchiveOnlyContaining @('SourceDir/', 'SourceDir/Sample-1.txt')
         }
     }
 
@@ -354,26 +274,21 @@
             $sourcePath = "TestDrive:/SourceDir/ChildDir-1/Sample-2.txt"
             $destinationPath = "TestDrive:/archive1.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('Sample-2.txt')
+            $destinationPath | Should -BeZipArchiveOnlyContaining @('Sample-2.txt')
         }
 
         It "Validate that an empty folder can be compressed" {
             $sourcePath = "TestDrive:/EmptyDir"
             $destinationPath = "TestDrive:/archive2.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('EmptyDir/')
+            $destinationPath | Should -BeZipArchiveOnlyContaining @('EmptyDir/')
         }
 
         It "Validate a folder containing files, non-empty folders, and empty folders can be compressed" {
             $sourcePath = "TestDrive:/SourceDir"
             $destinationPath = "TestDrive:/archive3.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            $contents = Get-Descendants -Path $sourcePath
-            $contents += "SourceDir/"
-            Test-ZipArchive $destinationPath $contents
+            $destinationPath | Should -BeZipArchiveOnlyContaining @('SourceDir/', 'SourceDir/ChildDir-1/', 'SourceDir/ChildDir-2/', 'SourceDir/ChildEmptyDir/', 'SourceDir/Sample-1.txt', 'SourceDir/ChildDir-1/Sample-2.txt', 'SourceDir/ChildDir-2/Sample-3.txt')
         }
     }
 
@@ -515,27 +430,27 @@
             $sourcePath = "TestDrive:/SourceDir"
             $destinationPath = "TestDrive:/EmptyDirectory"
 
-            (Get-Item $destinationPath) -is [System.IO.DirectoryInfo] | Should -Be $true
+            # Ensure $destinationPath is a directory
+            Test-Path $destinationPath -PathType Container | Should -Be $true
+            
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WriteMode Overwrite
 
-            # Ensure $destiationPath is now a file
-            $destinationPathInfo = Get-Item $destinationPath
-            $destinationPathInfo -is [System.IO.DirectoryInfo] | Should -Be $false
-            $destinationPathInfo -is [System.IO.FileInfo] | Should -Be $true
+            # Ensure $destinationPath is now a file
+            Test-Path $destinationPath -PathType Leaf | Should -Be $true
         }
 
         It "Overwrites an archive that already exists" {
             $destinationPath = "TestDrive:/archive.zip"
 
-            # Get the entries of the original zip archive
-            Test-ZipArchive $destinationPath @("Sample-1.txt") 
+            # Ensure the original archive contains Sample-1.txt
+            $destinationPath | Should -BeZipArchiveOnlyContaining @("Sample-1.txt") 
 
             # Overwrite the archive
             $sourcePath = "TestDrive:/Sample-2.txt"
             Compress-Archive -Path $sourcePath -DestinationPath "TestDrive:/archive.zip" -WriteMode Overwrite
 
             # Ensure the original entries and different than the new entries
-            Test-ZipArchive $destinationPath @("Sample-2.txt") 
+            $destinationPath | Should -BeZipArchiveOnlyContaining @("Sample-2.txt") 
         }
     }
 
@@ -620,9 +535,20 @@
             $destinationPath = "TestDrive:/archive[2.zip"
 
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            Test-Path -LiteralPath $destinationPath | Should -Be $true
-            Test-ZipArchive $destinationPath @("SourceDir/", "SourceDir/Sample-1.txt") -Literal
+            $destinationPath | Should -BeZipArchiveOnlyContaining @("SourceDir/", "SourceDir/Sample-1.txt") -LiteralPath
             Remove-Item -LiteralPath $destinationPath
+        }
+    }
+
+    Context "test" -Tag lol {
+        BeforeAll {
+            $content = "Some Data"
+            $content | Out-File -FilePath TestDrive:/Sample-1.txt
+            Compress-Archive -Path TestDrive:/Sample-1.txt -DestinationPath TestDrive:/archive1.zip
+        }
+
+        It "test custom assetion" {
+            "${TestDrive}/archive1.zip" | Should -BeZipArchiveOnlyContaining @("Sample-1.txt")
         }
     }
 }

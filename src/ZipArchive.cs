@@ -63,9 +63,9 @@ namespace Microsoft.PowerShell.Archive
                 if (entryInArchive == null)
                 {
                     // Ensure addition.entryName has '/' at the end
-                    if (!addition.EntryName.EndsWith(ZipArchiveDirectoryPathTerminator))
+                    if (!entryName.EndsWith(ZipArchiveDirectoryPathTerminator))
                     {
-                        addition.EntryName += ZipArchiveDirectoryPathTerminator;
+                        entryName += ZipArchiveDirectoryPathTerminator;
                     }
 
                     _zipArchive.CreateEntry(entryName);
