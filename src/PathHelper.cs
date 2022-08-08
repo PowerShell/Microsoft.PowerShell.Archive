@@ -137,6 +137,8 @@ namespace Microsoft.PowerShell.Archive
             {
                 entryName += System.IO.Path.DirectorySeparatorChar;
             }
+
+
             return entryName;
         }
 
@@ -198,7 +200,14 @@ namespace Microsoft.PowerShell.Archive
         /// <returns></returns>
         private bool TryGetPathRelativeToCurrentWorkingDirectory(string path, out string? relativePathToWorkingDirectory)
         {
-            string relativePath = System.IO.Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
+            Debug.Assert(!string.IsNullOrEmpty(path));
+            string? workingDirectoryRoot = Path.GetPathRoot(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path);
+            string? pathRoot = Path.GetPathRoot(path);
+            if (workingDirectoryRoot != pathRoot) {
+                relativePathToWorkingDirectory = null;
+                return false;
+            }
+            string relativePath = Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
             relativePathToWorkingDirectory = relativePath.Contains("..") ? null : relativePath;
             return relativePathToWorkingDirectory is not null;
         }

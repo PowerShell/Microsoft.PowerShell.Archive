@@ -58,9 +58,9 @@ BeforeDiscovery {
         }
 
         It "Validate errors from Compress-Archive when invalid path is supplied for Path or LiteralPath parameters" -ForEach @(
-            @{ Path = "Env:/Path" }
-            @{ Path = @("TestDrive:/", "Env:/Path") }
-        ) -Tag this1 {
+            @{ Path = "Variable:/PWD" }
+            @{ Path = @("TestDrive:/", "Variable:/PWD") }
+        ) {
             $DestinationPath = "TestDrive:/archive2.zip"
 
             Compress-Archive -Path $Path -DestinationPath $DestinationPath -ErrorAction SilentlyContinue -ErrorVariable error
@@ -249,8 +249,14 @@ BeforeDiscovery {
         It "-WriteMode Create works" -Tag td1 {
             $sourcePath = "TestDrive:/SourceDir"
             $destinationPath = "TestDrive:/archive1.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Verbose
+            if ($IsWindows) {
+                $t = Convert-Path $destinationPath
+                7z l "${t}" | Write-Verbose -Verbose
+            }
             $destinationPath | Should -BeZipArchiveOnlyContaining @('SourceDir/', 'SourceDir/Sample-1.txt')
+
+            
         }
     }
 

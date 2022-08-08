@@ -48,7 +48,11 @@ function Should-BeZipArchiveOnlyContaining {
     }
 
     # Get 7-zip to list the contents of the archive
-    $output = 7z.exe l $ActualValue -ba
+    if ($IsWindows) {
+        $output = 7z.exe l $ActualValue -ba
+    } else {
+        $output = 7z l $ActualValue -ba
+    }
 
     # Check if the output is null
     if ($null -eq $output) {
