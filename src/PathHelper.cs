@@ -333,6 +333,7 @@ namespace Microsoft.PowerShell.Archive
             // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
             Exception? exception = null;
             string? fullyQualifiedPath = null;
+            ErrorCode errorCode = ErrorCode.InvalidPath;
             try
             {
                 // Resolve path
@@ -347,8 +348,9 @@ namespace Microsoft.PowerShell.Archive
                 }
                 // If the path does not exist, create an exception 
                 else if (pathMustExist && !Path.Exists(resolvedPath)) {
-                    var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.PathNotFound);
-                    exception = new ArgumentException(exceptionMsg);
+                    errorCode = ErrorCode.PathNotFound;
+                    var exceptionMsg = ErrorMessages.GetErrorMessage(errorCode);
+                    throw new ItemNotFoundException(exceptionMsg);
                 }
                 else
                 {
@@ -374,12 +376,14 @@ namespace Microsoft.PowerShell.Archive
             catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
             {
                 exception = invalidOperationException;
+            } catch (System.Management.Automation.ItemNotFoundException itemNotFoundException) {
+                exception = itemNotFoundException;
             }
 
             // If an exception was caught, write a non-terminating error
             if (exception is not null)
             {
-                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
+                var errorRecord = new ErrorRecord(exception: exception, errorId: errorCode.ToString(), errorCategory: ErrorCategory.InvalidArgument, 
                     targetObject: path);
                 _cmdlet.ThrowTerminatingError(errorRecord);
             }

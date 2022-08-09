@@ -225,6 +225,18 @@ BeforeDiscovery {
                 $_.FullyQualifiedErrorId | Should -Be "SameLiteralPathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
+
+        It "Throws an error when an invalid path is supplied to DestinationPath" {
+            $sourcePath = "TestDrive:/SourceDir"
+            $destinationPath = "Variable:/PWD"
+            
+            try {
+                Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+                throw "Failed to detect an error when an invalid path is supplied to DestinationPath"
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "InvalidPath,$CmdletClassName"
+            }
+        }
     }
 
     Context "WriteMode tests" {

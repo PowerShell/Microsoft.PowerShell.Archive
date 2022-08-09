@@ -94,7 +94,7 @@ namespace Microsoft.PowerShell.Archive
                     DestinationPath = DetermineDestinationPath(archive);
                 } else {
                     // Resolve DestinationPath and validate it
-                    DestinationPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(path: DestinationPath, pathMustExist: true);
+                    DestinationPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(path: DestinationPath, pathMustExist: false);
                 }
                 ValidateDestinationPath();
                 Debug.Assert(DestinationPath is not null);
@@ -128,6 +128,11 @@ namespace Microsoft.PowerShell.Archive
             {
                 // TODO: Change this later to write an error
                 throw unauthorizedAccessException;
+            }
+
+            // If PassThru is true, return a System.IO.DirectoryInfo object pointing to directory where archive expanded
+            if (PassThru) {
+                WriteObject(new DirectoryInfo(DestinationPath));
             }
         }
 
@@ -219,7 +224,7 @@ namespace Microsoft.PowerShell.Archive
 
             // Throw an error if DestinationPath exists and the cmdlet is not in Overwrite mode 
             if (File.Exists(DestinationPath) && WriteMode == ExpandArchiveWriteMode.Expand) {
-                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.CannotDetermineDestinationPath, errorItem: DestinationPath);
+                var errorRecord = ErrorMessages.GetErrorRecord(errorCode: ErrorCode.DestinationExists, errorItem: DestinationPath);
                 ThrowTerminatingError(errorRecord);
             }
 
