@@ -191,4 +191,7 @@
   <data name="CannotDetermineDestinationPath" xml:space="preserve">
     <value>The destination path cannot be determined automatically. Please use the -DestinationPath parameter to enter a destination path.</value>
   </data>
+  <data name="LastWriteTimeBefore1980Warning" xml:space="preserve">
+    <value>The last write time of the path {0} is before 1980. Since zip does not support dates before January 1, 1980, the last write time will be set to January 1, 1980.</value>
+  </data>
 </root>

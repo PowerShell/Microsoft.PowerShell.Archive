@@ -94,7 +94,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void BeginProcessing()
         {
             // This resolves the path to a fully qualified path and handles provider exceptions
-            DestinationPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(DestinationPath);
+            DestinationPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(path: DestinationPath, pathMustExist: false);
             ValidateDestinationPath();
         }
 
@@ -104,7 +104,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 Debug.Assert(Path is not null);
                 foreach (var path in Path) {
-                    var resolvedPaths = _pathHelper.GetResolvedPathFromPSProviderPath(path, _nonexistentPaths);
+                    var resolvedPaths = _pathHelper.GetResolvedPathFromPSProviderPathWhileCapturingNonexistentPaths(path, _nonexistentPaths);
                     if (resolvedPaths is not null) {
                         foreach (var resolvedPath in resolvedPaths) {
                             // Add resolvedPath to _path
@@ -118,7 +118,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 Debug.Assert(LiteralPath is not null);
                 foreach (var path in LiteralPath) {
-                    var unresolvedPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(path, _nonexistentPaths);
+                    var unresolvedPath = _pathHelper.GetUnresolvedPathFromPSProviderPathWhileCapturingNonexistentPaths(path, _nonexistentPaths);
                     if (unresolvedPath is not null) {
                         // Add unresolvedPath to _path
                         AddPathToPaths(pathToAdd: unresolvedPath);
@@ -155,6 +155,7 @@ namespace Microsoft.PowerShell.Archive
 
             // Get archive entries
             // If a path causes an exception (e.g., SecurityException), _pathHelper should handle it
+            Debug.Assert(_paths is not null);
             List<ArchiveAddition> archiveAdditions = _pathHelper.GetArchiveAdditions(_paths);
 
             // Remove references to _paths, Path, and LiteralPath to free up memory
@@ -203,6 +204,11 @@ namespace Microsoft.PowerShell.Archive
 
                     if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: Messages.Add))
                     {
+                        // Warn the user if the LastWriteTime of the file/directory is before 1980
+                        if (entry.FileSystemInfo.LastWriteTime.Year < 1980 && Format == ArchiveFormat.Zip) {
+                            WriteWarning(string.Format(Messages.LastWriteTimeBefore1980Warning, entry.FileSystemInfo.FullName));
+                        }
+
                         archive?.AddFileSystemEntry(entry);
                         // Write a verbose message saying this item was added to the archive
                         var addedItemMessage = string.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);

@@ -281,8 +281,12 @@ BeforeDiscovery {
             New-Item $TestDrive$($DS)EmptyFile -Type File | Out-Null
 
             # Create a file whose last write time is before 1980
-            $content | Out-File -FilePath $TestDrive$($DS)OldFile.txt
-            Set-ItemProperty -Path $TestDrive$($DS)OldFile.txt -Name LastWriteTime -Value '1974-01-16 14:44'
+            $content | Out-File -FilePath TestDrive:/OldFile.txt
+            Set-ItemProperty -Path TestDrive:/OldFile.txt -Name LastWriteTime -Value '1974-01-16 14:44'
+
+            # Create a directory whose last write time is before 1980
+            New-Item -Path "TestDrive:/olddirectory" -ItemType Directory
+            Set-ItemProperty -Path "TestDrive:/olddirectory" -Name "LastWriteTime" -Value '1974-01-16 14:44'
         }
 
         It "Compresses a single file" {
@@ -408,11 +412,8 @@ BeforeDiscovery {
         }
 
         It "Compresses a directory whose last write time is before 1980" {
-            New-Item -Path "$TestDrive/olddirectory" -ItemType Directory
-            Set-ItemProperty -Path "$TestDrive/olddirectory" -Name "LastWriteTime" -Value '1974-01-16 14:44'
-
-            $sourcePath = "$TestDrive$($DS)olddirectory"
-            $destinationPath = "$TestDrive$($DS)archive12.zip"
+            $sourcePath = "TestDrive:/olddirectory"
+            $destinationPath = "${TestDrive}/archive12.zip"
 
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should -Exist
@@ -437,6 +438,30 @@ BeforeDiscovery {
 
             $archive.Dispose()
             $archiveStream.Dispose()
+        }
+
+        It "Writes a warning when compressing a file whose last write time is before 1980" {
+            $sourcePath = "TestDrive:/OldFile.txt"
+            $destinationPath = "${TestDrive}/archive13.zip"
+
+            # Assert the last write time of the file is before 1980
+            $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
+            $dateProperty.Year | Should -BeLessThan 1980
+
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningVariable warnings
+            $warnings.Length | Should -Be 1
+        }
+
+        It "Writes a warning when compresing a directory whose last write time is before 1980" {
+            $sourcePath = "TestDrive:/olddirectory"
+            $destinationPath = "${TestDrive}/archive14.zip"
+
+            # Assert the last write time of the file is before 1980
+            $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
+            $dateProperty.Year | Should -BeLessThan 1980
+
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningVariable warnings
+            $warnings.Length | Should -Be 1
         }
     }
 
@@ -663,22 +688,12 @@ BeforeDiscovery {
 
     Context "Special and Wildcard Characters Tests" {
         BeforeAll {
-<<<<<<< HEAD
             New-Item TestDrive:/SourceDir -Type Directory | Out-Null
     
             $content = "Some Data"
             $content | Out-File -FilePath TestDrive:/SourceDir/Sample-1.txt
             New-Item -LiteralPath "$TestDrive$($DS)Source[]Dir" -Type Directory | Out-Null
             $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)file1[].txt
-=======
-            New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
-
-            New-Item -Path "$TestDrive$($DS)Source`[`]Dir" -Type Directory | Out-Null
-    
-            $content = "Some Data"
-            $content | Out-File -FilePath $TestDrive$($DS)SourceDir$($DS)Sample-1.txt
-            $content | Out-File -LiteralPath $TestDrive$($DS)file1[].txt
->>>>>>> 8b3dcd5 (worked on Expand-Archive, added IEntry class, added support for ShouldProcess in Expand-Archive)
         }
 
         It "Accepts DestinationPath parameter with wildcard characters that resolves to one path" {
@@ -692,16 +707,9 @@ BeforeDiscovery {
         It "Accepts DestinationPath parameter with [ but no matching ]" {
             $sourcePath = "TestDrive:/SourceDir"
             $destinationPath = "TestDrive:/archive[2.zip"
-
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-<<<<<<< HEAD
             $destinationPath | Should -BeZipArchiveOnlyContaining @("SourceDir/", "SourceDir/Sample-1.txt") -LiteralPath
             Remove-Item -LiteralPath $destinationPath
-=======
-            Test-Path -LiteralPath $destinationPath | Should -Be $true
-            Test-ZipArchive $destinationPath @("SourceDir/", "SourceDir/Sample-1.txt")
-            Remove-Item -LiteralPath $destinationPath -Force
->>>>>>> 8b3dcd5 (worked on Expand-Archive, added IEntry class, added support for ShouldProcess in Expand-Archive)
         }
 
         It "Accepts LiteralPath parameter for a directory with special characters in the directory name"  -skip:(($PSVersionTable.psversion.Major -lt 5) -and ($PSVersionTable.psversion.Minor -lt 0)) {
@@ -734,15 +742,26 @@ BeforeDiscovery {
         }
     }
 
-    Context "test" -Tag lol {
+    Context "PassThru tests" {
         BeforeAll {
-            $content = "Some Data"
-            $content | Out-File -FilePath TestDrive:/Sample-1.txt
-            Compress-Archive -Path TestDrive:/Sample-1.txt -DestinationPath TestDrive:/archive1.zip
+            New-Item -Path TestDrive:/file.txt -ItemType File
         }
 
-        It "test custom assetion" {
-            "${TestDrive}/archive1.zip" | Should -BeZipArchiveOnlyContaining @("Sample-1.txt")
+        It "Returns an object of type System.IO.FileInfo when PassThru is specified" {
+            $output = Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive1.zip -PassThru
+            $output | Should -BeOfType System.IO.FileInfo
+            $destinationPath = Join-Path $TestDrive "archive1.zip"
+            $output.FullName | Should -Be $destinationPath
+        }
+
+        It "Does not return an object when PassThru is not specified" {            
+            $output = Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive2.zip
+            $output | Should -BeNullOrEmpty
+        }
+
+        It "Does not return an object when PassThru is false" {            
+            $output = Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive3.zip -PassThru:$false
+            $output | Should -BeNullOrEmpty
         }
     }
 }

@@ -212,7 +212,7 @@ namespace Microsoft.PowerShell.Archive
             return relativePathToWorkingDirectory is not null;
         }
 
-        internal System.Collections.ObjectModel.Collection<string>? GetResolvedPathFromPSProviderPath(string path, HashSet<string> nonexistentPaths) {
+        internal System.Collections.ObjectModel.Collection<string>? GetResolvedPathFromPSProviderPath(string path, bool pathMustExist) {
             // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
             Exception? exception = null;
             System.Collections.ObjectModel.Collection<string>? fullyQualifiedPaths = null;
@@ -251,8 +251,67 @@ namespace Microsoft.PowerShell.Archive
             {
                 exception = invalidOperationException;
             }
-            // If a path can't be found, write an error
-            catch (System.Management.Automation.ItemNotFoundException)
+            // If a path can't be found, add it the set of non-existant paths
+            catch (System.Management.Automation.ItemNotFoundException itemNotFoundException)
+            {
+                if (pathMustExist) {
+                    var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.PathNotFound);
+                    _cmdlet.ThrowTerminatingError(errorRecord);
+                }
+            }
+
+            // If an exception was caught, write a non-terminating error
+            if (exception is not null)
+            {
+                var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
+                    targetObject: path);
+                _cmdlet.ThrowTerminatingError(errorRecord);
+            }
+
+            return fullyQualifiedPaths;
+        }
+
+        internal System.Collections.ObjectModel.Collection<string>? GetResolvedPathFromPSProviderPathWhileCapturingNonexistentPaths(string path, HashSet<string> nonexistentPaths) {
+            // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
+            Exception? exception = null;
+            System.Collections.ObjectModel.Collection<string>? fullyQualifiedPaths = null;
+            try
+            {
+                // Resolve path
+                var resolvedPaths = _cmdlet.SessionState.Path.GetResolvedProviderPathFromPSPath(path, out var providerInfo);
+
+                // If the path is from the filesystem, set it to fullyQualifiedPaths so it can be returned
+                // Otherwise, create an exception so an error will be written
+                if (providerInfo.Name != FileSystemProviderName)
+                {
+                    var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.InvalidPath);
+                    exception = new ArgumentException(exceptionMsg);
+                } else {
+                    fullyQualifiedPaths = resolvedPaths;
+                }
+            } 
+            catch (System.Management.Automation.ProviderNotFoundException providerNotFoundException)
+            {
+                exception = providerNotFoundException;
+            } 
+            catch (System.Management.Automation.DriveNotFoundException driveNotFoundException)
+            {
+                exception = driveNotFoundException;
+            } 
+            catch (System.Management.Automation.ProviderInvocationException providerInvocationException)
+            {
+                exception = providerInvocationException;
+            } 
+            catch (System.Management.Automation.PSNotSupportedException notSupportedException)
+            {
+                exception = notSupportedException;
+            } 
+            catch (System.Management.Automation.PSInvalidOperationException invalidOperationException)
+            {
+                exception = invalidOperationException;
+            }
+            // If a path can't be found, add it the set of non-existant paths
+            catch (System.Management.Automation.ItemNotFoundException itemNotFoundException)
             {
                 nonexistentPaths.Add(path);
             }
@@ -268,9 +327,9 @@ namespace Microsoft.PowerShell.Archive
             return fullyQualifiedPaths;
         }
 
-        // Resolves a literal path. Does not check if the path exists.
-        // If an exception occurs with a provider, it throws a terminating error
-        internal string? GetUnresolvedPathFromPSProviderPath(string path) {
+        // Resolves a literal path. If it does not exist, it adds the path to nonexistentPaths.
+        // If an exception occurs with a provider, it writes a non-terminating error
+        internal string? GetUnresolvedPathFromPSProviderPath(string path, bool pathMustExist) {
             // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
             Exception? exception = null;
             string? fullyQualifiedPath = null;
@@ -284,6 +343,11 @@ namespace Microsoft.PowerShell.Archive
                 if (providerInfo.Name != FileSystemProviderName)
                 {
                     var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.InvalidPath);
+                    exception = new ArgumentException(exceptionMsg);
+                }
+                // If the path does not exist, create an exception 
+                else if (pathMustExist && !Path.Exists(resolvedPath)) {
+                    var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.PathNotFound);
                     exception = new ArgumentException(exceptionMsg);
                 }
                 else
@@ -312,7 +376,7 @@ namespace Microsoft.PowerShell.Archive
                 exception = invalidOperationException;
             }
 
-            // If an exception was caught, write a non-terminating error of throwError == false. Otherwise, throw a terminating errror
+            // If an exception was caught, write a non-terminating error
             if (exception is not null)
             {
                 var errorRecord = new ErrorRecord(exception: exception, errorId: nameof(ErrorCode.InvalidPath), errorCategory: ErrorCategory.InvalidArgument, 
@@ -325,7 +389,7 @@ namespace Microsoft.PowerShell.Archive
 
         // Resolves a literal path. If it does not exist, it adds the path to nonexistentPaths.
         // If an exception occurs with a provider, it writes a non-terminating error
-        internal string? GetUnresolvedPathFromPSProviderPath(string path, HashSet<string> nonexistentPaths) {
+        internal string? GetUnresolvedPathFromPSProviderPathWhileCapturingNonexistentPaths(string path, HashSet<string> nonexistentPaths) {
             // Keep the exception at the top, then when an error occurs, use the exception to create an ErrorRecord
             Exception? exception = null;
             string? fullyQualifiedPath = null;
@@ -341,7 +405,7 @@ namespace Microsoft.PowerShell.Archive
                     var exceptionMsg = ErrorMessages.GetErrorMessage(ErrorCode.InvalidPath);
                     exception = new ArgumentException(exceptionMsg);
                 }
-                // If the path does not exist, create an exception 
+                // If the path does not exist, capture it
                 else if (!Path.Exists(resolvedPath)) {
                     nonexistentPaths.Add(resolvedPath);
                 }
