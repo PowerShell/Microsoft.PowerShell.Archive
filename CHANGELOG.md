@@ -7,6 +7,7 @@
 - Added `-WriteMode` parameter to `Expand-Archive`
 - Added support for zip64
 - Fixed a bug where the entry names of files in a directory would not be correct when compressing an archive
+- `Compress-Archive` skips writing an entry to an archive if an error occurs while doing so
 
 ## 2.0.1-preview1
 

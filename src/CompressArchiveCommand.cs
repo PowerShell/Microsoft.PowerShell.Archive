@@ -207,14 +207,40 @@ namespace Microsoft.PowerShell.Archive
                     if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: Messages.Add))
                     {
                         // Warn the user if the LastWriteTime of the file/directory is before 1980
-                        if (entry.FileSystemInfo.LastWriteTime.Year < 1980 && Format == ArchiveFormat.Zip) {
+                        if (entry.FileSystemInfo.LastWriteTime.Year < 1980 && Format == ArchiveFormat.Zip)
+                        {
                             WriteWarning(string.Format(Messages.LastWriteTimeBefore1980Warning, entry.FileSystemInfo.FullName));
                         }
 
-                        archive?.AddFileSystemEntry(entry);
-                        // Write a verbose message saying this item was added to the archive
-                        var addedItemMessage = string.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);
-                        WriteVerbose(addedItemMessage);
+                        // Use this to track of an exception that occurs when adding an entry to the archive
+                        // so a non-terminating error can be reported
+                        Exception? exception = null;
+                        try
+                        {
+                            archive?.AddFileSystemEntry(entry);
+                            // Write a verbose message saying this item was added to the archive
+                            var addedItemMessage = string.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);
+                            WriteVerbose(addedItemMessage);
+                        } 
+                        // This catches PathTooLongException as well
+                        catch (IOException ioException)
+                        {
+                            exception = ioException;
+                        }
+                        catch (UnauthorizedAccessException unauthorizedAccessException)
+                        {
+                            exception = unauthorizedAccessException;
+                        }
+                        catch (System.NotSupportedException notSupportedException)
+                        {
+                            exception = notSupportedException;
+                        }
+
+                        if (exception is not null)
+                        {
+                            var errorRecord = new ErrorRecord(exception, nameof(ErrorCode.ExceptionOccuredWhileAddingEntry), ErrorCategory.InvalidOperation, entry.EntryName);
+                            WriteError(errorRecord);
+                        }
                     }
                     // Keep track of number of items added to the archive
                     numberOfAddedItems++;

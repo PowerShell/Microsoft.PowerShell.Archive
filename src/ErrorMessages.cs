@@ -79,6 +79,8 @@ namespace Microsoft.PowerShell.Archive
         // Expand-Archive: used when a path resolved to multiple paths when only one was needed
         PathResolvedToMultiplePaths,
         // Expand-Archive: used when the DestinationPath could not be determined
-        CannotDetermineDestinationPath
+        CannotDetermineDestinationPath,
+        // Compress-Archive: Used when an exception occurs when adding an entry to an archive
+        ExceptionOccuredWhileAddingEntry
     }
 }

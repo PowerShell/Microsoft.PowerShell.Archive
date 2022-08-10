@@ -776,4 +776,25 @@ BeforeDiscovery {
             $output | Should -BeNullOrEmpty
         }
     }
+
+    Context "File permissions, attributes, etc. tests" {
+        BeforeAll {
+            New-Item TestDrive:/file.txt -ItemType File
+            "Hello, World!" | Out-File -Path TestDrive:/file.txt
+        }
+
+
+        It "Skips archiving a file in use" {
+            $fileMode = [System.IO.FileMode]::Open
+            $fileAccess = [System.IO.FileAccess]::Write
+            $fileShare = [System.IO.FileShare]::None
+            $archiveInUseStream = New-Object -TypeName "System.IO.FileStream" -ArgumentList "${TestDrive}/file.txt",$fileMode,$fileAccess,$fileShare
+
+            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive_in_use.zip
+            # Ensure it creates an empty zip archive
+            "TestDrive:/archive_in_use.zip" | Should -BeZipArchiveOnlyContaining @()
+
+            $archiveInUseStream.Dispose()
+        }
+    }
 }
