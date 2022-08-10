@@ -234,7 +234,7 @@ BeforeDiscovery {
                 Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
                 throw "Failed to detect an error when an invalid path is supplied to DestinationPath"
             } catch {
-                $_.FullyQualifiedErrorId | Should -Be "InvalidPath,$CmdletClassName"
+                $_.FullyQualifiedErrorId | Should -Be "InvalidPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
     }

@@ -30,8 +30,6 @@ namespace Microsoft.PowerShell.Archive
 
         string IArchive.Path => _archivePath;
 
-        int IArchive.NumberOfEntries => _zipArchive.Entries.Count;
-
         public ZipArchive(string archivePath, ArchiveMode mode, FileStream archiveStream, CompressionLevel compressionLevel)
         {
             _disposedValue = false;
@@ -100,11 +98,6 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
-        string[] IArchive.GetEntries()
-        {
-            throw new NotImplementedException();
-        }
-
         IEntry? IArchive.GetNextEntry()
         {
             if (_entryIndex < 0)
@@ -123,11 +116,6 @@ namespace Microsoft.PowerShell.Archive
             _entryIndex++;
 
             return new ZipArchiveEntry(nextEntry);
-        }
-
-        void IArchive.Expand(string destinationPath)
-        {
-            throw new NotImplementedException();
         }
 
         private static System.IO.Compression.ZipArchiveMode ConvertToZipArchiveMode(ArchiveMode archiveMode)
@@ -196,6 +184,13 @@ namespace Microsoft.PowerShell.Archive
 
             void IEntry.ExpandTo(string destinationPath)
             {
+                // If the parent directory does not exist, create it
+                string? parentDirectory = Path.GetDirectoryName(destinationPath);
+                if (parentDirectory is not null && !Directory.Exists(parentDirectory))
+                {
+                    Directory.CreateDirectory(parentDirectory);
+                }
+
                 // .NET APIs differentiate a file and directory by a terminating `/`
                 // If the entry name ends with `/`, it is a directory
                 if (_entry.FullName.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
@@ -205,12 +200,6 @@ namespace Microsoft.PowerShell.Archive
                     System.IO.Directory.SetLastWriteTime(destinationPath, lastWriteTime.DateTime);
                 } else
                 {
-                    // If the parent directory does not exist, create it
-                    string? parentDirectory = Path.GetDirectoryName(destinationPath);
-                    if (parentDirectory is not null && !Directory.Exists(parentDirectory))
-                    {
-                        Directory.CreateDirectory(parentDirectory);
-                    }
                     _entry.ExtractToFile(destinationPath);
                 }
             }

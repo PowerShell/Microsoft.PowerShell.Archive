@@ -11,7 +11,7 @@ namespace Microsoft.PowerShell.Archive
     /// ArchiveAddition represents an filesystem entry that we want to add to or update in the archive.
     /// ArchiveAddition DOES NOT represent an entry in the archive -- rather, it represents an entry to be created or updated using the information contained in an instance of this class.
     /// </summary>
-    internal class ArchiveAddition
+    public class ArchiveAddition
     {
         /// <summary>
         /// The name of the file or directory in the archive.
