@@ -199,7 +199,8 @@ namespace Microsoft.PowerShell.Archive
                 {
                     // Update progress
                     var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
-                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "{percentComplete:0.0}");
+                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, $"{percentComplete:0.0}");
+                    progressRecord.PercentComplete = (int)percentComplete;
                     WriteProgress(progressRecord);
 
                     if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: Messages.Add))
@@ -221,6 +222,7 @@ namespace Microsoft.PowerShell.Archive
                 // Once all items in the archive are processed, show progress as 100%
                 // This code is here and not in the loop because we want it to run even if there are no items to add to the archive
                 progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "100.0");
+                progressRecord.PercentComplete = 100;
                 WriteProgress(progressRecord);
             }
             finally
