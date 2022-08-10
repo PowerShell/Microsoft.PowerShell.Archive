@@ -85,7 +85,7 @@ namespace Microsoft.PowerShell.Archive
             try
             {
                 // Get an archive from source path -- this is where we will switch between different types of archives
-                using IArchive? archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: _sourcePath, archiveMode: ArchiveMode.Extract, compressionLevel: System.IO.Compression.CompressionLevel.NoCompression);
+                using IArchive archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: _sourcePath, archiveMode: ArchiveMode.Extract, compressionLevel: System.IO.Compression.CompressionLevel.NoCompression);
 
                 if (DestinationPath is null)
                 {
@@ -115,6 +115,16 @@ namespace Microsoft.PowerShell.Archive
                     System.IO.Directory.CreateDirectory(DestinationPath);
                 }
 
+                long numberOfExpandedItems = 0;
+
+                // Show a progress bar
+                if (Format == ArchiveFormat.Zip && archive is ZipArchive) {
+                    var statusDescription = string.Format(Messages.ProgressDisplay, "0.0");
+                    var progressRecord = new ProgressRecord(1, "Expand-Archive", statusDescription);
+                    progressRecord.PercentComplete = 0;
+                    WriteProgress(progressRecord);
+                }
+
                 //WriteObject(string.Format(Messages.ExpandingArchiveMessage, DestinationPath));
 
                 // Get the next entry in the archive and process it
@@ -124,6 +134,25 @@ namespace Microsoft.PowerShell.Archive
                     // The process function will write the progress
                     ProcessArchiveEntry(nextEntry);
                     nextEntry = archive.GetNextEntry();
+
+                    // Update progress info
+                    numberOfExpandedItems++;
+                    if (Format == ArchiveFormat.Zip && archive is not null && archive is ZipArchive zipArchive) {
+                        var percentComplete = numberOfExpandedItems / (float)zipArchive.NumberOfEntries * 100f;
+                        var statusDescription = string.Format(Messages.ProgressDisplay, $"{percentComplete:0.0}");
+                        var progressRecord = new ProgressRecord(1, "Expand-Archive", statusDescription);
+                        progressRecord.PercentComplete = (int)percentComplete;
+                        WriteProgress(progressRecord);
+                    }
+                }
+
+                // Show progress as 100% complete
+                // Show a progress bar
+                if (Format == ArchiveFormat.Zip && archive is ZipArchive) {
+                    var statusDescription = string.Format(Messages.ProgressDisplay, "100.0");
+                    var progressRecord = new ProgressRecord(1, "Expand-Archive", statusDescription);
+                    progressRecord.PercentComplete = 100;
+                    WriteProgress(progressRecord);
                 }
 
 
@@ -315,7 +344,8 @@ namespace Microsoft.PowerShell.Archive
                 // If filename does have an exension, remove the extension and set the filename minus extension as destinationDirectory
                 if (System.IO.Path.GetExtension(filename) != string.Empty)
                 {
-                    destinationDirectory = System.IO.Path.ChangeExtension(path: filename, extension: string.Empty);
+                    int indexOfLastPeriod = filename.LastIndexOf('.');
+                    destinationDirectory = filename.Substring(0, indexOfLastPeriod);
                 }
             }
 
