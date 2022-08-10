@@ -115,7 +115,7 @@ namespace Microsoft.PowerShell.Archive
                     System.IO.Directory.CreateDirectory(DestinationPath);
                 }
 
-                WriteObject(string.Format(Messages.ExpandingArchiveMessage, DestinationPath));
+                //WriteObject(string.Format(Messages.ExpandingArchiveMessage, DestinationPath));
 
                 // Get the next entry in the archive and process it
                 var nextEntry = archive.GetNextEntry();
@@ -160,8 +160,8 @@ namespace Microsoft.PowerShell.Archive
             }
 
             // Notify the user that we are expanding the entry
-            var expandingEntryMsg = string.Format(Messages.ExpandingEntryMessage, entry.Name, postExpandPath);
-            WriteObject(expandingEntryMsg);
+            //var expandingEntryMsg = string.Format(Messages.ExpandingEntryMessage, entry.Name, postExpandPath);
+            //WriteObject(expandingEntryMsg);
 
             // If the entry name is invalid, write a non-terminating error and stop processing the entry
             if (IsPathInvalid(postExpandPath))
