@@ -199,6 +199,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     // Update progress
                     var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
+
                     progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, $"{percentComplete:0.0}");
                     progressRecord.PercentComplete = (int)percentComplete;
                     WriteProgress(progressRecord);

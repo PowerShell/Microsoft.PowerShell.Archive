@@ -83,7 +83,7 @@ namespace Microsoft.PowerShell.Archive
             _tarReader = new TarReader(_fileStream, leaveOpen: false);
 
             // Create a tar writer that will write the contents of the archive to the copy
-            _tarWriter = new TarWriter(_)
+            //_tarWriter = new TarWriter(_)
         }
 
         protected virtual void Dispose(bool disposing)

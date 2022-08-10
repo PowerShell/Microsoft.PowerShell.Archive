@@ -194,4 +194,10 @@
   <data name="LastWriteTimeBefore1980Warning" xml:space="preserve">
     <value>The last write time of the path {0} is before 1980. Since zip does not support dates before January 1, 1980, the last write time will be set to January 1, 1980.</value>
   </data>
+  <data name="ExpandingArchiveMessage" xml:space="preserve">
+    <value>Expanding archive {0}</value>
+  </data>
+  <data name="ExpandingEntryMessage" xml:space="preserve">
+    <value>Expanding archive entry {0} to destination {1}</value>
+  </data>
 </root>
