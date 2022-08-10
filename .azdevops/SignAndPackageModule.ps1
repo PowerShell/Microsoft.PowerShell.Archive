@@ -12,7 +12,7 @@ $BuildOutputDir = Join-Path $root "\src\bin\Release"
 $ManifestPath = "${BuildOutputDir}\${Name}.psd1"
 $ManifestData = Import-PowerShellDataFile -Path $ManifestPath
 $Version = $ManifestData.ModuleVersion
-$Prerelease = $ManifestPath.PrivateData.PSData.Prerelease
+#$Prerelease = $ManifestPath.PrivateData.PSData.Prerelease
 
 # this takes the files for the module and publishes them to a created, local repository
 # so the nupkg can be used to publish to the PSGallery
@@ -32,7 +32,7 @@ function Export-Module
     Publish-Module -Path $packageRoot -Repository $repoName
     Unregister-PSRepository -Name $repoName
     Get-ChildItem -Recurse -Name $packageRoot | Write-Verbose
-    $nupkgName = "{0}.{1}-{2}.nupkg" -f ${Name},${Version},${Prerelease}
+    $nupkgName = "{0}.{1}-preview2.nupkg" -f ${Name},${Version}
 
 
     $nupkgPath = Join-Path $packageRoot $nupkgName

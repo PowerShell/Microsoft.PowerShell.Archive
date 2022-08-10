@@ -797,4 +797,54 @@ BeforeDiscovery {
             $archiveInUseStream.Dispose()
         }
     }
+
+    Context "Long path tests" {
+        BeforeAll {
+            if ($IsWindows) {
+                $maxPathLength = 260
+            }
+            if ($IsLinux) {
+                $maxPathLength = 255
+            }
+            if ($IsMacOS) {
+                $maxPathLength = 1024
+            }
+
+            function Get-MaxLengthPath {
+                param (
+                    [string] $character
+                )
+
+                $path = "${TestDrive}/"
+                while ($path.Length -le $maxPathLength + 2) {
+                    $path += $character
+                }
+                return $path
+            }
+
+            New-Item -Path "TestDrive:/file.txt" -ItemType File
+            "Hello, World!" | Out-File -FilePath "TestDrive:/file.txt"
+        }
+
+
+        It "Throws an error when -Path is too long" {
+
+        }
+
+        It "Throws an error when -LiteralPath is too long" {
+            
+        }
+
+        It "Throws an error when -DestinationPath is too long" {
+            $path = "TestDrive:/file.txt"
+            # This will generate a path like TestDrive:/aaaaaa...aaaaaa
+            $destinationPath = Get-MaxLengthPath -character a
+            Write-Warning $destinationPath.Length
+            try {
+                Compress-Archive -Path $path -DestinationPath $destinationPath
+            } catch {
+                throw "${$_.Exception}"
+            }
+        }
+    }
 }
