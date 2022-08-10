@@ -125,7 +125,8 @@ namespace Microsoft.PowerShell.Archive
                     WriteProgress(progressRecord);
                 }
 
-                //WriteObject(string.Format(Messages.ExpandingArchiveMessage, DestinationPath));
+                // Write a verbose message saying "Expanding archive ..."
+                WriteVerbose(string.Format(Messages.ExpandingArchiveMessage, DestinationPath));
 
                 // Get the next entry in the archive and process it
                 var nextEntry = archive.GetNextEntry();

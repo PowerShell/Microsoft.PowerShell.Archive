@@ -38,7 +38,7 @@ stages:
         includePreviewVersions: true
     
     - pwsh: |
-        & $(Build.SourcesDirectory)/Microsoft.PowerShell.Archive/SimpleBuild.ps1
+        & $(Build.SourcesDirectory)/Microsoft.PowerShell.Archive/Build.ps1
       displayName: Build Microsoft.PowerShell.Archive module
     
     - pwsh: |
