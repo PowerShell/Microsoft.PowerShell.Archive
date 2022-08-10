@@ -790,7 +790,7 @@ BeforeDiscovery {
             $fileShare = [System.IO.FileShare]::None
             $archiveInUseStream = New-Object -TypeName "System.IO.FileStream" -ArgumentList "${TestDrive}/file.txt",$fileMode,$fileAccess,$fileShare
 
-            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive_in_use.zip
+            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive_in_use.zip -ErrorAction SilentlyContinue
             # Ensure it creates an empty zip archive
             "TestDrive:/archive_in_use.zip" | Should -BeZipArchiveOnlyContaining @()
 

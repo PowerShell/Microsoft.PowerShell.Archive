@@ -12,7 +12,7 @@ $BuildOutputDir = Join-Path $root "\src\bin\Release"
 $ManifestPath = "${BuildOutputDir}\${Name}.psd1"
 $ManifestData = Import-PowerShellDataFile -Path $ManifestPath
 $Version = $ManifestData.ModuleVersion
-$Prelease = $ManifestPath.PrivateData.PSData.Prerelease
+$Prerelease = $ManifestPath.PrivateData.PSData.Prerelease
 
 # this takes the files for the module and publishes them to a created, local repository
 # so the nupkg can be used to publish to the PSGallery
