@@ -3,7 +3,7 @@ RFC:
 Author: Abdullah Yousuf
 Status: Draft
 SupercededBy: 
-Version: 1.2
+Version: 1.3
 Area: Archive
 Comments Due: 8/6/2022
 Plan to implement: Yes
@@ -218,9 +218,9 @@ Note that `.zip` is not appended to the archive name.
 
 #### **Relative Path Structure Preservation**
 
-When valid paths are supplied to the `-Path` or `-LiteralPath` parameter, the relative structures of the paths are preserved as long as the paths are not rooted, and do not contain ..
-The paths must be relative to current working directory.
+When valid paths are supplied to the `-Path` or `-LiteralPath` parameter, the relative structures of the paths are preserved as long as the paths are relative to the current working directory, and do not contain '..'.
 When `-Path` is used, globbing is still performed.
+Relative path structure can be preserved even if the path contains wildcard characters.
 
 Example: `Compress-Archive -Path Documents\MyFile.txt -DestinationPath destination.zip`
 creates an archive with the structure:
@@ -231,17 +231,29 @@ destination.zip
     |---MyFile.txt
 ```
 
-Example: `Compress-Archive -Path Documents -DestinationPath destination.zip` creates an archive in which the `Documents` folder is the only top-level item and the contents of the folder are retained with the same structure.
+Example: Suppose the current working directory contains a directory called `Documents`. `Compress-Archive -Path Documents -DestinationPath destination.zip` creates an archive in which the `Documents` folder is the only top-level item and the contents of the folder are retained with the same structure.
 The directory structure of `Documents` is retained in the archive.
 
-Example: `Compress-Archive -Path C:\Users\<user>\Documents -DestinationPath destination.zip` does the same as above.
-Note that the grandparent and parent directories `User` and `<user>` of the `Documents` folder are not preserved in the archive because the path is absolute.
+Example: `Compress-Archive -Path C:\Users\<user>\Documents -DestinationPath destination.zip` does preserves the `<user>` directory (and all descendents) if the working directory is the parent of `<user>`.
+Similarly, it preserves the `Users` directory (and all descendents) as long as the working directory is `C:\`.
+In all other cases, the behavior is the same as above (the last portion of the path is preserved in the archive i.e., it becomes the entry name in the archive).
 
-Similarly, `Compress-Archive -Path ~\Documents -DestinationPath destination.zip` and `Compress-Archive -Path C:\Users\<user>\..\<user>\Documents -DestinationPath destination.zip` exhibit the same behavior as above.
+Example: `Compress-Archive -Path C:\Users\<user>\..\<user>\Documents -DestinationPath destination.zip` in this case, the path structure will never be preserved because
+`-Path` contains '..'.
+
+Example: Suppose the working directory is `C:\`.
+Performing `Compress-Archive -Path Program Files\7-zip -DestinationPath destination.zip` will preserve `Program Files\7-zip` in all paths.
+This means the archive will contain the entries:
+```
+Program Files/
+|---Program Files/7-zip/
+    |---Program Files/7-zip/* (all the items under the 7-zip directory)
+```
+Note that entry names are normalized for cross-platform compatbility (i.e. '\' is replaced with '/').
 
 The relative path(s) supplied to the `-Path` or `-LiteralPath` parameter must be relative to the current working directory.
 
-Example: Suppose for this example the curent working directory is `~/Documents` and we want to archive `~/Pictures`.
+Example: Suppose for this example the current working directory is `~/Documents` and we want to archive `~/Pictures`.
 `Compress-Archive -Path Pictures -DestinationPath archive.zip` will throw a terminating error as long as `~/Documents/Pictures` is not an existing file or folder.
 
 The `-Flatten` switch parameter can be used to remove directories from the archive structure (it keeps the archive structure flat).
