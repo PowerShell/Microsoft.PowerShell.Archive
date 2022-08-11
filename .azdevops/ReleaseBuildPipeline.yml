@@ -1,0 +1,138 @@
+name: Microsoft.PowerShell.Archive-$(Build.BuildId)
+trigger: none
+
+pr: none
+
+variables:
+  DOTNET_CLI_TELEMETRY_OPTOUT: 1
+  POWERSHELL_TELEMETRY_OPTOUT: 1
+
+resources:
+  repositories:
+  - repository: ComplianceRepo
+    type: github
+    endpoint: ComplianceGHRepo
+    name: PowerShell/compliance
+    ref: master
+
+stages:
+- stage: Build
+  displayName: Build
+  pool:
+    name: 1ES
+    demands:
+      - ImageOverride -equals PSMMS2019-Secure
+  jobs:
+  - job: Build_Job
+    displayName: Build Microsoft.PowerShell.Archive
+    variables:
+    - group: ESRP
+    steps:
+    - checkout: self
+
+    - task: UseDotNet@2
+      displayName: 'Get .NET 7.0 SDK'
+      inputs:
+        packageType: sdk
+        version: 7.x
+        includePreviewVersions: true
+    
+    - pwsh: |
+        & $(Build.SourcesDirectory)/Microsoft.PowerShell.Archive/SimpleBuild.ps1
+      displayName: Build Microsoft.PowerShell.Archive module
+    
+    - pwsh: |
+        Get-ChildItem "$(BuildOutDir)\*" -Recurse | Write-Verbose -Verbose
+      displayName: Show BuildOutDirectory
+    
+    - pwsh: |
+        $signSrcPath = "$(BuildOutDir)"
+        # Set signing src path variable
+        $vstsCommandString = "vso[task.setvariable variable=signSrcPath]${signSrcPath}"
+        Write-Host "sending " + $vstsCommandString
+        Write-Host "##$vstsCommandString"
+        # Get the module version
+        $ManifestPath = Join-Path $(BuildOutDir) "Microsoft.PowerShell.Archive.psd1"
+        $ManifestData = Import-PowerShellDataFile -Path $ManifestPath
+        $Version = $ManifestData.ModuleVersion
+        $signOutPath = "$(Build.SourcesDirectory)\signed\Microsoft.PowerShell.Archive\${Version}"
+        $null = New-Item -ItemType Directory -Path $signOutPath
+        # Set signing out path variable
+        $vstsCommandString = "vso[task.setvariable variable=signOutPath]${signOutPath}"
+        Write-Host "sending " + $vstsCommandString
+        Write-Host "##$vstsCommandString"
+        # Set path variable for guardian codesign validation
+        $vstsCommandString = "vso[task.setvariable variable=GDN_CODESIGN_TARGETDIRECTORY]${signOutPath}"
+        Write-Host "sending " + $vstsCommandString
+        Write-Host "##$vstsCommandString"
+      displayName: Setup variables for signing
+    
+    - checkout: ComplianceRepo
+
+    - task: UseDotNet@2
+      displayName: 'Get .NET 2.1 SDK'
+      inputs:
+        packageType: sdk
+        version: 2.x
+        includePreviewVersions: true
+
+    - template: EsrpSign.yml@ComplianceRepo
+      parameters:
+        # the folder which contains the binaries to sign
+        buildOutputPath: $(signSrcPath)
+        # the location to put the signed output
+        signOutputPath: $(signOutPath)
+        # the certificate ID to use
+        certificateId: "CP-230012"
+        # the file pattern to use, comma separated
+        pattern: '*.psd1,*.dll'
+
+    - template: Sbom.yml@ComplianceRepo
+      parameters:
+        BuildDropPath: $(signOutPath)
+        Build_Repository_Uri: 'https://github.com/PowerShell/Microsoft.PowerShell.Archive'
+
+    - pwsh: |
+        Get-ChildItem $(signOutPath) -Recurse | Write-Output
+
+    - pwsh: |
+        Set-Location "$(Build.SourcesDirectory)"
+        # signOutPath points to directory with version number -- we want to point to the parent of that directory
+        $ModulePath = Split-Path $(signOutPath) -Parent
+        $(Build.SourcesDirectory)/Microsoft.PowerShell.Archive/.azdevops/SignAndPackageModule.ps1 -SignedPath $ModulePath
+        Get-ChildItem -recurse -file -name | Write-Verbose -Verbose
+      displayName: package build
+    
+    - publish: "$(signSrcPath)"
+      artifact: build
+      displayName: Publish build
+
+- stage: compliance
+  displayName: Compliance
+  dependsOn: Build
+  jobs:
+  - job: Compliance_Job
+    pool:
+      name: 1ES # Package ES CodeHub Lab E
+    steps:
+    - checkout: self
+    - checkout: ComplianceRepo
+    - download: current
+      artifact: build
+
+    - pwsh: |
+        Get-ChildItem -Path "$(Pipeline.Workspace)\build" -Recurse
+      displayName: Capture downloaded artifacts
+    - template: script-module-compliance.yml@ComplianceRepo
+      parameters:
+        # component-governance
+        sourceScanPath: '$(Build.SourcesDirectory)\Microsoft.PowerShell.Archive\src'
+        # credscan
+        suppressionsFile: ''
+        # TermCheck
+        optionsRulesDBPath: ''
+        optionsFTPath: ''
+        # tsa-upload
+        codeBaseName: 'PSNativeCommandProxy_2020'
+        # selections
+        APIScan: false # set to false when not using Windows APIs.

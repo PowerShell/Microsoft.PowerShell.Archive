@@ -1,0 +1,94 @@
+parameters:
+  - name: vmImageName
+    type: string
+    default: 'windows-2019'
+
+  - name: jobName
+    type: string
+    default: 'run_test_windows'
+
+  - name: jobDisplayName
+    type: string
+    default: 'Run test'
+
+jobs:
+  - job: '${{ parameters.jobName }}'
+    pool:
+      vmImage: ${{ parameters.vmImageName }}
+    displayName: ${{ parameters.jobDisplayName }}
+    steps:
+      - download: current
+        artifact: ModuleBuild
+
+      - pwsh: |
+          Write-Output ${{ parameters.vmImageName }}
+          
+          if ("${{ parameters.vmImageName }}" -like 'windows-*')
+          {
+            $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/PowerShell-7.3.0-preview.6-win-x64.zip"
+            $downloadFilename = "pwsh_download.msi"
+          }
+          
+          if ("${{ parameters.vmImageName }}" -like 'macos-*')
+          {
+            $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-osx-x64.pkg"
+            $downloadFilename = "pwsh_download.pkg"
+          }
+          if ("${{ parameters.vmImageName }}" -like 'ubuntu-*')
+          {
+            $url = "https://github.com/PowerShell/PowerShell/releases/download/v7.3.0-preview.6/powershell-7.3.0-preview.6-linux-x64.tar.gz"
+            $downloadFilename = "pwsh_download.tar.gz"
+          }
+
+          $downloadDestination = Join-Path $pwd $downloadFilename
+          Invoke-WebRequest -Uri $url -OutFile $downloadDestination
+
+          # Installation steps for windows
+          if ("${{ parameters.vmImageName }}" -like 'windows-*') {
+            Expand-Archive -Path $downloadDestination -DestinationPath "pwsh-preview"
+            $powerShellPreview = Join-Path $pwd "pwsh-preview" "pwsh.exe"
+          }
+          if ("${{ parameters.vmImageName }}" -like 'ubuntu-*')
+          {
+            gunzip -d $downloadDestination
+            $downloadDestination = $downloadDestination.Replace(".gz", "")
+            mkdir "pwsh-preview"
+            tar -x -f $downloadDestination -C "pwsh-preview"
+            $powerShellPreview = Join-Path $pwd "pwsh-preview" "pwsh"
+          }
+          if ("${{ parameters.vmImageName }}" -like 'macos-*')
+          {
+            sudo xattr -rd com.apple.quarantine "${downloadDestination}"
+            sudo installer -pkg "${downloadDestination}" -target /
+            $powerShellPreview = "pwsh-preview"
+          }
+          # Write the location of PowerShell Preview
+          Write-Host "##vso[task.setvariable variable=PowerShellPreviewExecutablePath;]$powershellPreview"
+        displayName: Download and Install PowerShell Preview
+
+      - pwsh: |
+          $destination = Join-Path $pwd "7z.exe"
+          $installUrl = "https://www.7-zip.org/a/7z2201-x64.exe"
+          Invoke-WebRequest -Uri $installUrl -OutFile $destination
+          # Run the installer in silent mode
+          .$destination /S /D="C:\Program Files\7-Zip"
+        displayName: Install 7-zip
+        condition: and(succeeded(), startswith('${{ parameters.vmImageName }}', 'windows'))
+
+      - pwsh: |
+          if ("${{ parameters.vmImageName }}" -like 'windows-*')
+          {
+            # Add 7-zip to PATH on Windows
+            [System.Environment]::SetEnvironmentVariable('PATH',$Env:PATH+';C:\Program Files\7-zip')
+          }
+          "$(PowerShellPreviewExecutablePath) .azdevops/RunTests.ps1" | Invoke-Expression
+        displayName: Run Tests
+        
+      - task: PublishTestResults@2
+        displayName: 'Publish Test Results **/*tests.xml'
+        inputs:
+          testResultsFormat: NUnit
+          testResultsFiles: '**/*tests.xml'
+          testRunTitle: 'Build Unit Tests'
+        continueOnError: true
+        condition: succeededOrFailed()
