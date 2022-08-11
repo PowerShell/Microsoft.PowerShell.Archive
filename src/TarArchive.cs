@@ -5,7 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Formats.Tar;
 using System.IO;
-using System.Text;
+using System.Diagnostics;
 
 namespace Microsoft.PowerShell.Archive
 {
@@ -17,15 +17,15 @@ namespace Microsoft.PowerShell.Archive
 
         private readonly string _path;
 
-        private TarWriter _tarWriter;
+        private TarWriter? _tarWriter;
 
         private TarReader? _tarReader;
 
         private readonly FileStream _fileStream;
 
-        private FileStream _copyStream;
+        private FileStream? _copyStream;
 
-        private string _copyPath;
+        private string? _copyPath;
 
         ArchiveMode IArchive.Mode => _mode;
 
@@ -35,34 +35,43 @@ namespace Microsoft.PowerShell.Archive
         {
             _mode = mode;
             _path = path;
-            _tarWriter = new TarWriter(archiveStream: fileStream, format: TarEntryFormat.Pax, leaveOpen: false);
             _fileStream = fileStream;
         }
 
         void IArchive.AddFileSystemEntry(ArchiveAddition entry)
         {
-            if (_mode == ArchiveMode.Extract) {
+            if (_mode == ArchiveMode.Extract)
+            {
                 throw new ArgumentException("Adding entries to the archive is not supported on Extract mode.");
             }
             
             // If the archive is in Update mode, we want to update the archive by copying it to a new archive
             // and then adding the entries to that archive
-            if (_mode == ArchiveMode.Update) {
-
-            } else {
-                // If the archive mode is Create, no copy
-                _tarWriter.WriteEntry(fileName: entry.FileSystemInfo.FullName, entryName: entry.EntryName);
-            } 
+            if (_mode == ArchiveMode.Update)
+            {
+                if (_copyStream is null)
+                {
+                    CreateCopyStream();
+                }       
+            }
+            else
+            {
+                _tarWriter = new TarWriter(_fileStream, TarEntryFormat.Pax, true);
+            }
+            Debug.Assert(_tarWriter is not null);
+            _tarWriter.WriteEntry(fileName: entry.FileSystemInfo.FullName, entryName: entry.EntryName); 
         }
 
         IEntry? IArchive.GetNextEntry()
         {
             // If _tarReader is null, create it
-            if (_tarReader is null) {
+            if (_tarReader is null)
+            {
                 _tarReader = new TarReader(archiveStream: _fileStream, leaveOpen: true);
             }
             var entry = _tarReader.GetNextEntry();
-            if (entry is null) {
+            if (entry is null)
+            {
                 return null;
             }
             // Create and return a TarArchiveEntry, which is a wrapper around entry
@@ -74,7 +83,8 @@ namespace Microsoft.PowerShell.Archive
             string copyName = Path.GetRandomFileName();
 
             // Directory of the copy will be the same as the directory of the archive
-            string directory = Path.GetDirectoryName(_path);
+            string? directory = Path.GetDirectoryName(_path);
+            Debug.Assert(directory is not null);
 
             _copyPath = Path.Combine(directory, copyName);
             _copyStream = new FileStream(_copyPath, FileMode.Create, FileAccess.ReadWrite, FileShare.None);
@@ -83,7 +93,22 @@ namespace Microsoft.PowerShell.Archive
             _tarReader = new TarReader(_fileStream, leaveOpen: false);
 
             // Create a tar writer that will write the contents of the archive to the copy
-            //_tarWriter = new TarWriter(_)
+            _tarWriter = new TarWriter(_copyStream, TarEntryFormat.Pax, true);
+
+            var entry = _tarReader.GetNextEntry();
+            while (entry is not null)
+            {
+                _tarWriter.WriteEntry(entry);
+                entry = _tarReader.GetNextEntry();
+            }
+        }
+
+        private void ReplaceArchiveWithCopy() {
+            Debug.Assert(_copyPath is not null);
+            // Delete the archive
+            File.Delete(_path);
+            // Move copy to archive path
+            File.Move(_copyPath, _path);
         }
 
         protected virtual void Dispose(bool disposing)
@@ -93,8 +118,15 @@ namespace Microsoft.PowerShell.Archive
                 if (disposing)
                 {
                     // TODO: dispose managed state (managed objects)
-                    _tarWriter.Dispose();
+                    _tarWriter?.Dispose();
+                    _copyStream?.Dispose();
+                    _tarReader?.Dispose();
                     _fileStream.Dispose();
+
+                    if (_mode == ArchiveMode.Update)
+                    {
+                        ReplaceArchiveWithCopy();
+                    }
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer

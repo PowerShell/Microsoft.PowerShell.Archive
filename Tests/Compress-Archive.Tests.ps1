@@ -4,6 +4,8 @@
 BeforeDiscovery {
       # Loads and registers custom assertion. Ignores usage of unapproved verb with -DisableNameChecking
       Import-Module "$PSScriptRoot/Assertions/Should-BeZipArchiveOnlyContaining.psm1" -DisableNameChecking
+      Import-Module "$PSScriptRoot/Assertions/Should-BeTarArchiveOnlyContaining.psm1" -DisableNameChecking
+      Import-Module "$PSScriptRoot/Assertions/Should-BeArchiveOnlyContaining.psm1" -DisableNameChecking
 }
 
  Describe("Microsoft.PowerShell.Archive tests") {
@@ -12,6 +14,21 @@ BeforeDiscovery {
         $originalProgressPref = $ProgressPreference
         $ProgressPreference = "SilentlyContinue"
         $originalPSModulePath = $env:PSModulePath
+
+        function Add-FileExtensionBasedOnFormat {
+            Param (
+                [string] $Path,
+                [string] $Format
+            )
+
+            if ($Format -eq "Zip") {
+                return $Path += ".zip"
+            }
+            if ($Format -eq "Tar") {
+                return $Path += ".tar"
+            }
+            throw "Format type is not supported"
+        }
     }
     
     AfterAll {
@@ -272,7 +289,10 @@ BeforeDiscovery {
         }
     }
 
-    Context "Basic functional tests" {
+    Context "Basic functional tests" -ForEach @(
+        @{Format = "Zip"},
+        @{Format = "Tar"}
+    ) {
         BeforeAll {
             New-Item TestDrive:/SourceDir -Type Directory | Out-Null
             New-Item TestDrive:/SourceDir/ChildDir-1 -Type Directory | Out-Null
@@ -301,93 +321,82 @@ BeforeDiscovery {
             Set-ItemProperty -Path "TestDrive:/olddirectory" -Name "LastWriteTime" -Value '1974-01-16 14:44'
         }
 
-        It "Compresses a single file" {
-            $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-2.txt"
-            $destinationPath = "$TestDrive$($DS)archive1.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -BeZipArchiveOnlyContaining @('Sample-2.txt')
+        It "Compresses a single file with format <Format>" {
+            $sourcePath = "TestDrive:/SourceDir/ChildDir-1/Sample-2.txt"
+            $destinationPath = Add-FileExtensionBasedOnFormat -Path "TestDrive:/archive1" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('Sample-2.txt') -Format $Format
         }
 
-        It "Compresses a non-empty directory" {
-            $sourcePath =  "$TestDrive$($DS)SourceDir$($DS)ChildDir-1"
-            $destinationPath = "$TestDrive$($DS)archive2.zip"
-            
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('ChildDir-1/', 'ChildDir-1/Sample-2.txt')
+        It "Compresses a non-empty directory with format <Format>" -Tag td1 {
+            $sourcePath =  "TestDrive:/SourceDir/ChildDir-1"
+            $destinationPath = Add-FileExtensionBasedOnFormat -Path "TestDrive:/archive2" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('ChildDir-1/', 'ChildDir-1/Sample-2.txt') -Format $Format
         }
 
-        It "Compresses an empty directory" {
-            $sourcePath = "$TestDrive$($DS)EmptyDir"
-            $destinationPath = "$TestDrive$($DS)archive3.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -BeZipArchiveOnlyContaining @('EmptyDir/')
+        It "Compresses an empty directory with format <Format>" {
+            $sourcePath = "TestDrive:/EmptyDir"
+            $destinationPath = Add-FileExtensionBasedOnFormat -Path "TestDrive:/archive3" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('EmptyDir/') -Format $Format
         }
 
-        It "Compresses multiple files" {
-            $sourcePath = @("$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-2.txt", "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt")
-            $destinationPath = "$TestDrive$($DS)archive4.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('Sample-1.txt', 'Sample-2.txt')
+        It "Compresses multiple files with format <Format>" {
+            $sourcePath = @("TestDrive:/SourceDir/ChildDir-1/Sample-2.txt", "TestDrive:/SourceDir/Sample-1.txt")
+            $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive4" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('Sample-1.txt', 'Sample-2.txt') -Format $Format
         }
 
-        It "Compresses multiple files and a single empty directory" {
-            $sourcePath = @("$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-2.txt", "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
-            "$TestDrive$($DS)SourceDir$($DS)ChildEmptyDir")
-            
-            $destinationPath = "$TestDrive$($DS)archive5.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('Sample-1.txt', 'Sample-2.txt', 'ChildEmptyDir/')
+        It "Compresses multiple files and a single empty directory with format <Format>" {
+            $sourcePath = @("TestDrive:/SourceDir/ChildDir-1/Sample-2.txt", "TestDrive:/SourceDir/Sample-1.txt", 
+            "TestDrive:/SourceDir/ChildEmptyDir")
+            $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive5" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('Sample-1.txt', 'Sample-2.txt', 'ChildEmptyDir/') -Format $Format
         }
 
-        It "Compresses multiple files and a single non-empty directory" {
-            $sourcePath = @("$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-2.txt", "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
-            "$TestDrive$($DS)SourceDir$($DS)ChildDir-2")
-            
-            $destinationPath = "$TestDrive$($DS)archive6.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('Sample-1.txt', 'Sample-2.txt', 'ChildDir-2/', 'ChildDir-2/Sample-3.txt')
+        It "Compresses multiple files and a single non-empty directory with format <Format>" {
+            $sourcePath = @("TestDrive:/SourceDir/ChildDir-1/Sample-2.txt", "TestDrive:/SourceDir/Sample-1.txt", 
+            "TestDrive:/SourceDir/ChildDir-2")
+            $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive6.zip" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('Sample-1.txt', 'Sample-2.txt', 'ChildDir-2/', 'ChildDir-2/Sample-3.txt') -Format $Format
         }
 
-        It "Compresses multiple files and non-empty directories" {
-            $sourcePath = @("$TestDrive$($DS)HelloWorld.txt", "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
-            "$TestDrive$($DS)SourceDir$($DS)ChildDir-1", "$TestDrive$($DS)SourceDir$($DS)ChildDir-2")
-            
-            $destinationPath = "$TestDrive$($DS)archive7.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('Sample-1.txt', 'HelloWorld.txt', 'ChildDir-1/', 'ChildDir-2/', 
-            'ChildDir-1/Sample-2.txt', 'ChildDir-2/Sample-3.txt')
+        It "Compresses multiple files and non-empty directories with format <Format>" {
+            $sourcePath = @("TestDrive:/HelloWorld.txt", "TestDrive:/SourceDir/Sample-1.txt", 
+            "TestDrive:/SourceDir/ChildDir-1", "TestDrive:/SourceDir/ChildDir-2")      
+            $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive7.zip" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('Sample-1.txt', 'HelloWorld.txt', 'ChildDir-1/', 'ChildDir-2/', 
+            'ChildDir-1/Sample-2.txt', 'ChildDir-2/Sample-3.txt') -Format $Format
         }
 
-        It "Compresses multiple files, non-empty directories, and an empty directory" {
-            $sourcePath = @("$TestDrive$($DS)HelloWorld.txt", "$TestDrive$($DS)SourceDir$($DS)Sample-1.txt", 
-            "$TestDrive$($DS)SourceDir$($DS)ChildDir-1", "$TestDrive$($DS)SourceDir$($DS)ChildDir-2", "$TestDrive$($DS)SourceDir$($DS)ChildEmptyDir")
-            
-            $destinationPath = "$TestDrive$($DS)archive8.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            Test-ZipArchive $destinationPath @('Sample-1.txt', 'HelloWorld.txt', 'ChildDir-1/', 'ChildDir-2/', 
-            'ChildDir-1/Sample-2.txt', 'ChildDir-2/Sample-3.txt', "ChildEmptyDir/")
+        It "Compresses multiple files, non-empty directories, and an empty directory with format <Format>" {
+            $sourcePath = @("TestDrive:/HelloWorld.txt", "TestDrive:/SourceDir/Sample-1.txt", 
+            "TestDrive:/SourceDir/ChildDir-1", "TestDrive:/SourceDir/ChildDir-2", "TestDrive:/SourceDir/ChildEmptyDir")
+            $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive8.zip" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('Sample-1.txt', 'HelloWorld.txt', 'ChildDir-1/', 'ChildDir-2/', 
+            'ChildDir-1/Sample-2.txt', 'ChildDir-2/Sample-3.txt', "ChildEmptyDir/") -Format $Format
         }
 
-        It "Compresses a directory containing files, non-empty directories, and an empty directory can be compressed" -Tag td4 {
-            $sourcePath = "$TestDrive$($DS)SourceDir"
-            $destinationPath = "$TestDrive$($DS)archive9.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -BeZipArchiveOnlyContaining @('SourceDir/', 'SourceDir/ChildDir-1/', 'SourceDir/ChildDir-2/', 'SourceDir/ChildEmptyDir/', 'SourceDir/Sample-1.txt', 'SourceDir/ChildDir-1/Sample-2.txt', 'SourceDir/ChildDir-2/Sample-3.txt')
+        It "Compresses a directory containing files, non-empty directories, and an empty directory can be compressed with format <Format>" {
+            $sourcePath = "TestDrive:/SourceDir"
+            $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive9.zip" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $contents = @('SourceDir/', 'SourceDir/ChildDir-1/', 'SourceDir/ChildDir-2/', 'SourceDir/ChildEmptyDir/', 'SourceDir/Sample-1.txt', 
+            'SourceDir/ChildDir-1/Sample-2.txt', 'SourceDir/ChildDir-2/Sample-3.txt')
+            $destinationPath | Should -BeArchiveOnlyContaining $contents -Format $Format
         }
 
-        It "Compresses a zero-byte file" {
-            $sourcePath = "$TestDrive$($DS)EmptyFile"
-            $destinationPath = "$TestDrive$($DS)archive10.zip"
-            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-            $destinationPath | Should -Exist
-            $contents = @('EmptyFile')
-            Test-ZipArchive $destinationPath $contents
+        It "Compresses a zero-byte file with format <Format>" {
+            $sourcePath = "TestDrive:/EmptyFile"
+            $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive10.zip" -Format $Format
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
+            $destinationPath | Should -BeArchiveOnlyContaining @('EmptyFile') -Format $Format
         }
 
         It "Compresses a file whose last write time is before 1980" {
@@ -423,7 +432,7 @@ BeforeDiscovery {
             $archiveStream.Dispose()
         }
 
-        It "Compresses a directory whose last write time is before 1980" {
+        It "Compresses a directory whose last write time is before 1980 with format <Format>" {
             $sourcePath = "TestDrive:/olddirectory"
             $destinationPath = "${TestDrive}/archive12.zip"
 
@@ -452,7 +461,7 @@ BeforeDiscovery {
             $archiveStream.Dispose()
         }
 
-        It "Writes a warning when compressing a file whose last write time is before 1980" {
+        It "Writes a warning when compressing a file whose last write time is before 1980 with format <Format>" {
             $sourcePath = "TestDrive:/OldFile.txt"
             $destinationPath = "${TestDrive}/archive13.zip"
 
@@ -464,7 +473,7 @@ BeforeDiscovery {
             $warnings.Length | Should -Be 1
         }
 
-        It "Writes a warning when compresing a directory whose last write time is before 1980" {
+        It "Writes a warning when compresing a directory whose last write time is before 1980 with format <Format>" {
             $sourcePath = "TestDrive:/olddirectory"
             $destinationPath = "${TestDrive}/archive14.zip"
 
@@ -475,10 +484,6 @@ BeforeDiscovery {
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningVariable warnings
             $warnings.Length | Should -Be 1
         }
-    }
-
-    Context "Update tests" -Skip {
-        
     }
 
     Context "DestinationPath and -WriteMode Overwrite tests" {
@@ -682,7 +687,7 @@ BeforeDiscovery {
         }
 
         # From 596
-        It "Validate that relative path can be specified as DestinationPath parameter of Compress-Archive cmdlet" -Tag this3 {
+        It "Validate that relative path can be specified as DestinationPath parameter of Compress-Archive cmdlet" {
             $sourcePath = "TestDrive:/SourceDir"
             $destinationPath = "./RelativePathForDestinationPathParameter.zip"
             try
@@ -798,10 +803,11 @@ BeforeDiscovery {
         }
     }
 
-    Context "Long path tests" {
+    # This can be difficult to test
+    Context "Long path tests" -Skip {
         BeforeAll {
             if ($IsWindows) {
-                $maxPathLength = 260
+                $maxPathLength = 300
             }
             if ($IsLinux) {
                 $maxPathLength = 255
@@ -816,7 +822,7 @@ BeforeDiscovery {
                 )
 
                 $path = "${TestDrive}/"
-                while ($path.Length -le $maxPathLength + 2) {
+                while ($path.Length -le $maxPathLength + 10) {
                     $path += $character
                 }
                 return $path
@@ -841,10 +847,11 @@ BeforeDiscovery {
             $destinationPath = Get-MaxLengthPath -character a
             Write-Warning $destinationPath.Length
             try {
-                Compress-Archive -Path $path -DestinationPath $destinationPath
+                Compress-Archive -Path $path -DestinationPath $destinationPath -ErrorVariable err
             } catch {
                 throw "${$_.Exception}"
             }
+            $destinationPath | Should -Not -Exist
         }
     }
 }
