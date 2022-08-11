@@ -1,0 +1,77 @@
+name: $(BuildDefinitionName)_$(date:yyMM).$(date:dd)$(rev:rrr)
+
+trigger: none
+
+resources:
+  repositories:
+  - repository: ComplianceRepo
+    type: github
+    endpoint: ComplianceGHRepo
+    name: PowerShell/compliance
+
+variables:
+  - name: PackageName
+    value: 'Microsoft.PowerShell.Archive'
+  - name: PackageVersion
+    value: ''
+  - name: BuildOutDir
+    value: ''
+
+stages:
+- stage: Build
+  displayName: Build module
+  pool:
+      vmImage: windows-2019
+  jobs:
+  - job: BuildPkg
+    displayName: Build module
+    steps:
+
+    - pwsh: |
+        & $(Build.SourcesDirectory)\SimpleBuild.ps1
+      displayName: Build Microsoft.PowerShell.Archive module
+      condition: succeededOrFailed()
+
+    - pwsh: |
+        dir "$(BuildOutDir)\*" -Recurse
+      displayName: Show BuildOutDirectory
+
+    - template: Sbom.yml@ComplianceRepo
+      parameters:
+        BuildDropPath: "$(BuildOutDir)"
+        Build_Repository_Uri: 'https://github.com/PowerShell/Microsoft.PowerShell.Archive'
+        PackageName: $(PackageName)
+        PackageVersion: $(PackageVersion)
+
+    - pwsh: |
+        dir "$(BuildOutDir)\*" -Recurse
+      displayName: Show BuildOutDirectory
+
+    - pwsh: |
+        $signSrcPath = "$(BuildOutDir)"
+        # Set signing src path variable
+        $vstsCommandString = "vso[task.setvariable variable=signSrcPath]${signSrcPath}"
+        Write-Host "sending " + $vstsCommandString
+        Write-Host "##$vstsCommandString"
+        $signOutPath = "$(Build.SourcesDirectory)\signed\Microsoft.PowerShell.Archive"
+        $null = New-Item -ItemType Directory -Path $signOutPath
+        # Set signing out path variable
+        $vstsCommandString = "vso[task.setvariable variable=signOutPath]${signOutPath}"
+        Write-Host "sending " + $vstsCommandString
+        Write-Host "##$vstsCommandString"
+        # Set path variable for guardian codesign validation
+        $vstsCommandString = "vso[task.setvariable variable=GDN_CODESIGN_TARGETDIRECTORY]${signOutPath}"
+        Write-Host "sending " + $vstsCommandString
+        Write-Host "##$vstsCommandString"
+      displayName: Setup variables for signing
+
+    - pwsh: |
+        Copy-Item -Path "$(signSrcPath)\*" -Destination "$(signOutPath)"
+      displayName: Fake Signing
+
+    - pwsh: |
+        Compress-Archive -Path "$(signOutPath)\*" -DestinationPath "$(System.ArtifactsDirectory)\Microsoft.PowerShell.Archive.zip"
+      displayName: Create Microsoft.PowerShell.Archive.zip
+
+    - publish: $(System.ArtifactsDirectory)\Microsoft.PowerShell.Archive.zip
+      artifact: SignedModule

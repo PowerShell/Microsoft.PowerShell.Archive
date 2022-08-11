@@ -1,0 +1,22 @@
+language: csharp
+
+git:
+  depth: 1000
+
+os:
+  - linux
+sudo: required
+dist: trusty
+
+matrix:
+  fast_finish: true
+
+install:
+  - git clone https://github.com/PowerShell/PowerShell.git
+  - pushd PowerShell/tools
+  - ./install-powershell.sh
+  - popd
+
+script:
+  - ulimit -n 4096
+  - pwsh -File ./TravisCI.ps1
