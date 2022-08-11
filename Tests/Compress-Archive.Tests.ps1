@@ -310,7 +310,7 @@ BeforeDiscovery {
             "Hello, World!" | Out-File -FilePath $TestDrive$($DS)HelloWorld.txt
 
             # Create a zero-byte file
-            New-Item $TestDrive$($DS)EmptyFile -Type File | Out-Null
+            New-Item TestDrive:/EmptyFile -Type File | Out-Null
 
             # Create a file whose last write time is before 1980
             $content | Out-File -FilePath TestDrive:/OldFile.txt
@@ -397,6 +397,18 @@ BeforeDiscovery {
             $destinationPath = Add-FileExtensionBasedOnFormat "TestDrive:/archive10.zip" -Format $Format
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
             $destinationPath | Should -BeArchiveOnlyContaining @('EmptyFile') -Format $Format
+        }
+    }
+
+    Context "Zip-specific tests" {
+        BeforeAll {
+            # Create a file whose last write time is before 1980
+            $content | Out-File -FilePath TestDrive:/OldFile.txt
+            Set-ItemProperty -Path TestDrive:/OldFile.txt -Name LastWriteTime -Value '1974-01-16 14:44'
+
+            # Create a directory whose last write time is before 1980
+            New-Item -Path "TestDrive:/olddirectory" -ItemType Directory
+            Set-ItemProperty -Path "TestDrive:/olddirectory" -Name "LastWriteTime" -Value '1974-01-16 14:44'
         }
 
         It "Compresses a file whose last write time is before 1980" {
@@ -786,6 +798,10 @@ BeforeDiscovery {
         BeforeAll {
             New-Item TestDrive:/file.txt -ItemType File
             "Hello, World!" | Out-File -Path TestDrive:/file.txt
+
+            # Create a read-only file
+            New-Item TestDrive:/readonly.txt -ItemType File
+            "Hello, World!" | Out-File -Path TestDrive:/readonly.txt
         }
 
 
@@ -800,6 +816,12 @@ BeforeDiscovery {
             "TestDrive:/archive_in_use.zip" | Should -BeZipArchiveOnlyContaining @()
 
             $archiveInUseStream.Dispose()
+        }
+
+        It "Compresses a read-only file" {
+            $destinationPath = "TestDrive:/archive_with_readonly_file.zip"
+            Compress-Archive -Path TestDrive:/readonly.txt -DestinationPath $destinationPath
+            $destinationPath | Should -BeArchiveOnlyContaining @("readonly.txt") -Format Zip
         }
     }
 

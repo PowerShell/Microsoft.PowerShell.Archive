@@ -7,6 +7,21 @@ Describe("Expand-Archive Tests") {
         # Progress perference
         $originalProgressPref = $ProgressPreference
         $ProgressPreference = "SilentlyContinue"
+
+        function Add-FileExtensionBasedOnFormat {
+            Param (
+                [string] $Path,
+                [string] $Format
+            )
+
+            if ($Format -eq "Zip") {
+                return $Path += ".zip"
+            }
+            if ($Format -eq "Tar") {
+                return $Path += ".tar"
+            }
+            throw "Format type is not supported"
+        }
     }
 
     AfterAll {
@@ -335,7 +350,10 @@ Describe("Expand-Archive Tests") {
         }
     }
 
-    Context "Basic functionality tests" {
+    Context "Basic functionality tests"  -ForEach @(
+        @{Format = "Zip"},
+        @{Format = "Tar"}
+    ) {
         # extract to a directory works
         # extract to working directory works when DestinationPath is specified
         # expand archive works when -DestinationPath is not specified (and a single top level item which is a directory)
@@ -344,7 +362,7 @@ Describe("Expand-Archive Tests") {
         BeforeAll {
             New-Item -Path "TestDrive:/file1.txt" -ItemType File
             "Hello, World!" | Out-File -FilePath "TestDrive:/file1.txt"
-            Compress-Archive -Path "TestDrive:/file1.txt" -DestinationPath "TestDrive:/archive1.zip"
+            Compress-Archive -Path "TestDrive:/file1.txt" -DestinationPath (Add-FileExtensionBasedOnFormat "TestDrive:/archive1" -Format $Format)
 
             New-Item -Path "TestDrive:/directory2" -ItemType Directory
             New-Item -Path "TestDrive:/directory3" -ItemType Directory
@@ -353,25 +371,25 @@ Describe("Expand-Archive Tests") {
             New-Item -Path "TestDrive:/directory6" -ItemType Directory
 
             New-Item -Path "TestDrive:/DirectoryToArchive" -ItemType Directory
-            Compress-Archive -Path "TestDrive:/DirectoryToArchive" -DestinationPath "TestDrive:/archive2.zip"
+            Compress-Archive -Path "TestDrive:/DirectoryToArchive" -DestinationPath (Add-FileExtensionBasedOnFormat "TestDrive:/archive2" -Format $Format)
 
             # Create an archive containing a file and an empty folder
-            Compress-Archive -Path "TestDrive:/file1.txt","TestDrive:/DirectoryToArchive" -DestinationPath "TestDrive:/archive3.zip"
+            Compress-Archive -Path "TestDrive:/file1.txt","TestDrive:/DirectoryToArchive" -DestinationPath (Add-FileExtensionBasedOnFormat "TestDrive:/archive3" -Format $Format)
         }
 
-        It "Expands an archive when a non-existent directory is specified as -DestinationPath" {
-            $sourcePath = "TestDrive:/archive1.zip"
+        It "Expands an archive when a non-existent directory is specified as -DestinationPath with format <Format>" {
+            $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive1" -Format $Format
             $destinationPath = "TestDrive:/directory1"
 
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
 
             $itemsInDestinationPath = Get-ChildItem $destinationPath -Recurse
             $itemsInDestinationPath.Count | Should -Be 1
             $itemsInDestinationPath[0].Name | Should -Be "file1.txt"
         }
 
-        It "Expands an archive when DestinationPath is an existing directory" -Tag debug3 {
-            $sourcePath = "TestDrive:/archive1.zip"
+        It "Expands an archive when DestinationPath is an existing directory" {
+            $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive1" -Format $Format
             $destinationPath = "TestDrive:/directory2"
 
             try {
@@ -382,7 +400,7 @@ Describe("Expand-Archive Tests") {
         }
 
         It "Expands an archive to the working directory when it is specified as -DestinationPath" {
-            $sourcePath = "TestDrive:/archive1.zip"
+            $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive1" -Format $Format
             $destinationPath = "TestDrive:/directory3"
 
             Push-Location $destinationPath
@@ -397,7 +415,7 @@ Describe("Expand-Archive Tests") {
         }
 
         It "Expands an archive containing a single top-level directory and no other top-level items to a directory with that directory's name when -DestinationPath is not specified" {
-            $sourcePath = "TestDrive:/archive2.zip"
+            $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive2" -Format $Format
             $destinationPath = "TestDrive:/directory4"
 
             Push-Location $destinationPath
@@ -412,7 +430,7 @@ Describe("Expand-Archive Tests") {
         }
 
         It "Expands an archive containing multiple top-level items to a directory with that archive's name when -DestinationPath is not specified" {
-            $sourcePath = "TestDrive:/archive3.zip"
+            $sourcePath =  Add-FileExtensionBasedOnFormat "TestDrive:/archive3" -Format $Format
             $destinationPath = "TestDrive:/directory5"
 
             Push-Location $destinationPath
@@ -448,12 +466,13 @@ Describe("Expand-Archive Tests") {
 
             $archive4Paths = @("TestDrive:/file2.txt", "TestDrive:/file3.txt", "TestDrive:/emptydirectory1", "TestDrive:/emptydirectory2", "TestDrive:/nonemptydirectory1", "TestDrive:/nonemptydirectory2")
 
-            Compress-Archive -Path $archive4Paths -DestinationPath "TestDrive:/archive4.zip"
+            $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive4" -Format $Format
+            Compress-Archive -Path $archive4Paths -DestinationPath $sourcePath -Format $Format
 
-            $sourcePath = "TestDrive:/archive4.zip"
+            
             $destinationPath = "TestDrive:/directory6"
 
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
 
             $expandedItems = Get-ChildItem $destinationPath -Recurse -Name
 
@@ -468,11 +487,12 @@ Describe("Expand-Archive Tests") {
         It "Expands an archive containing a file whose LastWriteTime is in the past" {
             New-Item -Path "TestDrive:/oldfile.txt" -ItemType File
             Set-ItemProperty -Path "TestDrive:/oldfile.txt" -Name "LastWriteTime" -Value '2003-01-16 14:44'
-            Compress-Archive -Path "TestDrive:/oldfile.txt" -DestinationPath "TestDrive:/archive_oldfile.zip"
+            $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive_oldfile" -Format $Format
+            Compress-Archive -Path "TestDrive:/oldfile.txt" -DestinationPath $sourcePath -Format $Format
 
-            $sourcePath = "TestDrive:/archive_oldfile.zip"
+            
             $destinationPath = "TestDrive:/destination7"
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
 
             $lastWriteTime = Get-ItemPropertyValue -Path (Join-Path $destinationPath "oldfile.txt") -Name "LastWriteTime"
 
@@ -488,11 +508,13 @@ Describe("Expand-Archive Tests") {
         It "Expands an archive containing a directory whose LastWriteTime is in the past" {
             New-Item -Path "TestDrive:/olddirectory" -ItemType Directory
             Set-ItemProperty -Path "TestDrive:/olddirectory" -Name "LastWriteTime" -Value '2003-01-16 14:44'
-            Compress-Archive -Path "TestDrive:/olddirectory" -DestinationPath "TestDrive:/archive_olddirectory.zip"
 
-            $sourcePath = "TestDrive:/archive_olddirectory.zip"
+            $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive_olddirectory" -Format $Format
+            Compress-Archive -Path "TestDrive:/olddirectory" -DestinationPath $sourcePath -Format $Format
+
+            
             $destinationPath = "TestDrive:/destination_olddirectory"
-            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath
+            Expand-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
 
             $lastWriteTime = Get-ItemPropertyValue -Path "TestDrive:/destination_olddirectory/olddirectory" -Name "LastWriteTime"
 
@@ -572,7 +594,7 @@ Describe("Expand-Archive Tests") {
         }
     }
 
-    Context "File permssions, attributes, etc tests" {
+    Context "File permssions, attributes, etc tests" -Tag td2 {
         BeforeAll {
             New-Item TestDrive:/file.txt -ItemType File
             "Hello, World!" | Out-File -Path TestDrive:/file.txt
@@ -588,6 +610,7 @@ Describe("Expand-Archive Tests") {
             $fileShare = [System.IO.FileShare]::Read
             $archiveInUseStream = New-Object -TypeName "System.IO.FileStream" -ArgumentList "${TestDrive}/archive_in_use.zip",$fileMode,$fileAccess,$fileShare
 
+            [console]::InputEncoding = [console]::OutputEncoding = New-Object System.Text.UTF8Encoding
             # Create an archive containing an entry with non-latin characters
             New-Item TestDrive:/ملف -ItemType File
             "Hello, World!" | Out-File -Path TestDrive:/ملف

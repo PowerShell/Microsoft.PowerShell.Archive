@@ -11,7 +11,7 @@ namespace Microsoft.PowerShell.Archive
 {
     internal class TarArchive : IArchive
     {
-        private bool disposedValue;
+        private bool _disposedValue;
 
         private readonly ArchiveMode _mode;
 
@@ -54,12 +54,16 @@ namespace Microsoft.PowerShell.Archive
                     CreateCopyStream();
                 }       
             }
-            else
+            else if (_tarWriter is null)
             {
                 _tarWriter = new TarWriter(_fileStream, TarEntryFormat.Pax, true);
             }
+
+            // Replace '\' with '/'
+            var entryName = entry.EntryName.Replace(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+
             Debug.Assert(_tarWriter is not null);
-            _tarWriter.WriteEntry(fileName: entry.FileSystemInfo.FullName, entryName: entry.EntryName); 
+            _tarWriter.WriteEntry(fileName: entry.FileSystemInfo.FullName, entryName: entryName); 
         }
 
         IEntry? IArchive.GetNextEntry()
@@ -67,6 +71,7 @@ namespace Microsoft.PowerShell.Archive
             // If _tarReader is null, create it
             if (_tarReader is null)
             {
+                _fileStream.Position = 0;
                 _tarReader = new TarReader(archiveStream: _fileStream, leaveOpen: true);
             }
             var entry = _tarReader.GetNextEntry();
@@ -113,7 +118,7 @@ namespace Microsoft.PowerShell.Archive
 
         protected virtual void Dispose(bool disposing)
         {
-            if (!disposedValue)
+            if (!_disposedValue)
             {
                 if (disposing)
                 {
@@ -131,7 +136,7 @@ namespace Microsoft.PowerShell.Archive
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
                 // TODO: set large fields to null
-                disposedValue = true;
+                _disposedValue = true;
             }
         }
 
@@ -144,7 +149,32 @@ namespace Microsoft.PowerShell.Archive
 
         bool IArchive.HasTopLevelDirectory()
         {
-            throw new NotImplementedException();
+            // Go through each entry and see if it is a top-level entry
+            _tarReader = new TarReader(_fileStream, leaveOpen: true);
+
+            int topLevelDirectoriesCount = 0;
+            var entry = _tarReader.GetNextEntry();
+            while (entry is not null) {
+                
+                if (entry.EntryType == TarEntryType.Directory)
+                {
+                    topLevelDirectoriesCount++;
+                    if (topLevelDirectoriesCount > 1)
+                    {
+                        break;
+                    }
+                } else
+                {
+                    _tarReader.Dispose();
+                    _tarReader = null;
+                    return false;
+                }
+                entry = _tarReader.GetNextEntry();
+            }
+
+            _tarReader.Dispose();
+            _tarReader = null;
+            return topLevelDirectoriesCount == 1;
         }
 
         internal class TarArchiveEntry : IEntry {
