@@ -49,9 +49,9 @@ function Should-BeZipArchiveOnlyContaining {
 
     # Get 7-zip to list the contents of the archive
     if ($IsWindows) {
-        $output = 7z.exe l $ActualValue -ba
+        $output = 7z.exe l $ActualValue -ba -tzip
     } else {
-        $output = 7z l $ActualValue -ba
+        $output = 7z l $ActualValue -ba -tzip
     }
 
     # Check if the output is null

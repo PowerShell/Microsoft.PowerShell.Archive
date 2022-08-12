@@ -203,14 +203,15 @@ namespace Microsoft.PowerShell.Archive
                     Directory.CreateDirectory(parentDirectory);
                 }
 
+                var lastWriteTime = _entry.ModificationTime.LocalDateTime;
                 if (_objectAsIEntry.IsDirectory)
                 {
-                    System.IO.Directory.CreateDirectory(destinationPath);
-                    var lastWriteTime = _entry.ModificationTime;
-                    System.IO.Directory.SetLastWriteTime(destinationPath, lastWriteTime.DateTime);
+                    Directory.CreateDirectory(destinationPath);
+                    Directory.SetLastWriteTime(destinationPath, lastWriteTime);
                 } else
                 {
                     _entry.ExtractToFile(destinationPath, overwrite: false);
+                    File.SetLastWriteTime(destinationPath, lastWriteTime);
                 }
             }
 

@@ -876,4 +876,64 @@ BeforeDiscovery {
             $destinationPath | Should -Not -Exist
         }
     }
+
+    Context "CompressionLevel tests" {
+        BeforeAll {
+            New-Item -Path TestDrive:/file1.txt -ItemType File
+            "Hello, World!" | Out-File -FilePath TestDrive:/file1.txt
+        }
+
+        It "Throws an error when an invalid value is supplied to CompressionLevel" {
+            try {
+                Compress-Archive -Path TestDrive:/file1.txt -DestinationPath TestDrive:/archive1.zip -CompressionLevel fakelevel
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "InvalidArgument, ${CmdletClassName}"
+            }
+        }
+    }
+
+    Context "Path Structure Preservation Tests" {
+        BeforeAll {
+            New-Item -Path TestDrive:/file1.txt -ItemType File
+            "Hello, World!" | Out-File -FilePath TestDrive:/file1.txt
+            
+            New-Item -Path TestDrive:/directory1 -ItemType Directory
+            New-Item -Path TestDrive:/directory1/subdir1 -ItemType Directory
+            New-Item -Path TestDrive:/directory1/subdir1/file.txt -ItemType File
+            "Hello, World!" | Out-File -FilePath TestDrive:/file.txt
+        }
+
+        It "Creates an archive containing only a file when the path to that file is not relative to the working directory" {
+            $destinationPath = "TestDrive:/archive1.zip"
+
+            Push-Location TestDrive:/directory1
+            
+            Compress-Archive -Path TestDrive:/file1.txt -DestinationPath $destinationPath
+            $destinationPath | Should -BeArchiveOnlyContaining @("file1.txt")
+
+            Pop-Location
+        }
+
+        It "Creates an archive containing a file and its parent directories when the path to the file and its parent directories are descendents of the working directory" {
+            $destinationPath = "TestDrive:/archive2.zip"
+
+            Push-Location TestDrive:/
+            
+            Compress-Archive -Path directory1/subdir1/file.txt -DestinationPath $destinationPath
+            $destinationPath | Should -BeArchiveOnlyContaining @("directory1/subdir1/file.txt")
+
+            Pop-Location
+        }
+
+        It "Creates an archive containing a file and its parent directories when the path to the file and its parent directories are descendents of the working directory" {
+            $destinationPath = "TestDrive:/archive3.zip"
+
+            Push-Location TestDrive:/
+            
+            Compress-Archive -Path directory1 -DestinationPath $destinationPath
+            $destinationPath | Should -BeArchiveOnlyContaining @("directory1/subdir1/file.txt")
+
+            Pop-Location
+        }
+    }
 }
