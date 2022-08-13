@@ -23,7 +23,9 @@ namespace Microsoft.PowerShell.Archive
         private readonly CompressionLevel _compressionLevel;
 
         // Use a tar archive because .tar.gz file is a compressed tar file
-        private TarArchive _tarArchive;
+        private TarArchive? _tarArchive;
+
+        private string? _tarFilePath;
 
         ArchiveMode IArchive.Mode => _mode;
 
@@ -39,17 +41,22 @@ namespace Microsoft.PowerShell.Archive
 
         void IArchive.AddFileSystemEntry(ArchiveAddition entry)
         {
+            if (_mode == ArchiveMode.Extract) {
+                throw new ArgumentException("Adding entries to the archive is not supported in extract mode");
+            }
+
             if (_mode == ArchiveMode.Create) {
-                
+                if (_tarArchive is null) {
+                    _tarArchive = new TarArchive(_path, ArchiveMode.Create, _fileStream);
+                }
+                (_tarArchive as IArchive).AddFileSystemEntry(entry);
             }
         }
 
         IEntry? IArchive.GetNextEntry()
         {
-            // Gzip has no concept of entries
-            if (!_didCallGetNextEntry) {
-                _didCallGetNextEntry = true;
-                return new TarGzArchiveEntry(this);
+            if (_mode == ArchiveMode.Create || _mode == ArchiveMode.Update) {
+                throw new ArgumentException("Getting the entries in an archive is not supported in Create or Update mode");
             }
             return null;
         }
@@ -62,6 +69,7 @@ namespace Microsoft.PowerShell.Archive
                 {
                     // TODO: dispose managed state (managed objects)
                     _fileStream.Dispose();
+                    CompressArchive();
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override finalizer
@@ -80,6 +88,14 @@ namespace Microsoft.PowerShell.Archive
         bool IArchive.HasTopLevelDirectory()
         {
             throw new NotSupportedException();
+        }
+
+        // Performs gzip compression on _path
+        private void CompressArchive() {
+            //using var destinationFileStream = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+            _fileStream.Position = 0;
+            using var gzipDecompressor = new GZipStream(_fileStream, _compressionLevel, true);
+            _fileStream.CopyTo(gzipDecompressor);
         }
 
         internal class TarGzArchiveEntry : IEntry {

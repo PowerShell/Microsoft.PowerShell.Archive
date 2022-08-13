@@ -22,7 +22,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 ArchiveFormat.Zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
                 ArchiveFormat.Tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
-                // TODO: Add Tar.gz here
+                ArchiveFormat.Tgz => new TarGzArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
                 _ => throw new ArgumentOutOfRangeException(nameof(archiveMode))
             };
         }
