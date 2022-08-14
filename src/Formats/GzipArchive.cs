@@ -12,19 +12,19 @@ namespace Microsoft.PowerShell.Archive
 {
     internal class GzipArchive : IArchive
     {
-        private bool _disposedValue;
+        protected bool _disposedValue;
 
-        private readonly ArchiveMode _mode;
+        protected readonly ArchiveMode _mode;
 
-        private readonly string _path;
+        protected readonly string _path;
 
-        private readonly FileStream _fileStream;
+        protected readonly FileStream _fileStream;
 
-        private readonly CompressionLevel _compressionLevel;
+        protected readonly CompressionLevel _compressionLevel;
 
         private bool _addedFile;
 
-        private bool _didCallGetNextEntry;
+        protected bool _didCallGetNextEntry;
 
         ArchiveMode IArchive.Mode => _mode;
 
@@ -38,7 +38,7 @@ namespace Microsoft.PowerShell.Archive
             _compressionLevel = compressionLevel;
         }
 
-        void IArchive.AddFileSystemEntry(ArchiveAddition entry)
+        public virtual void AddFileSystemEntry(ArchiveAddition entry)
         {
             if (_mode == ArchiveMode.Extract)
             {

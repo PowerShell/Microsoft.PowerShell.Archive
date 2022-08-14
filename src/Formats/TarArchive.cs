@@ -38,7 +38,7 @@ namespace Microsoft.PowerShell.Archive
             _fileStream = fileStream;
         }
 
-        void IArchive.AddFileSystemEntry(ArchiveAddition entry)
+        public void AddFileSystemEntry(ArchiveAddition entry)
         {
             if (_mode == ArchiveMode.Extract)
             {

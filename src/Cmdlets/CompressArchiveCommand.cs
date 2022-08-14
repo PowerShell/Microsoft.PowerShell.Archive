@@ -50,18 +50,25 @@ namespace Microsoft.PowerShell.Archive
         [NotNull]
         public string? DestinationPath { get; set; }
 
-        [Parameter()]
+        [Parameter]
         public WriteMode WriteMode { get; set; }
 
-        [Parameter()]
+        [Parameter]
         public SwitchParameter PassThru { get; set; }
 
-        [Parameter()]
+        [Parameter]
         [ValidateNotNullOrEmpty]
         public CompressionLevel CompressionLevel { get; set; }
 
-        [Parameter()]
-        public ArchiveFormat? Format { get; set; } = null;
+        [Parameter]
+        public ArchiveFormat? Format { get; set; }
+
+        [Parameter]
+        [ValidateNotNullOrEmpty]
+        public string? Filter { get; set; }
+
+        [Parameter]
+        public SwitchParameter Flatten { get; set; }
 
         private readonly PathHelper _pathHelper;
 
@@ -156,6 +163,8 @@ namespace Microsoft.PowerShell.Archive
             // Get archive entries
             // If a path causes an exception (e.g., SecurityException), _pathHelper should handle it
             Debug.Assert(_paths is not null);
+            _pathHelper.Flatten = Flatten;
+            _pathHelper.Filter = Filter;
             List<ArchiveAddition> archiveAdditions = _pathHelper.GetArchiveAdditions(_paths);
 
             // Remove references to _paths, Path, and LiteralPath to free up memory

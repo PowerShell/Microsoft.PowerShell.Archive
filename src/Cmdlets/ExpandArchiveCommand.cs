@@ -46,8 +46,6 @@ namespace Microsoft.PowerShell.Archive
 
         private PathHelper _pathHelper;
 
-        private System.IO.FileSystemInfo? _destinationPathInfo;
-
         private bool _didCreateOutput;
 
         private string? _sourcePath;
@@ -56,9 +54,7 @@ namespace Microsoft.PowerShell.Archive
 
         public ExpandArchiveCommand()
         {
-            _didCreateOutput = false;
             _pathHelper = new PathHelper(cmdlet: this);
-            _destinationPathInfo = null;
         }
 
         protected override void BeginProcessing()
@@ -188,10 +184,6 @@ namespace Microsoft.PowerShell.Archive
             {
                 postExpandPath = postExpandPath.Remove(postExpandPath.Length - 1);
             }
-
-            // Notify the user that we are expanding the entry
-            //var expandingEntryMsg = string.Format(Messages.ExpandingEntryMessage, entry.Name, postExpandPath);
-            //WriteObject(expandingEntryMsg);
 
             // If the entry name is invalid, write a non-terminating error and stop processing the entry
             if (IsPathInvalid(postExpandPath))

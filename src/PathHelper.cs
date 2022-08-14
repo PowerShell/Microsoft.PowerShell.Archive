@@ -16,6 +16,12 @@ namespace Microsoft.PowerShell.Archive
 
         private const string FileSystemProviderName = "FileSystem";
 
+        internal bool Flatten { get; set; }
+
+        internal string? Filter { get; set; }
+
+        internal WildcardPattern? _wildCardPattern;
+
         internal PathHelper(PSCmdlet cmdlet)
         {
             _cmdlet = cmdlet;
@@ -23,13 +29,16 @@ namespace Microsoft.PowerShell.Archive
 
         internal List<ArchiveAddition> GetArchiveAdditions(HashSet<string> fullyQualifiedPaths)
         {
+            if (Filter is not null) {
+                _wildCardPattern = new WildcardPattern(Filter);
+            } 
             List<ArchiveAddition> archiveAdditions = new List<ArchiveAddition>(fullyQualifiedPaths.Count);
             foreach (var path in fullyQualifiedPaths)
             {
                 // Assume each path is valid, fully qualified, and existing
                 Debug.Assert(Path.Exists(path));
                 Debug.Assert(Path.IsPathFullyQualified(path));
-                AddAdditionForFullyQualifiedPath(path, archiveAdditions);
+                AddAdditionForFullyQualifiedPath(path, archiveAdditions, entryName: null, parentMatchesFilter: false);
             }
             return archiveAdditions;
         }
@@ -40,7 +49,7 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="path">The fully qualified path</param>
         /// <param name="additions">The list where to add the ArchiveAddition object for the path</param>
         /// <param name="shouldPreservePathStructure">If true, relative path structure will be preserved. If false, relative path structure will NOT be preserved.</param>
-        private void AddAdditionForFullyQualifiedPath(string path, List<ArchiveAddition> additions)
+        private void AddAdditionForFullyQualifiedPath(string path, List<ArchiveAddition> additions, string? entryName, bool parentMatchesFilter)
         {
             Debug.Assert(Path.Exists(path));
             FileSystemInfo fileSystemInfo;
@@ -60,15 +69,38 @@ namespace Microsoft.PowerShell.Archive
                 fileSystemInfo = new FileInfo(path);
             }
 
-            // Get the entry name of the file or directory in the archive
-            // The cmdlet will preserve the directory structure as long as the path is relative to the working directory
-            var entryName = GetEntryName(fileSystemInfo, out bool doesPreservePathStructure);
-            additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: fileSystemInfo));
+            bool doesMatchFilter = true;
+            if (!parentMatchesFilter && _wildCardPattern is not null) {
+                doesMatchFilter = _wildCardPattern.IsMatch(fileSystemInfo.Name);
+            }
+            
+            // if entryName, then set it as the entry name of the file or directory in the archive
+            // The entry name will preserve the directory structure as long as the path is relative to the working directory
+            if (entryName is null) {
+                entryName = GetEntryName(fileSystemInfo, out bool doesPreservePathStructure);
+            }
+           
+
+            // Number of elements in additions before adding this item and its descendents if it is a directory
+            int initialAdditions = additions.Count;
 
             // Recurse through the child items and add them to additions
-            if (fileSystemInfo.Attributes.HasFlag(FileAttributes.Directory) && fileSystemInfo is DirectoryInfo directoryInfo) {
-                AddDescendentEntries(directoryInfo: directoryInfo, additions: additions, shouldPreservePathStructure: doesPreservePathStructure);
+            if (fileSystemInfo.Attributes.HasFlag(FileAttributes.Directory) && fileSystemInfo is DirectoryInfo directoryInfo)
+            {
+                AddDescendentEntries(directoryInfo, additions, doesMatchFilter);
             }
+
+            // Number of elements in additions after adding this item's descendents (if directory)
+            int finalAdditions = additions.Count;
+
+            // If the item being added is a file, finalAdditions - initialAdditions = 0
+            // If the item being added is a directory and does not have any descendent files that match the filter, finalAdditions - initialAdditions = 0
+            // If the item being added is a directory and has descendent files that match the filter, finalAdditions > initialAdditions
+
+            if (doesMatchFilter || (!doesMatchFilter && finalAdditions - initialAdditions > 0)) {
+                additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: fileSystemInfo));
+            }
+            
         }
 
         /// <summary>
@@ -77,28 +109,41 @@ namespace Microsoft.PowerShell.Archive
         /// <param name="path">A fully qualifed path referring to a directory</param>
         /// <param name="additions">Where the ArchiveAddtion object for each child item of the directory will be added</param>
         /// <param name="shouldPreservePathStructure">See above</param>
-        private void AddDescendentEntries(System.IO.DirectoryInfo directoryInfo, List<ArchiveAddition> additions, bool shouldPreservePathStructure)
+        private void AddDescendentEntries(System.IO.DirectoryInfo directoryInfo, List<ArchiveAddition> additions, bool parentMatchesFilter)
         {
             try
             {
                 // pathPrefix is used to construct the entry names of the descendents of the directory
                 var pathPrefix = GetPrefixForPath(directoryInfo: directoryInfo);
-                foreach (var childFileSystemInfo in directoryInfo.EnumerateFileSystemInfos("*", SearchOption.AllDirectories))
+                // If the parent directory matches the filter, then we don't have to check if each individual descendent of the directory
+                // matches the filter.
+                // This reduces the total number of method calls
+                SearchOption searchOption = parentMatchesFilter ? SearchOption.AllDirectories : SearchOption.TopDirectoryOnly; 
+                foreach (var childFileSystemInfo in directoryInfo.EnumerateFileSystemInfos("*", searchOption))
                 {
                     string entryName;
-                    // If the cmdlet should preserve the path structure, then use the relative path
-                    if (shouldPreservePathStructure)
+                    if (Flatten)
                     {
-                        entryName = GetEntryName(childFileSystemInfo, out bool doesPreservePathStructure);
-                        Debug.Assert(doesPreservePathStructure);
-                    }
-                    // Otherwise, get the entry name using the prefix 
-                    else
+                        entryName = childFileSystemInfo.Name;
+                    } else
                     {
                         entryName = GetEntryNameUsingPrefix(path: childFileSystemInfo.FullName, prefix: pathPrefix);
                     }
-                    // Add an entry for each descendent of the directory                 
-                    additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childFileSystemInfo));
+                        
+                    
+                    // Add an entry for each descendent of the directory
+                    if (parentMatchesFilter)
+                    {
+                        // If the parent directory matches the filter, all its contents are included in the archive
+                        // Just add the entry for each child without needing to check whether the child matches the filter
+                        additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childFileSystemInfo));
+                    } 
+                    else
+                    {
+                        // If the parent directory does not match the filter, we want to call this function
+                        // because this function will check if the name of the child matches the filter and if so, will add it
+                        AddAdditionForFullyQualifiedPath(childFileSystemInfo.FullName, additions, entryName, parentMatchesFilter: false);
+                    }
                 }
             } 
             // Write a non-terminating error if a securityException occurs
@@ -121,7 +166,7 @@ namespace Microsoft.PowerShell.Archive
             string entryName;
             doesPreservePathStructure = false;
             // If the path is relative to the current working directory, return the relative path as name
-            if (TryGetPathRelativeToCurrentWorkingDirectory(path: fileSystemInfo.FullName, out var relativePath))
+            if (!Flatten && TryGetPathRelativeToCurrentWorkingDirectory(path: fileSystemInfo.FullName, out var relativePath))
             {
                 Debug.Assert(relativePath is not null);
                 doesPreservePathStructure = true;
