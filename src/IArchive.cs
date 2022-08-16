@@ -21,8 +21,5 @@ namespace Microsoft.PowerShell.Archive
         public void AddFileSystemEntry(ArchiveAddition entry);
 
         public IEntry? GetNextEntry();
-
-        // Does the archive have only a top-level directory?
-        public bool HasTopLevelDirectory();
     }
 }

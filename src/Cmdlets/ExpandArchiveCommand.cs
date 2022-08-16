@@ -324,23 +324,14 @@ namespace Microsoft.PowerShell.Archive
             var workingDirectory = SessionState.Path.CurrentFileSystemLocation.ProviderPath;
             string? destinationDirectory = null;
             
-            // If the archive has a single top-level directory only, the destination will be: "working directory"
-            // This makes it easier for the cmdlet to expand the directory without needing addition checks
-            if (archive.HasTopLevelDirectory())
+            var filename = System.IO.Path.GetFileName(archive.Path);
+            // If filename does have an exension, remove the extension and set the filename minus extension as destinationDirectory
+            if (System.IO.Path.GetExtension(filename) != string.Empty)
             {
-                destinationDirectory = workingDirectory;
+                int indexOfLastPeriod = filename.LastIndexOf('.');
+                destinationDirectory = filename.Substring(0, indexOfLastPeriod);
             }
-            // Otherwise, the destination path will be: "working directory/archive file name"
-            else
-            {
-                var filename = System.IO.Path.GetFileName(archive.Path);
-                // If filename does have an exension, remove the extension and set the filename minus extension as destinationDirectory
-                if (System.IO.Path.GetExtension(filename) != string.Empty)
-                {
-                    int indexOfLastPeriod = filename.LastIndexOf('.');
-                    destinationDirectory = filename.Substring(0, indexOfLastPeriod);
-                }
-            }
+              
 
             if (destinationDirectory is null)
             {

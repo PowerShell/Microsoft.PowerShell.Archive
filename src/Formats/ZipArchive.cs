@@ -152,28 +152,6 @@ namespace Microsoft.PowerShell.Archive
             GC.SuppressFinalize(this);
         }
 
-        bool IArchive.HasTopLevelDirectory()
-        {
-            int topLevelDirectoriesCount = 0;
-            foreach (var entry in _zipArchive.Entries)
-            {
-                if (entry.FullName.EndsWith(ZipArchiveDirectoryPathTerminator) &&
-                    entry.FullName.LastIndexOf(ZipArchiveDirectoryPathTerminator, entry.FullName.Length - 2) == -1)
-                {
-                    topLevelDirectoriesCount++;
-                    if (topLevelDirectoriesCount > 1)
-                    {
-                        break;
-                    }
-                } else
-                {
-                    return false;
-                }
-            }
-
-            return topLevelDirectoriesCount == 1;
-        }
-
         internal class ZipArchiveEntry : IEntry
         {
             // Underlying object is System.IO.Compression.ZipArchiveEntry

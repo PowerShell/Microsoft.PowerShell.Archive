@@ -2,7 +2,6 @@
 // Licensed under the MIT License.
 
 using System;
-using System.Collections.Generic;
 using System.Formats.Tar;
 using System.IO;
 using System.Diagnostics;
@@ -66,7 +65,7 @@ namespace Microsoft.PowerShell.Archive
             _tarWriter.WriteEntry(fileName: entry.FileSystemInfo.FullName, entryName: entryName); 
         }
 
-        IEntry? IArchive.GetNextEntry()
+        public IEntry? GetNextEntry()
         {
             // If _tarReader is null, create it
             if (_tarReader is null)
@@ -145,36 +144,6 @@ namespace Microsoft.PowerShell.Archive
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
-        }
-
-        bool IArchive.HasTopLevelDirectory()
-        {
-            // Go through each entry and see if it is a top-level entry
-            _tarReader = new TarReader(_fileStream, leaveOpen: true);
-
-            int topLevelDirectoriesCount = 0;
-            var entry = _tarReader.GetNextEntry();
-            while (entry is not null) {
-                
-                if (entry.EntryType == TarEntryType.Directory)
-                {
-                    topLevelDirectoriesCount++;
-                    if (topLevelDirectoriesCount > 1)
-                    {
-                        break;
-                    }
-                } else
-                {
-                    _tarReader.Dispose();
-                    _tarReader = null;
-                    return false;
-                }
-                entry = _tarReader.GetNextEntry();
-            }
-
-            _tarReader.Dispose();
-            _tarReader = null;
-            return topLevelDirectoriesCount == 1;
         }
 
         internal class TarArchiveEntry : IEntry {

@@ -34,6 +34,7 @@ namespace Microsoft.PowerShell.Archive
                 ".zip" => ArchiveFormat.Zip,
                 ".tar" => ArchiveFormat.Tar,
                 ".gz" => path.EndsWith(".tar.gz") ? ArchiveFormat.Tgz : null,
+                ".tgz" => ArchiveFormat.Tgz,
                 _ => null
             };
             return archiveFormat is not null;

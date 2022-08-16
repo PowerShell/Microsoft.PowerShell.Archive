@@ -12,19 +12,19 @@ namespace Microsoft.PowerShell.Archive
 {
     internal class GzipArchive : IArchive
     {
-        protected bool _disposedValue;
+        private bool _disposedValue;
 
-        protected readonly ArchiveMode _mode;
+        private readonly ArchiveMode _mode;
 
-        protected readonly string _path;
+        private readonly string _path;
 
-        protected readonly FileStream _fileStream;
+        private readonly FileStream _fileStream;
 
-        protected readonly CompressionLevel _compressionLevel;
+        private readonly CompressionLevel _compressionLevel;
 
         private bool _addedFile;
 
-        protected bool _didCallGetNextEntry;
+        private bool _didCallGetNextEntry;
 
         ArchiveMode IArchive.Mode => _mode;
 
@@ -38,7 +38,7 @@ namespace Microsoft.PowerShell.Archive
             _compressionLevel = compressionLevel;
         }
 
-        public virtual void AddFileSystemEntry(ArchiveAddition entry)
+        public void AddFileSystemEntry(ArchiveAddition entry)
         {
             if (_mode == ArchiveMode.Extract)
             {
@@ -61,7 +61,7 @@ namespace Microsoft.PowerShell.Archive
             _addedFile = true;
         }
 
-        IEntry? IArchive.GetNextEntry()
+        public IEntry? GetNextEntry()
         {
             // Gzip has no concept of entries
             if (!_didCallGetNextEntry) {
@@ -71,7 +71,7 @@ namespace Microsoft.PowerShell.Archive
             return null;
         }
 
-        protected virtual void Dispose(bool disposing)
+        private void Dispose(bool disposing)
         {
             if (!_disposedValue)
             {
@@ -94,11 +94,6 @@ namespace Microsoft.PowerShell.Archive
             GC.SuppressFinalize(this);
         }
 
-        bool IArchive.HasTopLevelDirectory()
-        {
-            throw new NotSupportedException();
-        }
-
         internal class GzipArchiveEntry : IEntry {
             
             private GzipArchive _gzipArchive;
@@ -116,7 +111,7 @@ namespace Microsoft.PowerShell.Archive
 
             void IEntry.ExpandTo(string destinationPath)
             {
-                using var destinationFileStream = new FileStream(destinationPath, FileMode.CreateNew, FileAccess.Write, FileShare.None);
+                using var destinationFileStream = new FileStream(destinationPath, FileMode.Create, FileAccess.Write, FileShare.None);
                 using var gzipDecompressor = new GZipStream(_gzipArchive._fileStream, CompressionMode.Decompress);
                 gzipDecompressor.CopyTo(destinationFileStream);
             }
