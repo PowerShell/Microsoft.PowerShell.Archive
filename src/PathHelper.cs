@@ -22,6 +22,9 @@ namespace Microsoft.PowerShell.Archive
 
         internal WildcardPattern? _wildCardPattern;
 
+        // These are the paths to add
+        internal HashSet<string>? _fullyQualifiedPaths;
+
         internal PathHelper(PSCmdlet cmdlet)
         {
             _cmdlet = cmdlet;
@@ -40,6 +43,7 @@ namespace Microsoft.PowerShell.Archive
                 Debug.Assert(Path.IsPathFullyQualified(path));
                 AddAdditionForFullyQualifiedPath(path, archiveAdditions, entryName: null, parentMatchesFilter: false);
             }
+
             return archiveAdditions;
         }
 
@@ -171,6 +175,9 @@ namespace Microsoft.PowerShell.Archive
                 Debug.Assert(relativePath is not null);
                 doesPreservePathStructure = true;
                 entryName = relativePath;
+
+                // In case the relative path contains parent directories that have not been entered by the user,
+                // check for these paths and add them
             }
             // Otherwise, return the name of the directory or file
             else 
@@ -246,15 +253,21 @@ namespace Microsoft.PowerShell.Archive
         private bool TryGetPathRelativeToCurrentWorkingDirectory(string path, out string? relativePathToWorkingDirectory)
         {
             Debug.Assert(!string.IsNullOrEmpty(path));
-            string? workingDirectoryRoot = Path.GetPathRoot(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path);
+            string workingDirectory = _cmdlet.SessionState.Path.CurrentFileSystemLocation.ProviderPath;
+            string? workingDirectoryRoot = Path.GetPathRoot(workingDirectory);
             string? pathRoot = Path.GetPathRoot(path);
             if (workingDirectoryRoot != pathRoot) {
                 relativePathToWorkingDirectory = null;
                 return false;
             }
-            string relativePath = Path.GetRelativePath(_cmdlet.SessionState.Path.CurrentFileSystemLocation.Path, path);
+            string relativePath = Path.GetRelativePath(workingDirectory, path);
             relativePathToWorkingDirectory = relativePath.Contains("..") ? null : relativePath;
             return relativePathToWorkingDirectory is not null;
+        }
+
+        // Adds the parent directories in a path to the list of fully qualified paths
+        private void AddParentDirectoriesToFullyQualifiedPaths(string path) {
+            
         }
 
         internal System.Collections.ObjectModel.Collection<string>? GetResolvedPathFromPSProviderPath(string path, bool pathMustExist) {

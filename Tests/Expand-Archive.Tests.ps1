@@ -374,7 +374,7 @@ Describe("Expand-Archive Tests") {
             Compress-Archive -Path "TestDrive:/DirectoryToArchive" -DestinationPath (Add-FileExtensionBasedOnFormat "TestDrive:/archive2" -Format $Format)
 
             # Create an archive containing a file and an empty folder
-            Compress-Archive -Path "TestDrive:/file1.txt","TestDrive:/DirectoryToArchive" -DestinationPath (Add-FileExtensionBasedOnFormat "TestDrive:/archive3" -Format $Format)
+            Compress-Archive -Path "TestDrive:/file1.txt","TestDrive:/DirectoryToArchive" -DestinationPath "TestDrive:/archive3"
         }
 
         It "Expands an archive when a non-existent directory is specified as -DestinationPath with format <Format>" {
@@ -414,7 +414,7 @@ Describe("Expand-Archive Tests") {
             Pop-Location
         }
 
-        It "Expands an archive containing a single top-level directory and no other top-level items to a directory with that directory's name when -DestinationPath is not specified" {
+        It "Expands an archive to a directory with that archive's name when -DestinationPath is not specified" {
             $sourcePath = Add-FileExtensionBasedOnFormat "TestDrive:/archive2" -Format $Format
             $destinationPath = "TestDrive:/directory4"
 
@@ -423,28 +423,29 @@ Describe("Expand-Archive Tests") {
             Expand-Archive -Path $sourcePath
 
             $itemsInDestinationPath = Get-ChildItem $destinationPath -Recurse
-            $itemsInDestinationPath.Count | Should -Be 1
-            $itemsInDestinationPath[0].Name | Should -Be "DirectoryToArchive"
+            $itemsInDestinationPath.Count | Should -Be 2
+
+            $directoryContents = @()
+            $directoryContents += $itemsInDestinationPath[0].FullName
+            $directoryContents += $itemsInDestinationPath[1].FullName
+
+            $directoryContents | Should -Contain (Join-Path $TestDrive "directory4/archive2")
+            $directoryContents | Should -Contain (Join-Path $TestDrive "directory4/archive2/DirectoryToArchive")
 
             Pop-Location
         }
 
-        It "Expands an archive containing multiple top-level items to a directory with that archive's name when -DestinationPath is not specified" {
-            $sourcePath =  Add-FileExtensionBasedOnFormat "TestDrive:/archive3" -Format $Format
-            $destinationPath = "TestDrive:/directory5"
-
-            Push-Location $destinationPath
-
-            Expand-Archive -Path $sourcePath
-
-            $itemsInDestinationPath = Get-ChildItem $destinationPath -Name -Recurse
-            $itemsInDestinationPath.Count | Should -Be 3
-            "archive3" | Should -BeIn $itemsInDestinationPath
-            (Join-Path "archive3" "DirectoryToArchive") | Should -BeIn $itemsInDestinationPath
-            (Join-Path "archive3" "file1.txt") | Should -BeIn $itemsInDestinationPath
-           
-
-            Pop-Location
+        It "Throws an error when expanding an archive whose name does not have an extension and -DestinationPath is not specified" {
+            Push-Location  "TestDrive:/"
+            try {
+                Expand-Archive -Path "TestDrive:/archive3"
+            }
+            catch {
+                $_.FullyQualifiedErrorId | Should -Be "CannotDetermineDestinationPath,${CmdletClassName}"
+            }
+            finally {
+                Pop-Location
+            }
         }
 
         It "Expands an archive containing multiple files, non-empty directories, and empty directories" {
