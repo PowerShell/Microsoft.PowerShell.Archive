@@ -297,12 +297,12 @@ namespace Microsoft.PowerShell.Archive
                     // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
                     if (WriteMode == WriteMode.Create)
                     {
-                        errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                        errorCode = ErrorCode.DestinationExistsAsDirectory;
                     }
                     // Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
                     else if (WriteMode == WriteMode.Update)
                     {
-                        errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                        errorCode = ErrorCode.DestinationExistsAsDirectory;
                     }
                     // Throw an error if the DestinationPath is the current working directory and the cmdlet is in Overwrite mode
                     else if (WriteMode == WriteMode.Overwrite && DestinationPath == SessionState.Path.CurrentFileSystemLocation.ProviderPath)
@@ -312,7 +312,7 @@ namespace Microsoft.PowerShell.Archive
                     // Throw an error if the DestinationPath is a directory with at 1 least item and the cmdlet is in Overwrite mode
                     else if (WriteMode == WriteMode.Overwrite && Directory.GetFileSystemEntries(DestinationPath).Length > 0)
                     {
-                        errorCode = ErrorCode.ArchiveIsNonEmptyDirectory;
+                        errorCode = ErrorCode.DestinationIsNonEmptyDirectory;
                     }
                 }
                 // If DestinationPath is an existing file
@@ -321,7 +321,7 @@ namespace Microsoft.PowerShell.Archive
                     // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
                     if (WriteMode == WriteMode.Create)
                     {
-                        errorCode = ErrorCode.ArchiveExists;
+                        errorCode = ErrorCode.DestinationExists;
                     }
                     // Throw an error if the cmdlet is in Update mode but the archive is read only
                     else if (WriteMode == WriteMode.Update && File.GetAttributes(DestinationPath).HasFlag(FileAttributes.ReadOnly))

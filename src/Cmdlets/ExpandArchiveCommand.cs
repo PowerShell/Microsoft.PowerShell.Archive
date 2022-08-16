@@ -177,7 +177,7 @@ namespace Microsoft.PowerShell.Archive
             Debug.Assert(DestinationPath is not null);
 
             // The location of the entry post-expanding of the archive
-            string postExpandPath = GetPostExpansionPath(entryName: entry.Name, destinationPath: _destinationPathInfo.FullName);
+            string postExpandPath = GetPostExpansionPath(entryName: entry.Name, destinationPath: DestinationPath);
 
             // If postExpandPath has a terminating `/`, remove it (there is case where overwriting a file may fail because of this)
             if (postExpandPath.EndsWith(System.IO.Path.DirectorySeparatorChar))

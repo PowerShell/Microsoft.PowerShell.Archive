@@ -25,7 +25,7 @@ function Should-BeArchiveOnlyContaining {
     if ($Format -eq "Tar") {
         return Should-BeTarArchiveOnlyContaining -ActualValue $ActualValue -ExpectedValue $ExpectedValue -Negate:$Negate -Because $Because -LiteralPath:$LiteralPath -CallerSessionState $CallerSessionState
     } 
-    return return [pscustomobject]@{
+    return [pscustomobject]@{
         Succeeded      = $false
         FailureMessage = "Format ${Format} is not supported."
     }

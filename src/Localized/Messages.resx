@@ -143,6 +143,7 @@
   </data>
   <data name="Create" xml:space="preserve">
     <value>Create</value>
+  </data>
   <data name="DestinationExistsAsDirectoryMessage" xml:space="preserve">
     <value>The destination path {0} is a directory.</value>
   </data>
