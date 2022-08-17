@@ -89,9 +89,13 @@ Relative path structure refers to the hierarchial structure of a path relative t
 Parameter sets:
 
 ```powershell
-Compress-Archive [-Path] <string[]> [-DestinationPath] <string> [-WriteMode {Create | Update | Overwrite}] [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
+Compress-Archive [-Path] <string[]> [-DestinationPath] <string> [-WriteMode {Create | Update | Overwrite}] [-PassThru]
+[-CompressionLevel {Optimal | Fastest | NoCompression | SmallestSize}] [-Format {Zip | Tar | Tgz}] [-Filter <string>]
+[-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
 
-Compress-Archive -LiteralPath <string[]> [-DestinationPath] <string> [-WriteMode {Create | Update | Overwrite}] [-CompressionLevel {Optimal | NoCompression | Fastest | SmallestSize}] [-PassThru] [-Format {zip | tar | tgz}] [-Filter <string[]>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
+Compress-Archive [-DestinationPath] <string> -LiteralPath <string[]> [-WriteMode {Create | Update | Overwrite}]
+[-PassThru] [-CompressionLevel {Optimal | Fastest | NoCompression | SmallestSize}] [-Format {Zip | Tar | Tgz}]
+[-Filter <string>] [-Flatten] [-WhatIf] [-Confirm] [<CommonParameters>]
 
 ```
 
@@ -151,9 +155,11 @@ The archive **does not** retain the directory structure since `-Flatten` is spec
 Parameter sets:
 
 ```powershell
-Expand-Archive [-Path] <string> [[-DestinationPath] <string>] [-Overwrite] [-PassThru] [-Filter <string[]>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Expand-Archive [-Path] <string> [[-DestinationPath] <string>] [-WriteMode {Expand | Overwrite}] [-Format {Zip | Tar |
+Tgz}] [-PassThru] [-Filter <string>] [-WhatIf] [-Confirm] [<CommonParameters>]
 
-Expand-Archive [[-DestinationPath] <string>] -LiteralPath <string> [-Overwrite] [-PassThru] [-Filter <string[]>] [-WhatIf] [-Confirm] [<CommonParameters>]
+Expand-Archive [[-DestinationPath] <string>] -LiteralPath <string> [-WriteMode {Expand | Overwrite}] [-Format {Zip |
+Tar | Tgz}] [-PassThru] [-Filter <string>] [-WhatIf] [-Confirm] [<CommonParameters>]
 ```
 
 ```powershell
@@ -218,9 +224,9 @@ Note that `.zip` is not appended to the archive name.
 
 #### **Relative Path Structure Preservation**
 
-When valid paths are supplied to the `-Path` or `-LiteralPath` parameter, the relative structures of the paths are preserved as long as the paths are relative to the current working directory, and do not contain '..'.
+When valid paths are supplied to the `-Path` or `-LiteralPath` parameter, the relative structures of the paths are preserved as long as the paths are relative to the current working directory.
 When `-Path` is used, globbing is still performed.
-Relative path structure can be preserved even if the path contains wildcard characters.
+Relative path structure can be preserved even if the path contains wildcard characters or "..".
 
 Example: `Compress-Archive -Path Documents\MyFile.txt -DestinationPath destination.zip`
 creates an archive with the structure:
@@ -238,8 +244,7 @@ Example: `Compress-Archive -Path C:\Users\<user>\Documents -DestinationPath dest
 Similarly, it preserves the `Users` directory (and all descendents) as long as the working directory is `C:\`.
 In all other cases, the behavior is the same as above (the last portion of the path is preserved in the archive i.e., it becomes the entry name in the archive).
 
-Example: `Compress-Archive -Path C:\Users\<user>\..\<user>\Documents -DestinationPath destination.zip` in this case, the path structure will never be preserved because
-`-Path` contains '..'.
+Example: `Compress-Archive -Path C:\Users\<user>\..\<user>\Documents -DestinationPath destination.zip` in this case, the path structure is preserved as long as the path is a descendent of the working directory.
 
 Example: Suppose the working directory is `C:\`.
 Performing `Compress-Archive -Path Program Files\7-zip -DestinationPath destination.zip` will preserve `Program Files\7-zip` in all paths.
@@ -442,12 +447,13 @@ For `Expand-Archive`, when an archive format is determined by the cmdlet that do
 
 #### `-Filter` parameter
 
-When the `-Filter` parameter is supplied with a value, the cmdlet extracts files in the archive as long as its filename matches the filter.
+When the `-Filter` parameter is supplied with a value, the cmdlet extracts files and directories in the archive as long as its filename matches the filter.
 
 The filter applies to all files in the archive no matter how deep they are in the hierarchy.
-
-The `-Filter` parameter does not affect the directory structure except that empty folders and folders which do not have descendent files that match the filter are omitted.
-Except for this behavior, the directory structure of the output would be identical if `-Filter` was not specified.
+The filter works by applying it to entry names in the archive.
+It is possible for a filter to not match a directory, but match one of its descendents, and in this case, the parent directory is still created.
+Even if a filter matches a directory, its descendents will not be expanded unless they also match the filter.
+This is done for performance reasons -- it is not always possible to determine the children of a directory in an archive without having to read the entire archive first.
 
 Example: Suppose we want to expand `archive1.zip` which has the following structure:
 
@@ -505,20 +511,7 @@ The directory structure is maintained.
 
 Currently, when `Expand-Archive archive.zip` is called, the contents of the archive are added to the current working directory. This is unintuitive because the user does not necessarily know what the contents of the archive are.
 
-The solution is to first check if the archive contains one top-level folder and no other top-level items.
-If this is the case, the cmdlet creates a folder in the current working directory with the same name as the top-level folder and puts all the contents of the top-level folder into that folder.
-
-Example: Suppose `archive1.zip` contains only one top-level item, a folder called `TopLevelFolder`.
-After calling `Expand-Archive archive1.zip`, the structure of the current working directory becomes:
-
-```
-$PWD
-|---TopLevelFolder
-|   |---*
-~~~ everything else ~~~
-```
-
-If there are multiple top-level items in the archive, the cmdlet creates a folder in the current working directory with the name of the archive without the extension e.g. `archive`) and puts all the contents of the archive into that folder.
+The solution is to create a folder in the current working directory with the name of the archive without the extension e.g. `archive`) and put all the contents of the archive into that folder.
 
 Example: Suppose `archive2.zip` contains two top-level items, a folder called `TopLevelFolder` and a file called `file.txt`.
 After calling `Expand-Archive archive2.zip`, the structure of the current working directory becomes:
@@ -545,7 +538,9 @@ $PWD
 ~~~ everything else ~~~
 ```
 
-In both cases, whether there is only one top-level item which is a folder, and when there are multiple top-level items, if the folder to be created already exists, the cmdlet continues operation as normal without throwing an error or warning the user.
+If the folder to be created already exists, the cmdlet continues operation as normal without throwing an error or warning the user.
+
+If the archive file does not have an extension and `-DestinationPath` is not specified, then a terminating error is thrown.
 
 #### Collision Information
 
