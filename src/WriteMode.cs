@@ -13,4 +13,10 @@ namespace Microsoft.PowerShell.Archive
         Update,
         Overwrite
     }
+
+    public enum ExpandArchiveWriteMode
+    {
+        Expand,
+        Overwrite
+    }
 }

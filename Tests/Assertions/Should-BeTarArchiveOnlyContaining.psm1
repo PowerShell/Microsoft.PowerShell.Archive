@@ -1,7 +1,7 @@
-function Should-BeZipArchiveOnlyContaining {
+function Should-BeTarArchiveOnlyContaining {
     <#
     .SYNOPSIS
-        Checks if a zip archive contains the entries $ExpectedValue
+        Checks if a tar archive contains the entries $ExpectedValue
     .EXAMPLE
         "C:\Users\<user>\archive.zip" | Should -BeZipArchiveContaining @("file1.txt")
 
@@ -49,9 +49,9 @@ function Should-BeZipArchiveOnlyContaining {
 
     # Get 7-zip to list the contents of the archive
     if ($IsWindows) {
-        $output = 7z.exe l $ActualValue -ba -tzip
+        $output = 7z.exe l $ActualValue -ba -ttar
     } else {
-        $output = 7z l $ActualValue -ba -tzip
+        $output = 7z l $ActualValue -ba -ttar
     }
 
     # Check if the output is null
@@ -145,4 +145,4 @@ function Should-BeZipArchiveOnlyContaining {
     return New-Object PSObject -Property $ObjProperties
 }
 
-Add-ShouldOperator -Name BeZipArchiveOnlyContaining -InternalName 'Should-BeZipArchiveOnlyContaining' -Test ${function:Should-BeZipArchiveOnlyContaining}
+Add-ShouldOperator -Name BeTarArchiveOnlyContaining -InternalName 'Should-BeTarArchiveOnlyContaining' -Test ${function:Should-BeTarArchiveOnlyContaining}

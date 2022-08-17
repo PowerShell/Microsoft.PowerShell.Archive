@@ -21,8 +21,8 @@ namespace Microsoft.PowerShell.Archive
             return format switch
             {
                 ArchiveFormat.Zip => new ZipArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
-                //ArchiveFormat.tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
-                // TODO: Add Tar.gz here
+                ArchiveFormat.Tar => new TarArchive(archivePath, archiveMode, archiveFileStream),
+                ArchiveFormat.Tgz => new TarGzArchive(archivePath, archiveMode, archiveFileStream, compressionLevel),
                 _ => throw new ArgumentOutOfRangeException(nameof(archiveMode))
             };
         }
@@ -32,9 +32,9 @@ namespace Microsoft.PowerShell.Archive
             archiveFormat = Path.GetExtension(path).ToLowerInvariant() switch
             {
                 ".zip" => ArchiveFormat.Zip,
-                /* Disable support for tar and tar.gz for preview1 release 
-                ".gz" => path.EndsWith(".tar.gz) ? ArchiveFormat.Tgz : null,
-                 */
+                ".tar" => ArchiveFormat.Tar,
+                ".gz" => path.EndsWith(".tar.gz") ? ArchiveFormat.Tgz : null,
+                ".tgz" => ArchiveFormat.Tgz,
                 _ => null
             };
             return archiveFormat is not null;

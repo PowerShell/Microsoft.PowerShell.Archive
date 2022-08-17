@@ -16,12 +16,7 @@ namespace Microsoft.PowerShell.Archive
 {
     [Cmdlet("Compress", "Archive", SupportsShouldProcess = true)]
     [OutputType(typeof(FileInfo))]
-    public sealed class CompressArchiveCommand : PSCmdlet
-    {
-
-        // TODO: Add filter parameter
-        // TODO: Add flatten parameter
-        // TODO: Add comments to methods
+    public sealed class CompressArchiveCommand : PSCmdlet {
         // TODO: Add tar support
 
         private enum ParameterSet
@@ -55,18 +50,25 @@ namespace Microsoft.PowerShell.Archive
         [NotNull]
         public string? DestinationPath { get; set; }
 
-        [Parameter()]
+        [Parameter]
         public WriteMode WriteMode { get; set; }
 
-        [Parameter()]
+        [Parameter]
         public SwitchParameter PassThru { get; set; }
 
-        [Parameter()]
+        [Parameter]
         [ValidateNotNullOrEmpty]
         public CompressionLevel CompressionLevel { get; set; }
 
-        [Parameter()]
-        public ArchiveFormat? Format { get; set; } = null;
+        [Parameter]
+        public ArchiveFormat? Format { get; set; }
+
+        [Parameter]
+        [ValidateNotNullOrEmpty]
+        public string? Filter { get; set; }
+
+        [Parameter]
+        public SwitchParameter Flatten { get; set; }
 
         private readonly PathHelper _pathHelper;
 
@@ -99,7 +101,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void BeginProcessing()
         {
             // This resolves the path to a fully qualified path and handles provider exceptions
-            DestinationPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(DestinationPath);
+            DestinationPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(path: DestinationPath, pathMustExist: false);
             ValidateDestinationPath();
         }
 
@@ -109,7 +111,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 Debug.Assert(Path is not null);
                 foreach (var path in Path) {
-                    var resolvedPaths = _pathHelper.GetResolvedPathFromPSProviderPath(path, _nonexistentPaths);
+                    var resolvedPaths = _pathHelper.GetResolvedPathFromPSProviderPathWhileCapturingNonexistentPaths(path, _nonexistentPaths);
                     if (resolvedPaths is not null) {
                         foreach (var resolvedPath in resolvedPaths) {
                             // Add resolvedPath to _path
@@ -123,7 +125,7 @@ namespace Microsoft.PowerShell.Archive
             {
                 Debug.Assert(LiteralPath is not null);
                 foreach (var path in LiteralPath) {
-                    var unresolvedPath = _pathHelper.GetUnresolvedPathFromPSProviderPath(path, _nonexistentPaths);
+                    var unresolvedPath = _pathHelper.GetUnresolvedPathFromPSProviderPathWhileCapturingNonexistentPaths(path, _nonexistentPaths);
                     if (unresolvedPath is not null) {
                         // Add unresolvedPath to _path
                         AddPathToPaths(pathToAdd: unresolvedPath);
@@ -160,6 +162,9 @@ namespace Microsoft.PowerShell.Archive
 
             // Get archive entries
             // If a path causes an exception (e.g., SecurityException), _pathHelper should handle it
+            Debug.Assert(_paths is not null);
+            _pathHelper.Flatten = Flatten;
+            _pathHelper.Filter = Filter;
             List<ArchiveAddition> archiveAdditions = _pathHelper.GetArchiveAdditions(_paths);
 
             // Remove references to _paths, Path, and LiteralPath to free up memory
@@ -181,7 +186,9 @@ namespace Microsoft.PowerShell.Archive
             IArchive? archive = null;
             try
             {
-                if (ShouldProcess(target: DestinationPath, action: Messages.Create))
+                // If the archive is in Update mode, we want to skip the ShouldProcess check
+                // This is necessary if we want to check if the archive is updateable
+                if (WriteMode == WriteMode.Update || ShouldProcess(target: DestinationPath, action: Messages.Create))
                 {
                     // If the WriteMode is overwrite, delete the existing archive
                     if (WriteMode == WriteMode.Overwrite)
@@ -193,6 +200,13 @@ namespace Microsoft.PowerShell.Archive
                     archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
                     _didCreateNewArchive = archiveMode != ArchiveMode.Update;
                 }
+
+                // If the cmdlet is in Update mode and the archive does not support updates, throw an error
+                if (WriteMode == WriteMode.Update && archive is not null && !archive.IsUpdateable)
+                {
+                    var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.ArchiveIsNotUpdateable, DestinationPath);
+                    ThrowTerminatingError(errorRecord);
+                }
                 
                 long numberOfAdditions = archiveAdditions.Count;
                 long numberOfAddedItems = 0;
@@ -203,15 +217,48 @@ namespace Microsoft.PowerShell.Archive
                 {
                     // Update progress
                     var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
-                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "{percentComplete:0.0}");
+                    var statusDescription = string.Format(Messages.ProgressDisplay, $"{percentComplete:0.0}");
+                    progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", statusDescription: statusDescription);
+                    progressRecord.PercentComplete = (int)percentComplete;
                     WriteProgress(progressRecord);
 
                     if (ShouldProcess(target: entry.FileSystemInfo.FullName, action: Messages.Add))
                     {
-                        archive?.AddFileSystemEntry(entry);
-                        // Write a verbose message saying this item was added to the archive
-                        var addedItemMessage = string.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);
-                        WriteVerbose(addedItemMessage);
+                        // Warn the user if the LastWriteTime of the file/directory is before 1980
+                        if (entry.FileSystemInfo.LastWriteTime.Year < 1980 && Format == ArchiveFormat.Zip)
+                        {
+                            WriteWarning(string.Format(Messages.LastWriteTimeBefore1980Warning, entry.FileSystemInfo.FullName));
+                        }
+
+                        // Use this to track of an exception that occurs when adding an entry to the archive
+                        // so a non-terminating error can be reported
+                        Exception? exception = null;
+                        try
+                        {
+                            archive?.AddFileSystemEntry(entry);
+                            // Write a verbose message saying this item was added to the archive
+                            var addedItemMessage = string.Format(Messages.AddedItemToArchiveVerboseMessage, entry.FileSystemInfo.FullName);
+                            WriteVerbose(addedItemMessage);
+                        } 
+                        // This catches PathTooLongException as well
+                        catch (IOException ioException)
+                        {
+                            exception = ioException;
+                        }
+                        catch (UnauthorizedAccessException unauthorizedAccessException)
+                        {
+                            exception = unauthorizedAccessException;
+                        }
+                        catch (System.NotSupportedException notSupportedException)
+                        {
+                            exception = notSupportedException;
+                        }
+
+                        if (exception is not null)
+                        {
+                            var errorRecord = new ErrorRecord(exception, nameof(ErrorCode.ExceptionOccuredWhileAddingEntry), ErrorCategory.InvalidOperation, entry.EntryName);
+                            WriteError(errorRecord);
+                        }
                     }
                     // Keep track of number of items added to the archive
                     numberOfAddedItems++;
@@ -219,7 +266,8 @@ namespace Microsoft.PowerShell.Archive
 
                 // Once all items in the archive are processed, show progress as 100%
                 // This code is here and not in the loop because we want it to run even if there are no items to add to the archive
-                progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "100.0");
+                progressRecord = new ProgressRecord(1, "Compress-Archive", string.Format(Messages.ProgressDisplay, "100.0"));
+                progressRecord.PercentComplete = 100;
                 WriteProgress(progressRecord);
             }
             finally
@@ -258,12 +306,12 @@ namespace Microsoft.PowerShell.Archive
                     // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
                     if (WriteMode == WriteMode.Create)
                     {
-                        errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                        errorCode = ErrorCode.DestinationExistsAsDirectory;
                     }
                     // Throw an error if the DestinationPath is a directory and the cmdlet is in Update mode
                     else if (WriteMode == WriteMode.Update)
                     {
-                        errorCode = ErrorCode.ArchiveExistsAsDirectory;
+                        errorCode = ErrorCode.DestinationExistsAsDirectory;
                     }
                     // Throw an error if the DestinationPath is the current working directory and the cmdlet is in Overwrite mode
                     else if (WriteMode == WriteMode.Overwrite && DestinationPath == SessionState.Path.CurrentFileSystemLocation.ProviderPath)
@@ -273,7 +321,7 @@ namespace Microsoft.PowerShell.Archive
                     // Throw an error if the DestinationPath is a directory with at 1 least item and the cmdlet is in Overwrite mode
                     else if (WriteMode == WriteMode.Overwrite && Directory.GetFileSystemEntries(DestinationPath).Length > 0)
                     {
-                        errorCode = ErrorCode.ArchiveIsNonEmptyDirectory;
+                        errorCode = ErrorCode.DestinationIsNonEmptyDirectory;
                     }
                 }
                 // If DestinationPath is an existing file
@@ -282,7 +330,7 @@ namespace Microsoft.PowerShell.Archive
                     // Throw an error if DestinationPath exists and the cmdlet is not in Update mode or Overwrite is not specified 
                     if (WriteMode == WriteMode.Create)
                     {
-                        errorCode = ErrorCode.ArchiveExists;
+                        errorCode = ErrorCode.DestinationExists;
                     }
                     // Throw an error if the cmdlet is in Update mode but the archive is read only
                     else if (WriteMode == WriteMode.Update && File.GetAttributes(DestinationPath).HasFlag(FileAttributes.ReadOnly))
