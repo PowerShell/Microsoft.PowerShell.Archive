@@ -1091,7 +1091,7 @@ Describe("Microsoft.PowerShell.Archive tests") {
             $archivePath | Should -BeArchiveOnlyContaining @("directory1/", "directory1/file1.txt", "directory1/file2.txt") -Format Zip
         }
 
-        It "Throws an error when trying to update a tgz archive" {
+        It "Throws an error when trying to update a tgz archive" -Tag hi {
             try {
                 Compress-Archive -Path TestDrive:/directory1 -DestinationPath TestDrive:/cantupdate.tar.gz -WriteMode Update
             } catch {

@@ -202,7 +202,7 @@ namespace Microsoft.PowerShell.Archive
                 }
 
                 // If the cmdlet is in Update mode and the archive does not support updates, throw an error
-                if (archive is not null && !archive.IsUpdateable)
+                if (WriteMode == WriteMode.Update && archive is not null && !archive.IsUpdateable)
                 {
                     var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.ArchiveIsNotUpdateable, DestinationPath);
                     ThrowTerminatingError(errorRecord);
