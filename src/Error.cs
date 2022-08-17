@@ -42,6 +42,7 @@ namespace Microsoft.PowerShell.Archive
                 ErrorCode.CannotOverwriteWorkingDirectory => Messages.CannotOverwriteWorkingDirectoryMessage,
                 ErrorCode.PathResolvedToMultiplePaths => Messages.PathResolvedToMultiplePathsMessage,
                 ErrorCode.CannotDetermineDestinationPath => Messages.CannotDetermineDestinationPath,
+                ErrorCode.MultiplePathsSpecified => Messages.MultiplePathsSpecified,
                 _ => throw new ArgumentOutOfRangeException(nameof(errorCode))
             };
         }
@@ -81,6 +82,8 @@ namespace Microsoft.PowerShell.Archive
         // Expand-Archive: used when the DestinationPath could not be determined
         CannotDetermineDestinationPath,
         // Compress-Archive: Used when an exception occurs when adding an entry to an archive
-        ExceptionOccuredWhileAddingEntry
+        ExceptionOccuredWhileAddingEntry,
+        // Expand:Archive: Used when multiple paths are passed by pipeline
+        MultiplePathsSpecified
     }
 }

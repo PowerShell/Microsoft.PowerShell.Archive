@@ -24,6 +24,14 @@ function Should-BeArchiveOnlyContaining {
     }
     if ($Format -eq "Tar") {
         return Should-BeTarArchiveOnlyContaining -ActualValue $ActualValue -ExpectedValue $ExpectedValue -Negate:$Negate -Because $Because -LiteralPath:$LiteralPath -CallerSessionState $CallerSessionState
+    }
+    if ($Format -eq "Tgz") {
+        # Get a temp file
+        $gzipFolderPath = Join-Path ([System.IO.Path]::GetTempPath()) ([System.IO.Path]::GetRandomFileName())
+        New-Item -Path $gzipFolderPath -ItemType Directory
+        "7z e $ActualValue -o${gzipFolderPath} -tgzip" | Invoke-Expression
+        $tarFilePath = (Get-ChildItem $gzipFolderPath)[0].FullName
+        return Should-BeTarArchiveOnlyContaining -ActualValue $tarFilePath -ExpectedValue $ExpectedValue -Negate:$Negate -Because $Because -LiteralPath:$LiteralPath -CallerSessionState $CallerSessionState
     } 
     return [pscustomobject]@{
         Succeeded      = $false

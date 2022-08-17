@@ -35,10 +35,14 @@ namespace Microsoft.PowerShell.Archive
 
         internal List<ArchiveAddition> GetArchiveAdditions(HashSet<string> fullyQualifiedPaths)
         {
-            if (Filter is not null) {
+            if (Filter is not null)
+            {
                 _wildCardPattern = new WildcardPattern(Filter);
-                _entryNames = new HashSet<string>();
             } 
+            if (Flatten)
+            {
+                _entryNames = new HashSet<string>();
+            }
             List<ArchiveAddition> archiveAdditions = new List<ArchiveAddition>(fullyQualifiedPaths.Count);
             foreach (var path in fullyQualifiedPaths)
             {
@@ -109,12 +113,11 @@ namespace Microsoft.PowerShell.Archive
             // If the item being added is a directory and does not have any descendent files that match the filter, finalAdditions - initialAdditions = 0
             // If the item being added is a directory and has descendent files that match the filter, finalAdditions > initialAdditions
 
-            if (doesMatchFilter || (!doesMatchFilter && finalAdditions - initialAdditions > 0) && (Flatten && fileSystemInfo is not DirectoryInfo)) {
-                if (!Flatten || (_entryNames is not null && _entryNames.Add(entryName)))
+            if (doesMatchFilter || (!doesMatchFilter && finalAdditions - initialAdditions > 0)) {
+                if (!Flatten || (Flatten && fileSystemInfo is not DirectoryInfo && _entryNames is not null && _entryNames.Add(entryName)))
                 {
                     additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: fileSystemInfo));
                 }
-                
             }
             
         }
@@ -144,15 +147,15 @@ namespace Microsoft.PowerShell.Archive
                     } else
                     {
                         entryName = GetEntryNameUsingPrefix(path: childFileSystemInfo.FullName, prefix: pathPrefix);
-                    }
-                        
+                    }                        
                     
                     // Add an entry for each descendent of the directory
                     if (parentMatchesFilter)
                     {
                         // If the parent directory matches the filter, all its contents are included in the archive
                         // Just add the entry for each child without needing to check whether the child matches the filter
-                        if (!Flatten || (_entryNames is not null && _entryNames.Add(entryName))) {
+                        if (!Flatten || (Flatten && childFileSystemInfo is not DirectoryInfo && _entryNames is not null && _entryNames.Add(entryName)))
+                        {
                             additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childFileSystemInfo));
                         }
                     } 
@@ -160,9 +163,7 @@ namespace Microsoft.PowerShell.Archive
                     {
                         // If the parent directory does not match the filter, we want to call this function
                         // because this function will check if the name of the child matches the filter and if so, will add it
-                        if (!Flatten || (_entryNames is not null && _entryNames.Add(entryName))) {
-                            AddAdditionForFullyQualifiedPath(childFileSystemInfo.FullName, additions, entryName, parentMatchesFilter: false);
-                        }
+                        AddAdditionForFullyQualifiedPath(childFileSystemInfo.FullName, additions, entryName, parentMatchesFilter: false);
                     }
                 }
             } 

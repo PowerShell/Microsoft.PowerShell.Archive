@@ -50,6 +50,8 @@ namespace Microsoft.PowerShell.Archive
 
         private string? _sourcePath;
 
+        private bool _didCallProcessRecord;
+
         #endregion
 
         public ExpandArchiveCommand()
@@ -64,7 +66,13 @@ namespace Microsoft.PowerShell.Archive
 
         protected override void ProcessRecord()
         {
-            
+            if (_didCallProcessRecord) {
+                // Throw a terminating error if ProcessRecord was called multiple times (if multiple passed were passed by pipeline)
+                var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.MultiplePathsSpecified);
+                ThrowTerminatingError(errorRecord);
+            } else {
+                _didCallProcessRecord = true;
+            }
         }
 
         protected override void EndProcessing()

@@ -201,4 +201,7 @@
   <data name="ExpandingEntryMessage" xml:space="preserve">
     <value>Expanding archive entry {0} to destination {1}</value>
   </data>
+  <data name="MultiplePathsSpecifiedMessage" xml:space="preserve">
+    <value>Multiple paths were specified to the cmdlet, but only one is allowed.</value>
+  </data>
 </root>

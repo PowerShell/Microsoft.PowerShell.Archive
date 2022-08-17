@@ -22,10 +22,13 @@ Describe("Microsoft.PowerShell.Archive tests") {
           )
 
           if ($Format -eq "Zip") {
-              return $Path += ".zip"
+            return $Path += ".zip"
           }
           if ($Format -eq "Tar") {
-              return $Path += ".tar"
+            return $Path += ".tar"
+          }
+          if ($Format -eq "Tgz") {
+            return $Path += ".tar.gz"
           }
           throw "Format type is not supported"
       }
@@ -261,7 +264,8 @@ Describe("Microsoft.PowerShell.Archive tests") {
 
   Context "Basic functional tests" -ForEach @(
       @{Format = "Zip"},
-      @{Format = "Tar"}
+      @{Format = "Tar"},
+      @{Format = "Tgz"}
   ) {
       BeforeAll {
           New-Item TestDrive:/SourceDir -Type Directory | Out-Null
@@ -290,7 +294,7 @@ Describe("Microsoft.PowerShell.Archive tests") {
           $destinationPath | Should -BeArchiveOnlyContaining @('Sample-2.txt') -Format $Format
       }
 
-      It "Compresses a non-empty directory with format <Format>" -Tag td1 {
+      It "Compresses a non-empty directory with format <Format>" {
           $sourcePath =  "TestDrive:/SourceDir/ChildDir-1"
           $destinationPath = Add-FileExtensionBasedOnFormat -Path "TestDrive:/archive2" -Format $Format
           Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -Format $Format
@@ -809,13 +813,6 @@ Describe("Microsoft.PowerShell.Archive tests") {
         BeforeAll {
             New-Item -Path TestDrive:/file1.txt -ItemType File
             "Hello, World!" | Out-File -FilePath TestDrive:/file1.txt
-
-            # Compress a file with different CompressionLevel values
-            $path = Join-Path $ScriptRoot "Sample-File"
-            Compress-Archive -Path $path -DestinationPath TestDrive:/archive1.zip -CompressionLevel Optimal
-            Compress-Archive -Path $path -DestinationPath TestDrive:/archive2.zip -CompressionLevel NoCompression
-            Compress-Archive -Path $path -DestinationPath TestDrive:/archive3.zip -CompressionLevel Fastest
-            Compress-Archive -Path $path -DestinationPath TestDrive:/archive4.zip -CompressionLevel SmallestSize
         }
 
         It "Throws an error when an invalid value is supplied to CompressionLevel" {
@@ -825,14 +822,6 @@ Describe("Microsoft.PowerShell.Archive tests") {
                 $_.FullyQualifiedErrorId | Should -Be "CannotConvertArgumentNoMessage,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
-
-        It "Creates an archive with -CompressionLevel" -ForEach @(
-            @{CompressionLevel = [System.IO.Compression.CompressionLevel]::Optimal}
-        ) {
-            
-        }
-
-
     }
 
     Context "Path Structure Preservation Tests" {
@@ -1117,8 +1106,6 @@ Describe("Microsoft.PowerShell.Archive tests") {
             $destinationPath = "TestDrive:/archive1.zip"
 
             Compress-Archive -Path $path -DestinationPath $destinationPath -Flatten
-            $x = Convert-Path $destinationPath
-            7z l "${x}" | Write-Verbose -Verbose
             $destinationPath | Should -BeArchiveOnlyContaining @("file1.txt") -Format Zip
         }
 
@@ -1127,7 +1114,7 @@ Describe("Microsoft.PowerShell.Archive tests") {
             $destinationPath = "TestDrive:/archive2.zip"
 
             Compress-Archive -Path $path -DestinationPath $destinationPath -Flatten -ErrorVariable errors
-            errors.Count | Should -Be 0
+            $errors.Count | Should -Be 0
             $destinationPath | Should -BeArchiveOnlyContaining @("file1.txt") -Format Zip
         }
     }

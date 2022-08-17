@@ -645,6 +645,143 @@ Describe("Expand-Archive Tests") {
     }
 
     Context "Large File Tests" {
+        BeforeAll {
+            $numberOfBytes = 512
+            $bytes = [byte[]]::new($numberOfBytes)
+            for ($i = 0; $i -lt $numberOfBytes; $i++) {
+                $bytes[$i] = 1
+            }
 
+            # Create a large file containing 1's
+            $largeFilePath = Join-Path $TestDrive "file1"
+            $fileWith1s = [System.IO.File]::Create($largeFilePath)
+            
+            $numberOfTimesToWrite = 5GB / $numberOfBytes
+            for ($i=0; $i -lt $numberOfTimesToWrite; $i++) {
+                $fileWith1s.Write($bytes, 0, $numberOfBytes)
+            }
+            $fileWith1s.Close()
+
+            Compress-Archive -Path TestDrive:/file1 -DestinationPath TestDrive:/large_entry_archive.zip
+            Compress-Archive -Path TestDrive:/file1 -DestinationPath TestDrive:/large_archive.zip -CompressionLevel NoCompression
+        }
+
+        It "Expands an archive whose size is > 4GB" {
+            $destinationPath = "TestDrive:/large_archive_output"
+            { Expand-Archive -Path TestDrive:/large_archive.zip -DestinationPath $destinationPath } | Should -Not -Throw
+            $childItems = Get-ChildItem $destinationPath
+            $childItems.Count | Should -Be 1
+            $childItems[0].Name | Should -Be "file1"
+        }
+    }
+
+    Context "Pipeline tests" {
+        BeforeAll {
+            New-Item TestDrive:/file.txt -ItemType File
+            "Hello, World!" | Out-File -Path TestDrive:/file.txt
+
+           
+            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive1.zip
+            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive2.zip
+        }
+
+        It "Expands an archive when -Path is passed by pipeline" {
+            $destinationPath = "TestDrive:/archive_output1"
+            "TestDrive:/archive1.zip" | Expand-Archive -DestinationPath $destinationPath
+            $childItems = Get-ChildItem $destinationPath
+            $childItems.Count | Should -Be 1
+            $childItems[0].FullName | Should -Be (Join-Path $TestDrive "archive_output1" "file.txt")
+        }
+
+        It "Expands an archive when -Path is passed by pipeline by name" {
+            $destinationPath = "TestDrive:/archive_output2"
+            $path = [pscustomobject]@{Path = "TestDrive:/archive1.zip"}
+            $path | Expand-Archive -DestinationPath $destinationPath
+            $childItems = Get-ChildItem $destinationPath -Verbose
+            $childItems.Count | Should -Be 1
+            $childItems[0].FullName | Should -Be (Join-Path $TestDrive "archive_output2" "file.txt")
+        }
+
+        It "Throws an error when multiple paths are passed by pipeline" {
+            try {
+                $destinationPath = "TestDrive:/archive_output3"
+                $path = @("TestDrive:/archive1.zip", "TestDrive:/archive2.zip")
+                $path | Expand-Archive -DestinationPath $destinationPath
+            } 
+            catch {
+                $_.FullyQualifiedErrorId | Should -Be "MultplePathsPassed,${CmdletClassName}"
+            }
+        }
+    }
+
+    Context "Relative Path Tests" {
+        BeforeAll {
+            New-Item TestDrive:/file.txt -ItemType File
+            "Hello, World!" | Out-File -Path TestDrive:/file.txt
+
+            New-Item -Path TestDrive:/directory1 -ItemType Directory
+            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/directory1/archive1.zip
+            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive2.zip
+            New-Item -Path TestDrive:/directory2 -ItemType Directory
+        }
+
+        It "Expands an archive when -Path is a relative path" {
+            Push-Location TestDrive:/directory1
+            $destinationPath = "TestDrive:/relative_path_directory"
+            Expand-Archive -Path archive1.zip -DestinationPath $destinationPath
+            $childItems = Get-ChildItem $destinationPath -Verbose
+            $childItems.Count | Should -Be 1
+            $childItems[0].Name | Should -Be "file.txt"
+            Pop-Location
+        }
+
+        It "Expands an archive when -LiteralPath is a relative path" {
+            Push-Location TestDrive:/directory1
+            $destinationPath = "TestDrive:/relative_literal_path_directory"
+            Expand-Archive -LiteralPath archive1.zip -DestinationPath $destinationPath
+            $childItems = Get-ChildItem $destinationPath -Verbose
+            $childItems.Count | Should -Be 1
+            $childItems[0].Name | Should -Be "file.txt"
+            Pop-Location
+        }
+
+        It "Expands an archive when -DestinationPath is a relative path" {
+            Push-Location TestDrive:/directory2
+            $destinationPath = "destination_path_output"
+            Expand-Archive -Path "TestDrive:/directory1/archive1.zip" -DestinationPath $destinationPath
+            $childItems = Get-ChildItem $destinationPath -Verbose
+            $childItems.Count | Should -Be 1
+            $childItems[0].Name | Should -Be "file.txt"
+            Pop-Location
+        }
+    }
+
+    Context "-Format tests" {
+        BeforeAll {
+            New-Item TestDrive:/file.txt -ItemType File
+            "Hello, World!" | Out-File -Path TestDrive:/file.txt
+            Compress-Archive -Path TestDrive:/file.txt -DestinationPath TestDrive:/archive1.zip
+        }
+
+        It "Throws an error when an invalid value is supplied to -Format" {
+            try {
+                Expand-Archive -Path TestDrive:/archive1.zip -DestinationPath TestDrive:/output_directory
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "CannotConvertArgumentNoMessage,${CmdletClassName}"
+            }
+        }
+    }
+
+    Context "Module tests" {
+        It "Validate module can be imported when current language is not en-US" {
+            $currentCulture = [System.Threading.Thread]::CurrentThread.CurrentUICulture
+            try {
+                [System.Threading.Thread]::CurrentThread.CurrentCulture = [CultureInfo]::new("he-IL")
+                { Import-Module Microsoft.PowerShell.Archive -Force -ErrorAction Stop } | Should -Not -Throw
+            }
+            finally {
+                [System.Threading.Thread]::CurrentThread.CurrentCulture = $currentCulture
+            }
+        }
     }
 }
