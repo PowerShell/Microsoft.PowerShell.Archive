@@ -169,20 +169,6 @@ Describe("Microsoft.PowerShell.Archive tests") {
           }
       }
 
-      # This cannot happen in -WriteMode Create because another error will be throw before
-      It "Throws an error when Path and DestinationPath are the same" -Skip {
-          $sourcePath = "TestDrive:/SourceDir/Sample-1.txt"
-          $destinationPath = $sourcePath
-
-          try {
-              # Note the cmdlet performs validation on $destinationPath
-              Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-              throw "Failed to detect an error when Path and DestinationPath are the same"
-          } catch {
-              $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
-          }
-      }
-
       It "Throws an error when Path and DestinationPath are the same and -Update is specified" {
           $sourcePath = "TestDrive:/SourceDir/Sample-1.txt"
           $destinationPath = $sourcePath
@@ -204,18 +190,6 @@ Describe("Microsoft.PowerShell.Archive tests") {
               throw "Failed to detect an error when Path and DestinationPath are the same and -Overwrite is specified"
           } catch {
               $_.FullyQualifiedErrorId | Should -Be "SamePathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
-          }
-      }
-
-      It "Throws an error when LiteralPath and DestinationPath are the same" -Skip {
-          $sourcePath = "TestDrive:/SourceDir/Sample-1.txt"
-          $destinationPath = $sourcePath
-
-          try {
-              Compress-Archive -LiteralPath $sourcePath -DestinationPath $destinationPath
-              throw "Failed to detect an error when LiteralPath and DestinationPath are the same"
-          } catch {
-              $_.FullyQualifiedErrorId | Should -Be "SameLiteralPathAndDestinationPath,Microsoft.PowerShell.Archive.CompressArchiveCommand"
           }
       }
 
@@ -388,101 +362,131 @@ Describe("Microsoft.PowerShell.Archive tests") {
       }
   }
 
-  Context "Zip-specific tests" {
-      BeforeAll {
-          # Create a file whose last write time is before 1980
-          $content | Out-File -FilePath TestDrive:/OldFile.txt
-          Set-ItemProperty -Path TestDrive:/OldFile.txt -Name LastWriteTime -Value '1974-01-16 14:44'
+    Context "Zip-specific tests" -Tag Slow {
+        BeforeAll {
+            # Create a file whose last write time is before 1980
+            $content | Out-File -FilePath TestDrive:/OldFile.txt
+            Set-ItemProperty -Path TestDrive:/OldFile.txt -Name LastWriteTime -Value '1974-01-16 14:44'
 
-          # Create a directory whose last write time is before 1980
-          New-Item -Path "TestDrive:/olddirectory" -ItemType Directory
-          Set-ItemProperty -Path "TestDrive:/olddirectory" -Name "LastWriteTime" -Value '1974-01-16 14:44'
-      }
+            # Create a directory whose last write time is before 1980
+            New-Item -Path "TestDrive:/olddirectory" -ItemType Directory
+            Set-ItemProperty -Path "TestDrive:/olddirectory" -Name "LastWriteTime" -Value '1974-01-16 14:44'
 
-      It "Compresses a file whose last write time is before 1980" {
-          $sourcePath = "TestDrive:/OldFile.txt"
-          $destinationPath = "${TestDrive}/archive11.zip"
+                
+            $numberOfBytes = 512
+            $bytes = [byte[]]::new($numberOfBytes)
+            for ($i = 0; $i -lt $numberOfBytes; $i++) {
+                $bytes[$i] = 1
+            }
 
-          # Assert the last write time of the file is before 1980
-          $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
-          $dateProperty.Year | Should -BeLessThan 1980
+            # Create a large file containing 1's
+            $largeFilePath = Join-Path $TestDrive "file1"
+            $fileWith1s = [System.IO.File]::Create($largeFilePath)
+            
+            $numberOfTimesToWrite = 5GB / $numberOfBytes
+            for ($i=0; $i -lt $numberOfTimesToWrite; $i++) {
+                $fileWith1s.Write($bytes, 0, $numberOfBytes)
+            }
+            $fileWith1s.Close()
+        }
 
-          Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-          $destinationPath | Should -BeZipArchiveOnlyContaining @('OldFile.txt')
+        It "Compresses a file whose last write time is before 1980" {
+            $sourcePath = "TestDrive:/OldFile.txt"
+            $destinationPath = "${TestDrive}/archive11.zip"
 
-          # Get the archive
-          $fileMode = [System.IO.FileMode]::Open
-          $archiveStream = New-Object -TypeName System.IO.FileStream -ArgumentList $destinationPath,$fileMode
-          $zipArchiveMode = [System.IO.Compression.ZipArchiveMode]::Read
-          $archive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $archiveStream,$zipArchiveMode
-          $entry = $archive.GetEntry("OldFile.txt")
-          $entry | Should -Not -BeNullOrEmpty
+            # Assert the last write time of the file is before 1980
+            $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
+            $dateProperty.Year | Should -BeLessThan 1980
 
-          $entry.LastWriteTime.Year | Should -BeExactly 1980
-          $entry.LastWriteTime.Month| Should -BeExactly 1
-          $entry.LastWriteTime.Day | Should -BeExactly 1
-          $entry.LastWriteTime.Hour | Should -BeExactly 0
-          $entry.LastWriteTime.Minute | Should -BeExactly 0
-          $entry.LastWriteTime.Second | Should -BeExactly 0
-          $entry.LastWriteTime.Millisecond | Should -BeExactly 0
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should -BeZipArchiveOnlyContaining @('OldFile.txt')
 
+            # Get the archive
+            $fileMode = [System.IO.FileMode]::Open
+            $archiveStream = New-Object -TypeName System.IO.FileStream -ArgumentList $destinationPath,$fileMode
+            $zipArchiveMode = [System.IO.Compression.ZipArchiveMode]::Read
+            $archive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $archiveStream,$zipArchiveMode
+            $entry = $archive.GetEntry("OldFile.txt")
+            $entry | Should -Not -BeNullOrEmpty
 
-          $archive.Dispose()
-          $archiveStream.Dispose()
-      }
-
-      It "Compresses a directory whose last write time is before 1980 with format <Format>" {
-          $sourcePath = "TestDrive:/olddirectory"
-          $destinationPath = "${TestDrive}/archive12.zip"
-
-          Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
-          $destinationPath | Should -BeZipArchiveOnlyContaining @('olddirectory/')
-
-          # Get the archive
-          $fileMode = [System.IO.FileMode]::Open
-          $archiveStream = New-Object -TypeName System.IO.FileStream -ArgumentList $destinationPath,$fileMode
-          $zipArchiveMode = [System.IO.Compression.ZipArchiveMode]::Read
-          $archive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $archiveStream,$zipArchiveMode
-          $entry = $archive.GetEntry("olddirectory/")
-          $entry | Should -Not -BeNullOrEmpty
-
-          $entry.LastWriteTime.Year | Should -BeExactly 1980
-          $entry.LastWriteTime.Month| Should -BeExactly 1
-          $entry.LastWriteTime.Day | Should -BeExactly 1
-          $entry.LastWriteTime.Hour | Should -BeExactly 0
-          $entry.LastWriteTime.Minute | Should -BeExactly 0
-          $entry.LastWriteTime.Second | Should -BeExactly 0
-          $entry.LastWriteTime.Millisecond | Should -BeExactly 0
+            $entry.LastWriteTime.Year | Should -BeExactly 1980
+            $entry.LastWriteTime.Month| Should -BeExactly 1
+            $entry.LastWriteTime.Day | Should -BeExactly 1
+            $entry.LastWriteTime.Hour | Should -BeExactly 0
+            $entry.LastWriteTime.Minute | Should -BeExactly 0
+            $entry.LastWriteTime.Second | Should -BeExactly 0
+            $entry.LastWriteTime.Millisecond | Should -BeExactly 0
 
 
-          $archive.Dispose()
-          $archiveStream.Dispose()
-      }
+            $archive.Dispose()
+            $archiveStream.Dispose()
+        }
 
-      It "Writes a warning when compressing a file whose last write time is before 1980 with format <Format>" {
-          $sourcePath = "TestDrive:/OldFile.txt"
-          $destinationPath = "${TestDrive}/archive13.zip"
+        It "Compresses a directory whose last write time is before 1980 with format <Format>" {
+            $sourcePath = "TestDrive:/olddirectory"
+            $destinationPath = "${TestDrive}/archive12.zip"
 
-          # Assert the last write time of the file is before 1980
-          $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
-          $dateProperty.Year | Should -BeLessThan 1980
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should -BeZipArchiveOnlyContaining @('olddirectory/')
 
-          Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningVariable warnings
-          $warnings.Length | Should -Be 1
-      }
+            # Get the archive
+            $fileMode = [System.IO.FileMode]::Open
+            $archiveStream = New-Object -TypeName System.IO.FileStream -ArgumentList $destinationPath,$fileMode
+            $zipArchiveMode = [System.IO.Compression.ZipArchiveMode]::Read
+            $archive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $archiveStream,$zipArchiveMode
+            $entry = $archive.GetEntry("olddirectory/")
+            $entry | Should -Not -BeNullOrEmpty
 
-      It "Writes a warning when compresing a directory whose last write time is before 1980 with format <Format>" {
-          $sourcePath = "TestDrive:/olddirectory"
-          $destinationPath = "${TestDrive}/archive14.zip"
+            $entry.LastWriteTime.Year | Should -BeExactly 1980
+            $entry.LastWriteTime.Month| Should -BeExactly 1
+            $entry.LastWriteTime.Day | Should -BeExactly 1
+            $entry.LastWriteTime.Hour | Should -BeExactly 0
+            $entry.LastWriteTime.Minute | Should -BeExactly 0
+            $entry.LastWriteTime.Second | Should -BeExactly 0
+            $entry.LastWriteTime.Millisecond | Should -BeExactly 0
 
-          # Assert the last write time of the file is before 1980
-          $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
-          $dateProperty.Year | Should -BeLessThan 1980
 
-          Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningVariable warnings
-          $warnings.Length | Should -Be 1
-      }
-  }
+            $archive.Dispose()
+            $archiveStream.Dispose()
+        }
+
+        It "Writes a warning when compressing a file whose last write time is before 1980 with format <Format>" {
+            $sourcePath = "TestDrive:/OldFile.txt"
+            $destinationPath = "${TestDrive}/archive13.zip"
+
+            # Assert the last write time of the file is before 1980
+            $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
+            $dateProperty.Year | Should -BeLessThan 1980
+
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningVariable warnings
+            $warnings.Length | Should -Be 1
+        }
+
+        It "Writes a warning when compresing a directory whose last write time is before 1980 with format <Format>" {
+            $sourcePath = "TestDrive:/olddirectory"
+            $destinationPath = "${TestDrive}/archive14.zip"
+
+            # Assert the last write time of the file is before 1980
+            $dateProperty = Get-ItemPropertyValue -Path $sourcePath -Name "LastWriteTime"
+            $dateProperty.Year | Should -BeLessThan 1980
+
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath -WarningVariable warnings
+            $warnings.Length | Should -Be 1
+        }
+
+        It "Creates an archive containing files > 4GB" {
+            (Get-Item "TestDrive:/file1").Length | Should -BeGreaterThan 4GB
+            Compress-Archive -Path "TestDrive:/file1" -DestinationPath "TestDrive:/archive1.zip"
+            "TestDrive:/archive1.zip" | Should -BeArchiveOnlyContaining @("file1") -Format Zip
+        }
+
+        It "Creates an an archive > 4GB in size" {
+            $destinationPath = "TestDrive:/archive2.zip"
+            Compress-Archive -Path "TestDrive:/file1" -DestinationPath $destinationPath -CompressionLevel NoCompression
+            $destinationPath | Should -BeArchiveOnlyContaining @("file1") -Format Zip
+            (Get-Item $destinationPath).Length | Should -BeGreaterThan 4GB
+        }
+    }
 
   Context "DestinationPath and -WriteMode Overwrite tests" {
       BeforeAll {
@@ -642,10 +646,6 @@ Describe("Microsoft.PowerShell.Archive tests") {
       }
   }
 
-  Context "Relative Path tests" {
-      
-  }
-
     Context "Special and Wildcard Characters Tests" {
         BeforeAll {
             New-Item TestDrive:/SourceDir -Type Directory
@@ -758,7 +758,6 @@ Describe("Microsoft.PowerShell.Archive tests") {
             }
         }
 
-
         It "Skips archiving a file in use" {
             $fileMode = [System.IO.FileMode]::Open
             $fileAccess = [System.IO.FileAccess]::Write
@@ -810,6 +809,13 @@ Describe("Microsoft.PowerShell.Archive tests") {
         BeforeAll {
             New-Item -Path TestDrive:/file1.txt -ItemType File
             "Hello, World!" | Out-File -FilePath TestDrive:/file1.txt
+
+            # Compress a file with different CompressionLevel values
+            $path = Join-Path $ScriptRoot "Sample-File"
+            Compress-Archive -Path $path -DestinationPath TestDrive:/archive1.zip -CompressionLevel Optimal
+            Compress-Archive -Path $path -DestinationPath TestDrive:/archive2.zip -CompressionLevel NoCompression
+            Compress-Archive -Path $path -DestinationPath TestDrive:/archive3.zip -CompressionLevel Fastest
+            Compress-Archive -Path $path -DestinationPath TestDrive:/archive4.zip -CompressionLevel SmallestSize
         }
 
         It "Throws an error when an invalid value is supplied to CompressionLevel" {
@@ -819,6 +825,14 @@ Describe("Microsoft.PowerShell.Archive tests") {
                 $_.FullyQualifiedErrorId | Should -Be "CannotConvertArgumentNoMessage,Microsoft.PowerShell.Archive.CompressArchiveCommand"
             }
         }
+
+        It "Creates an archive with -CompressionLevel" -ForEach @(
+            @{CompressionLevel = [System.IO.Compression.CompressionLevel]::Optimal}
+        ) {
+            
+        }
+
+
     }
 
     Context "Path Structure Preservation Tests" {
@@ -1036,32 +1050,85 @@ Describe("Microsoft.PowerShell.Archive tests") {
     }
 
     Context "Large file tests" -Tag Slow {
-        BeforeAll {
-            $numberOfBytes = 512
-            $bytes = [byte[]]::new($numberOfBytes)
-            for ($i = 0; $i -lt $numberOfBytes; $i++) {
-                $bytes[$i] = 1
-            }
+        
+    }
 
-            # Create a large file containing 1's
-            $largeFilePath = Join-Path $TestDrive "file1"
-            $fileWith1s = [System.IO.File]::Create($largeFilePath)
-            
-            $numberOfTimesToWrite = 5GB / $numberOfBytes
-            for ($i=0; $i -lt $numberOfTimesToWrite; $i++) {
-                $fileWith1s.Write($bytes, 0, $numberOfBytes)
-            }
-            $fileWith1s.Close()
-            $f= Get-Item "TestDrive:/file1" 
-            $f.Length | Write-Verbose -Verbose
-            $f.Length / 1GB | Write-Verbose -Verbose
+    Context "Update tests" {
+        BeforeAll {
+            New-Item -Path TestDrive:/file1.txt -ItemType File
+            "Hello, World!" | Out-File -FilePath TestDrive:/file1.txt
+            New-Item -Path TestDrive:/file2.txt -ItemType File
+            "Hello, PowerShell!" | Out-File -FilePath TestDrive:/file2.txt
+
+            Compress-Archive -Path TestDrive:/file1.txt -DestinationPath TestDrive:/archive1.zip
+            Compress-Archive -Path TestDrive:/file1.txt -DestinationPath TestDrive:/archive_to_append.zip
+            Compress-Archive -Path TestDrive:/file1.txt -DestinationPath TestDrive:/archive_to_update.zip
+
+            # Create an archive containing a directory for updating
+            New-Item -Path TestDrive:/directory1 -ItemType Directory
+            New-Item -Path TestDrive:/directory1/file1.txt -ItemType File
+
+            Compress-Archive -Path TestDrive:/directory1 -DestinationPath TestDrive:/archive_with_directory.zip
+
+            New-Item -Path TestDrive:/directory1/file2.txt -ItemType File
         }
 
-        It "Creates an archive containing files > 4GB" {
-            Compress-Archive -Path "TestDrive:/file1" -DestinationPath "TestDrive:/archive1.zip"
-            $hash = Get-FileHash -Path "TestDrive:/file1" -Algorithm SHA512
-            # We are comparing hashes to see if the archive matches the desired archive
-            $hash.Hash | Should -Be "E3676A06DFFD348EC48B56C0AA2D3BC6BB52AF6903F21AA221FF01493BB4360E58ACEC2D369F954F0739851679F1891AFC31FD630E7863105285FD6595F1E7B5"
+        It "Does not throw an error when -Update is specified and the archive already exists" {
+            Compress-Archive -Path TestDrive:/file2.txt -DestinationPath TestDrive:/archive1.zip -WriteMode Update -ErrorVariable errors
+            $errors.Count | Should -Be 0
+        }
+
+        It "Appends a file to an archive when -WriteMode Update is specified" {
+            Compress-Archive -Path TestDrive:/file2.txt -DestinationPath TestDrive:/archive_to_append.zip -WriteMode Update
+            "TestDrive:/archive_to_append.zip" | Should -BeArchiveOnlyContaining @("file1.txt", "file2.txt") -Format Zip
+        }
+
+        It "Modifies a pre-existing file in an archive when -WriteMode Update is specified" {
+            "File has been modified." | Out-File -FilePath TestDrive:/file1.txt
+            Compress-Archive -Path TestDrive:/file1.txt -DestinationPath TestDrive:/archive_to_update.zip -WriteMode Update
+            "TestDrive:/archive_to_update.zip" | Should -BeArchiveOnlyContaining @("file1.txt") -Format Zip
+
+            # Expand the archive and ensure it has the new contents
+            Expand-Archive -Path TestDrive:/archive_to_update.zip -DestinationPath TestDrive:/archive_to_update_contents
+
+            Get-Content TestDrive:/archive_to_update_contents/file1.txt | Should -Be "File has been modified."
+        }
+
+        It "Adds directory's children when updating a directory in the archive" {
+            $archivePath = "TestDrive:/archive_with_directory.zip"
+            Compress-Archive -Path TestDrive:/directory1 -DestinationPath $archivePath -WriteMode Update
+            $archivePath | Should -BeArchiveOnlyContaining @("directory1/", "directory1/file1.txt", "directory1/file2.txt") -Format Zip
+        }
+    }
+
+    Context "Flatten tests" {
+        BeforeAll {
+            New-Item -Path TestDrive:/directory1 -ItemType Directory
+            New-Item -Path TestDrive:/directory1/file1.txt -ItemType File
+            "Hello, World!" | Out-File -FilePath TestDrive:/directory1/file1.txt
+
+            New-Item -Path TestDrive:/directory2 -ItemType Directory
+            New-Item -Path TestDrive:/directory2/file1.txt -ItemType File
+            "Hello, PowerShell!" | Out-File -FilePath TestDrive:/directory2/file1.txt
+        }
+
+        It "Creates a flat archive with -Flatten" {
+            $path = "TestDrive:/directory1"
+            $destinationPath = "TestDrive:/archive1.zip"
+
+            Compress-Archive -Path $path -DestinationPath $destinationPath -Flatten
+            $x = Convert-Path $destinationPath
+            7z l "${x}" | Write-Verbose -Verbose
+            $destinationPath | Should -BeArchiveOnlyContaining @("file1.txt") -Format Zip
+        }
+
+        It "Does not throw an error when multiple files have the same entry name when -Flatten is specified" {
+            $path = "TestDrive:/directory1","TestDrive:/directory2"
+            $destinationPath = "TestDrive:/archive2.zip"
+
+            Compress-Archive -Path $path -DestinationPath $destinationPath -Flatten -ErrorVariable errors
+            errors.Count | Should -Be 0
+            $destinationPath | Should -BeArchiveOnlyContaining @("file1.txt") -Format Zip
         }
     }
 }

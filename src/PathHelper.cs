@@ -25,6 +25,9 @@ namespace Microsoft.PowerShell.Archive
         // These are the paths to add
         internal HashSet<string>? _fullyQualifiedPaths;
 
+        // This is used only when flattening to track entry names, so duplicate entry names can be removed
+        internal HashSet<string>? _entryNames;
+
         internal PathHelper(PSCmdlet cmdlet)
         {
             _cmdlet = cmdlet;
@@ -34,6 +37,7 @@ namespace Microsoft.PowerShell.Archive
         {
             if (Filter is not null) {
                 _wildCardPattern = new WildcardPattern(Filter);
+                _entryNames = new HashSet<string>();
             } 
             List<ArchiveAddition> archiveAdditions = new List<ArchiveAddition>(fullyQualifiedPaths.Count);
             foreach (var path in fullyQualifiedPaths)
@@ -43,6 +47,8 @@ namespace Microsoft.PowerShell.Archive
                 Debug.Assert(Path.IsPathFullyQualified(path));
                 AddAdditionForFullyQualifiedPath(path, archiveAdditions, entryName: null, parentMatchesFilter: false);
             }
+
+            // If the mode is flatten, there could be 
 
             return archiveAdditions;
         }
@@ -74,13 +80,15 @@ namespace Microsoft.PowerShell.Archive
             }
 
             bool doesMatchFilter = true;
-            if (!parentMatchesFilter && _wildCardPattern is not null) {
+            if (!parentMatchesFilter && _wildCardPattern is not null)
+            {
                 doesMatchFilter = _wildCardPattern.IsMatch(fileSystemInfo.Name);
             }
             
             // if entryName, then set it as the entry name of the file or directory in the archive
             // The entry name will preserve the directory structure as long as the path is relative to the working directory
-            if (entryName is null) {
+            if (entryName is null)
+            {
                 entryName = GetEntryName(fileSystemInfo, out bool doesPreservePathStructure);
             }
            
@@ -101,8 +109,12 @@ namespace Microsoft.PowerShell.Archive
             // If the item being added is a directory and does not have any descendent files that match the filter, finalAdditions - initialAdditions = 0
             // If the item being added is a directory and has descendent files that match the filter, finalAdditions > initialAdditions
 
-            if (doesMatchFilter || (!doesMatchFilter && finalAdditions - initialAdditions > 0)) {
-                additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: fileSystemInfo));
+            if (doesMatchFilter || (!doesMatchFilter && finalAdditions - initialAdditions > 0) && (Flatten && fileSystemInfo is not DirectoryInfo)) {
+                if (!Flatten || (_entryNames is not null && _entryNames.Add(entryName)))
+                {
+                    additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: fileSystemInfo));
+                }
+                
             }
             
         }
@@ -140,13 +152,17 @@ namespace Microsoft.PowerShell.Archive
                     {
                         // If the parent directory matches the filter, all its contents are included in the archive
                         // Just add the entry for each child without needing to check whether the child matches the filter
-                        additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childFileSystemInfo));
+                        if (!Flatten || (_entryNames is not null && _entryNames.Add(entryName))) {
+                            additions.Add(new ArchiveAddition(entryName: entryName, fileSystemInfo: childFileSystemInfo));
+                        }
                     } 
                     else
                     {
                         // If the parent directory does not match the filter, we want to call this function
                         // because this function will check if the name of the child matches the filter and if so, will add it
-                        AddAdditionForFullyQualifiedPath(childFileSystemInfo.FullName, additions, entryName, parentMatchesFilter: false);
+                        if (!Flatten || (_entryNames is not null && _entryNames.Add(entryName))) {
+                            AddAdditionForFullyQualifiedPath(childFileSystemInfo.FullName, additions, entryName, parentMatchesFilter: false);
+                        }
                     }
                 }
             } 
@@ -267,7 +283,7 @@ namespace Microsoft.PowerShell.Archive
 
         // Adds the parent directories in a path to the list of fully qualified paths
         private void AddParentDirectoriesToFullyQualifiedPaths(string path) {
-            
+
         }
 
         internal System.Collections.ObjectModel.Collection<string>? GetResolvedPathFromPSProviderPath(string path, bool pathMustExist) {
