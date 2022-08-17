@@ -42,6 +42,10 @@ namespace Microsoft.PowerShell.Archive
         [Parameter]
         public SwitchParameter PassThru { get; set; }
 
+        [Parameter]
+        [ValidateNotNullOrEmpty]
+        public string? Filter { get; set; }
+
         #region PrivateMembers
 
         private PathHelper _pathHelper;
@@ -51,6 +55,8 @@ namespace Microsoft.PowerShell.Archive
         private string? _sourcePath;
 
         private bool _didCallProcessRecord;
+
+        private WildcardPattern? _wildcardPattern;
 
         #endregion
 
@@ -78,9 +84,7 @@ namespace Microsoft.PowerShell.Archive
         protected override void EndProcessing()
         {
             // Resolve Path or LiteralPath
-            bool checkForWildcards = ParameterSetName == nameof(ParameterSet.Path);
-            string path = checkForWildcards ? Path : LiteralPath;
-            ValidateSourcePath(path);
+            ValidateSourcePath(ParameterSetName == nameof(ParameterSet.Path) ? Path : LiteralPath);
             Debug.Assert(_sourcePath is not null);
 
             // Determine archive format based on sourcePath
@@ -132,13 +136,21 @@ namespace Microsoft.PowerShell.Archive
                 // Write a verbose message saying "Expanding archive ..."
                 WriteVerbose(string.Format(Messages.ExpandingArchiveMessage, DestinationPath));
 
+                // If a value has been supplied to -Filter, create the object that will perform wildcard matching
+                if (Filter is not null) {
+                    _wildcardPattern = new WildcardPattern(Filter);
+                }
+
                 // Get the next entry in the archive and process it
                 var nextEntry = archive.GetNextEntry();
                 while (nextEntry != null)
                 {
-                    // The process function will write the progress
-                    ProcessArchiveEntry(nextEntry);
-                    nextEntry = archive.GetNextEntry();
+                    // If a value has been supplied to -Filter and the entry name of nextEntry does not match the filter
+                    // skip the entry
+                    if ((Filter is null) || (_wildcardPattern is not null && _wildcardPattern.IsMatch(nextEntry.Name)))
+                    {
+                        ProcessArchiveEntry(nextEntry);
+                    }
 
                     // Update progress info
                     numberOfExpandedItems++;
@@ -149,6 +161,8 @@ namespace Microsoft.PowerShell.Archive
                         progressRecord.PercentComplete = (int)percentComplete;
                         WriteProgress(progressRecord);
                     }
+
+                    nextEntry = archive.GetNextEntry();
                 }
 
                 // Show progress as 100% complete

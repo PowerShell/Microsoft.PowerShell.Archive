@@ -204,4 +204,7 @@
   <data name="MultiplePathsSpecifiedMessage" xml:space="preserve">
     <value>Multiple paths were specified to the cmdlet, but only one is allowed.</value>
   </data>
+  <data name="ArchiveIsNotUpdateableMessage" xml:space="preserve">
+    <value>The archive {0} could not be updated because the format does not support updates.</value>
+  </data>
 </root>

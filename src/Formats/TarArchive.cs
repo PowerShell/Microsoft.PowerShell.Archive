@@ -30,6 +30,8 @@ namespace Microsoft.PowerShell.Archive
 
         string IArchive.Path => _path;
 
+        public bool IsUpdateable => true;
+
         public TarArchive(string path, ArchiveMode mode, FileStream fileStream)
         {
             _mode = mode;
@@ -151,16 +153,13 @@ namespace Microsoft.PowerShell.Archive
             // Underlying object is System.Formats.Tar.TarEntry
             private TarEntry _entry;
 
-            private IEntry _objectAsIEntry;
+            public string Name => _entry.Name;
 
-            string IEntry.Name => _entry.Name;
-
-            bool IEntry.IsDirectory => _entry.EntryType == TarEntryType.Directory;
+            public bool IsDirectory => _entry.EntryType == TarEntryType.Directory;
 
             public TarArchiveEntry(TarEntry entry)
             {
                 _entry = entry;
-                _objectAsIEntry = this;
             }
 
             void IEntry.ExpandTo(string destinationPath)
@@ -173,7 +172,7 @@ namespace Microsoft.PowerShell.Archive
                 }
 
                 var lastWriteTime = _entry.ModificationTime.LocalDateTime;
-                if (_objectAsIEntry.IsDirectory)
+                if (IsDirectory)
                 {
                     Directory.CreateDirectory(destinationPath);
                     Directory.SetLastWriteTime(destinationPath, lastWriteTime);
@@ -182,10 +181,16 @@ namespace Microsoft.PowerShell.Archive
                     _entry.ExtractToFile(destinationPath, overwrite: false);
                     File.SetLastWriteTime(destinationPath, lastWriteTime);
                 }
+
+                SetFileAttributes(destinationPath);
             }
 
             private void SetFileAttributes(string destinationPath) {
-                
+                if (System.Environment.OSVersion.Platform == System.PlatformID.Unix 
+                    || System.Environment.OSVersion.Platform == System.PlatformID.MacOSX) {
+                    
+                    File.SetUnixFileMode(destinationPath, _entry.Mode);
+                }
             }
         }
     }

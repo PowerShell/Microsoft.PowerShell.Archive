@@ -30,6 +30,8 @@ namespace Microsoft.PowerShell.Archive
 
         string IArchive.Path => _path;
 
+        public bool IsUpdateable => false;
+
         public GzipArchive(string path, ArchiveMode mode, FileStream fileStream, CompressionLevel compressionLevel)
         {
             _mode = mode;

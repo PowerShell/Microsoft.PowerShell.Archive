@@ -186,7 +186,9 @@ namespace Microsoft.PowerShell.Archive
             IArchive? archive = null;
             try
             {
-                if (ShouldProcess(target: DestinationPath, action: Messages.Create))
+                // If the archive is in Update mode, we want to skip the ShouldProcess check
+                // This is necessary if we want to check if the archive is updateable
+                if (WriteMode == WriteMode.Update || ShouldProcess(target: DestinationPath, action: Messages.Create))
                 {
                     // If the WriteMode is overwrite, delete the existing archive
                     if (WriteMode == WriteMode.Overwrite)
@@ -198,6 +200,13 @@ namespace Microsoft.PowerShell.Archive
                     archive = ArchiveFactory.GetArchive(format: Format ?? ArchiveFormat.Zip, archivePath: DestinationPath, archiveMode: archiveMode, compressionLevel: CompressionLevel);
                     _didCreateNewArchive = archiveMode != ArchiveMode.Update;
                 }
+
+                // If the cmdlet is in Update mode and the archive does not support updates, throw an error
+                if (archive is not null && !archive.IsUpdateable)
+                {
+                    var errorRecord = ErrorMessages.GetErrorRecord(ErrorCode.ArchiveIsNotUpdateable, DestinationPath);
+                    ThrowTerminatingError(errorRecord);
+                }
                 
                 long numberOfAdditions = archiveAdditions.Count;
                 long numberOfAddedItems = 0;
@@ -208,8 +217,8 @@ namespace Microsoft.PowerShell.Archive
                 {
                     // Update progress
                     var percentComplete = numberOfAddedItems / (float)numberOfAdditions * 100f;
-
-                    progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, $"{percentComplete:0.0}");
+                    var statusDescription = string.Format(Messages.ProgressDisplay, $"{percentComplete:0.0}");
+                    progressRecord = new ProgressRecord(activityId: 1, activity: "Compress-Archive", statusDescription: statusDescription);
                     progressRecord.PercentComplete = (int)percentComplete;
                     WriteProgress(progressRecord);
 
@@ -257,7 +266,7 @@ namespace Microsoft.PowerShell.Archive
 
                 // Once all items in the archive are processed, show progress as 100%
                 // This code is here and not in the loop because we want it to run even if there are no items to add to the archive
-                progressRecord.StatusDescription = string.Format(Messages.ProgressDisplay, "100.0");
+                progressRecord = new ProgressRecord(1, "Compress-Archive", string.Format(Messages.ProgressDisplay, "100.0"));
                 progressRecord.PercentComplete = 100;
                 WriteProgress(progressRecord);
             }

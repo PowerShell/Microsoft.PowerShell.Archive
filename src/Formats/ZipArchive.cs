@@ -30,6 +30,8 @@ namespace Microsoft.PowerShell.Archive
 
         string IArchive.Path => _archivePath;
 
+        public bool IsUpdateable => true;
+
         internal int NumberOfEntries => _zipArchive.Entries.Count;
 
         public ZipArchive(string archivePath, ArchiveMode mode, FileStream archiveStream, CompressionLevel compressionLevel)

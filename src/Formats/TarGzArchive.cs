@@ -36,6 +36,8 @@ namespace Microsoft.PowerShell.Archive
 
         string IArchive.Path => _path;
 
+        public bool IsUpdateable => false;
+
         public TarGzArchive(string path, ArchiveMode mode, FileStream fileStream, CompressionLevel compressionLevel)
         {
             _path = path;

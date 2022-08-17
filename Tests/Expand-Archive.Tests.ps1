@@ -20,6 +20,9 @@ Describe("Expand-Archive Tests") {
             if ($Format -eq "Tar") {
                 return $Path += ".tar"
             }
+            if (Format -eq "Tgz") {
+                return $Path += ".tar.gz"
+            }
             throw "Format type is not supported"
         }
     }
@@ -352,7 +355,8 @@ Describe("Expand-Archive Tests") {
 
     Context "Basic functionality tests"  -ForEach @(
         @{Format = "Zip"},
-        @{Format = "Tar"}
+        @{Format = "Tar"},
+        @{Format = "Tgz"}
     ) {
         # extract to a directory works
         # extract to working directory works when DestinationPath is specified
@@ -673,6 +677,14 @@ Describe("Expand-Archive Tests") {
             $childItems.Count | Should -Be 1
             $childItems[0].Name | Should -Be "file1"
         }
+
+        It "Expands an archive containing an entry whose size is > 4GB" {
+            $destinationPath = "TestDrive:/large_archive_output2"
+            { Expand-Archive -Path TestDrive:/large_entry_archive.zip -DestinationPath $destinationPath } | Should -Not -Throw
+            $childItems = Get-ChildItem $destinationPath
+            $childItems.Count | Should -Be 1
+            $childItems[0].Name | Should -Be "file1"
+        }
     }
 
     Context "Pipeline tests" {
@@ -709,7 +721,7 @@ Describe("Expand-Archive Tests") {
                 $path | Expand-Archive -DestinationPath $destinationPath
             } 
             catch {
-                $_.FullyQualifiedErrorId | Should -Be "MultplePathsPassed,${CmdletClassName}"
+                $_.FullyQualifiedErrorId | Should -Be "MultiplePathsPassed,${CmdletClassName}"
             }
         }
     }
@@ -782,6 +794,39 @@ Describe("Expand-Archive Tests") {
             finally {
                 [System.Threading.Thread]::CurrentThread.CurrentCulture = $currentCulture
             }
+        }
+    }
+
+    Context "Filter tests" {
+        BeforeAll {
+            New-Item TestDrive:/file1.txt -ItemType File
+            "Hello, World!" | Out-File -Path TestDrive:/file.txt
+            New-Item TestDrive:/file2.rtf -ItemType File
+            "Content" | Out-File -Path TestDrive:/file.rtf
+            Compress-Archive -Path TestDrive:/file1.txt,TestDrive:/file2.rtf -DestinationPath TestDrive:/archive1.zip
+
+            # Create an archive containing a directory
+            New-Item TestDrive:/directory1 -ItemType Directory
+            New-Item TestDrive:/directory1/file1.txt -ItemType File
+            "Hello, World!" | Out-File -Path TestDrive:/directory1/file1.txt
+            Compress-Archive -Path TestDrive:/directory1 -DestinationPath TestDrive:/archive_containing_directory1
+        }
+
+        It "Filter works" {
+            $destinationPath = "TestDrive:/filter_works_output"
+            Expand-Archive -Path TestDrive:/archive1.zip -DestinationPath $destinationPath -Filter *.txt
+            $childItems = Get-ChildItem $destinationPath
+            $childItems.Count | Should -Be 1
+            $childItems[0].Name | Should -Be "file1.txt"
+        }
+
+        It "Expands parent directory of a file that matches filter when the parent directory does not match the filter" {
+            $destinationPath = "TestDrive:/expand_parent_directory_output"
+            Expand-Archive -Path TestDrive:/archive_containing_directory1 -DestinationPath $destinationPath -Filter *.txt
+            $childItems = Get-ChildItem $destinationPath -Recurse -Name
+            $childItems.Count | Should -Be 2
+            $childItems | Should -Contain "directory1"
+            $childItems | Should -Contain (Join-Path "directory1" "file1.txt")
         }
     }
 }

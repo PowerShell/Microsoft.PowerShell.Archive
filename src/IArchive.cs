@@ -9,6 +9,9 @@ namespace Microsoft.PowerShell.Archive
 {
     interface IArchive: IDisposable
     {
+        // Can the archive be updated?
+        public bool IsUpdateable { get; }
+
         // Get what mode the archive is in
         public ArchiveMode Mode { get; }
 

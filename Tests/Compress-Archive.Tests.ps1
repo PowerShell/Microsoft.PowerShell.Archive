@@ -1060,6 +1060,8 @@ Describe("Microsoft.PowerShell.Archive tests") {
             Compress-Archive -Path TestDrive:/directory1 -DestinationPath TestDrive:/archive_with_directory.zip
 
             New-Item -Path TestDrive:/directory1/file2.txt -ItemType File
+
+            Compress-Archive -Path TestDrive:/file1.txt -DestinationPath TestDrive:/cantupdate.tar.gz -Format Tgz
         }
 
         It "Does not throw an error when -Update is specified and the archive already exists" {
@@ -1087,6 +1089,14 @@ Describe("Microsoft.PowerShell.Archive tests") {
             $archivePath = "TestDrive:/archive_with_directory.zip"
             Compress-Archive -Path TestDrive:/directory1 -DestinationPath $archivePath -WriteMode Update
             $archivePath | Should -BeArchiveOnlyContaining @("directory1/", "directory1/file1.txt", "directory1/file2.txt") -Format Zip
+        }
+
+        It "Throws an error when trying to update a tgz archive" {
+            try {
+                Compress-Archive -Path TestDrive:/directory1 -DestinationPath TestDrive:/cantupdate.tar.gz -WriteMode Update
+            } catch {
+                $_.FullyQualifiedErrorId | Should -Be "ArchiveIsNotUpdateable,Microsoft.PowerShell.Archive.CompressArchiveCommand"
+            }
         }
     }
 
