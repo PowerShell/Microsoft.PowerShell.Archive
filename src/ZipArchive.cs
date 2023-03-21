@@ -3,7 +3,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Microsoft.PowerShell.Archive
@@ -68,7 +70,9 @@ namespace Microsoft.PowerShell.Archive
                         entryName += ZipArchiveDirectoryPathTerminator;
                     }
 
-                    _zipArchive.CreateEntry(entryName);
+                    System.IO.Compression.ZipArchiveEntry entry = _zipArchive.CreateEntry(entryName);
+
+                    CopyUnixFilePermissions(entry, addition.FileSystemInfo);
                 }
             }
             else
@@ -80,7 +84,9 @@ namespace Microsoft.PowerShell.Archive
                 }
 
                 // TODO: Add exception handling
-                _zipArchive.CreateEntryFromFile(sourceFileName: addition.FileSystemInfo.FullName, entryName: entryName, compressionLevel: _compressionLevel);
+                System.IO.Compression.ZipArchiveEntry entry = _zipArchive.CreateEntryFromFile(sourceFileName: addition.FileSystemInfo.FullName, entryName: entryName, compressionLevel: _compressionLevel);
+                
+                CopyUnixFilePermissions(entry, addition.FileSystemInfo);
             }
         }
 
@@ -102,6 +108,14 @@ namespace Microsoft.PowerShell.Archive
                 case ArchiveMode.Update: return System.IO.Compression.ZipArchiveMode.Update;
                 case ArchiveMode.Extract: return System.IO.Compression.ZipArchiveMode.Read;
                 default: return System.IO.Compression.ZipArchiveMode.Update;
+            }
+        }
+
+        private static void CopyUnixFilePermissions(ZipArchiveEntry archiveEntry, FileSystemInfo fileSystemInfo)
+        {
+            if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
+            {
+                archiveEntry.ExternalAttributes |= (int)fileSystemInfo.UnixFileMode;
             }
         }
 
