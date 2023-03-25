@@ -52,7 +52,7 @@ function Compress-Archive
         [parameter (mandatory=$true, ParameterSetName="LiteralPathWithForce", ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$true)]
         [parameter (mandatory=$true, ParameterSetName="LiteralPathWithUpdate", ValueFromPipeline=$false, ValueFromPipelineByPropertyName=$true)]
         [ValidateNotNullOrEmpty()]
-        [Alias("PSPath")]
+        [Alias("PSPath", "LP")]
         [string[]] $LiteralPath,
 
         [parameter (mandatory=$true,
@@ -269,7 +269,7 @@ function Expand-Archive
         ParameterSetName="LiteralPath",
         ValueFromPipelineByPropertyName=$true)]
         [ValidateNotNullOrEmpty()]
-        [Alias("PSPath")]
+        [Alias("PSPath", "LP")]
         [string] $LiteralPath,
 
         [parameter (mandatory=$false,
