@@ -4,6 +4,7 @@
 BeforeDiscovery {
       # Loads and registers custom assertion. Ignores usage of unapproved verb with -DisableNameChecking
       Import-Module "$PSScriptRoot/Assertions/Should-BeZipArchiveOnlyContaining.psm1" -DisableNameChecking
+      Import-Module "$PSScriptRoot/Assertions/Should-BeZipArchiveWithUnixPermissions.psm1" -DisableNameChecking
 }
 
  Describe("Microsoft.PowerShell.Archive tests") {
@@ -295,6 +296,30 @@ BeforeDiscovery {
             $destinationPath = "TestDrive:/archive3.zip"
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should -BeZipArchiveOnlyContaining @('SourceDir/', 'SourceDir/ChildDir-1/', 'SourceDir/ChildDir-2/', 'SourceDir/ChildEmptyDir/', 'SourceDir/Sample-1.txt', 'SourceDir/ChildDir-1/Sample-2.txt', 'SourceDir/ChildDir-2/Sample-3.txt')
+        }
+        
+        It "Validate Unix file permissions are preserved" -Skip:$IsWindows {
+            Remove-Alias "ls" -Force -ErrorAction Ignore
+            $testDriveRoot = (Get-PsDrive "TestDrive").Root
+            Write-Host $testFileRoot
+            $sourcePath = "TestDrive:/SourceDir"
+            $sourcePathAbsolute = "$testDriveRoot/SourceDir"
+            $tempUnzipPath = "$testDriveRoot/unzip"
+            $destinationPath = "TestDrive:/archive4.zip"
+            New-Item $tempUnzipPath -Type Directory | Out-Null
+
+            $ExpectedDirectoryPermissions = 'drwxr-xr-x'
+            $ExpectedFilePermissions = "-rwxr--r--"
+
+            if ($env:TF_BUILD -ne $null) {
+                $ExpectedDirectoryPermissions = 'd---------'
+                $ExpectedFilePermissions = "-rwx------"
+            }
+
+            chmod -R u+rwx "$sourcePathAbsolute"
+            Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
+            $destinationPath | Should -BeZipArchiveOnlyContaining @('SourceDir/', 'SourceDir/ChildDir-1/', 'SourceDir/ChildDir-2/', 'SourceDir/ChildEmptyDir/', 'SourceDir/Sample-1.txt', 'SourceDir/ChildDir-1/Sample-2.txt', 'SourceDir/ChildDir-2/Sample-3.txt')
+            $destinationPath | Should -BeZipArchiveWithUnixPermissions $tempUnzipPath $ExpectedDirectoryPermissions $ExpectedFilePermissions
         }
     }
 
