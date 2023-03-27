@@ -70,9 +70,9 @@ namespace Microsoft.PowerShell.Archive
                         entryName += ZipArchiveDirectoryPathTerminator;
                     }
 
-                    System.IO.Compression.ZipArchiveEntry entry = _zipArchive.CreateEntry(entryName);
+                    var entry = _zipArchive.CreateEntry(entryName);
 
-                    CopyUnixFilePermissions(entry, addition.FileSystemInfo, entryName.EndsWith(ZipArchiveDirectoryPathTerminator));
+                    CopyUnixFilePermissions(entry, addition.FileSystemInfo, entryName.EndsWith(Path.DirectorySeparatorChar) || entryName.EndsWith(Path.AltDirectorySeparatorChar));
                 }
             }
             else
@@ -84,9 +84,9 @@ namespace Microsoft.PowerShell.Archive
                 }
 
                 // TODO: Add exception handling
-                System.IO.Compression.ZipArchiveEntry entry = _zipArchive.CreateEntryFromFile(sourceFileName: addition.FileSystemInfo.FullName, entryName: entryName, compressionLevel: _compressionLevel);
+                var entry = _zipArchive.CreateEntryFromFile(sourceFileName: addition.FileSystemInfo.FullName, entryName: entryName, compressionLevel: _compressionLevel);
                 
-                CopyUnixFilePermissions(entry, addition.FileSystemInfo, entryName.EndsWith(ZipArchiveDirectoryPathTerminator));
+                CopyUnixFilePermissions(entry, addition.FileSystemInfo, entryName.EndsWith(Path.DirectorySeparatorChar) || entryName.EndsWith(Path.AltDirectorySeparatorChar));
             }
         }
 
