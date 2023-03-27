@@ -310,8 +310,7 @@ BeforeDiscovery {
 
             $ExpectedDirectoryPermissions = 'drwxr-xr-x'
             $ExpectedFilePermissions = "-rwxr--r--"
-            $testUmask = iex "umask -S"
-            Write-Host $testUmask
+
             if ($env:TF_BUILD -ne $null) {
                 $ExpectedDirectoryPermissions = 'd---------'
                 $ExpectedFilePermissions = "-rwx------"
