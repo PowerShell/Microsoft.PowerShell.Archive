@@ -303,8 +303,8 @@ BeforeDiscovery {
             $testDriveRoot = (Get-PsDrive "TestDrive").Root
             Write-Host $testFileRoot
             $sourcePath = "TestDrive:/SourceDir"
-            $sourcePathAbsolute = "$testDriveRoot/SourceDir"
-            $tempUnzipPath = "$testDriveRoot/unzip"
+            $sourcePathAbsolute = Join-Path $testDriveRoot "SourceDir"
+            $tempUnzipPath = Join-Path $testDriveRoot "unzip"
             $destinationPath = "TestDrive:/archive4.zip"
             New-Item $tempUnzipPath -Type Directory | Out-Null
 
