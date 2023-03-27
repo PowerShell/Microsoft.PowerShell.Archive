@@ -72,7 +72,7 @@ namespace Microsoft.PowerShell.Archive
 
                     System.IO.Compression.ZipArchiveEntry entry = _zipArchive.CreateEntry(entryName);
 
-                    CopyUnixFilePermissions(entry, addition.FileSystemInfo);
+                    CopyUnixFilePermissions(entry, addition.FileSystemInfo, entryName.EndsWith(ZipArchiveDirectoryPathTerminator));
                 }
             }
             else
@@ -86,7 +86,7 @@ namespace Microsoft.PowerShell.Archive
                 // TODO: Add exception handling
                 System.IO.Compression.ZipArchiveEntry entry = _zipArchive.CreateEntryFromFile(sourceFileName: addition.FileSystemInfo.FullName, entryName: entryName, compressionLevel: _compressionLevel);
                 
-                CopyUnixFilePermissions(entry, addition.FileSystemInfo);
+                CopyUnixFilePermissions(entry, addition.FileSystemInfo, entryName.EndsWith(ZipArchiveDirectoryPathTerminator));
             }
         }
 
@@ -111,11 +111,14 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
-        private static void CopyUnixFilePermissions(ZipArchiveEntry archiveEntry, FileSystemInfo fileSystemInfo)
+        private static void CopyUnixFilePermissions(ZipArchiveEntry archiveEntry, FileSystemInfo fileSystemInfo, bool isDirectory)
         {
+            const int S_IFREG = 0x8000;
+            const int S_IFDIR = 0x4000;
+            
             if (RuntimeInformation.IsOSPlatform(OSPlatform.Linux))
             {
-                archiveEntry.ExternalAttributes |= (int)fileSystemInfo.UnixFileMode;
+                archiveEntry.ExternalAttributes |= (isDirectory ? S_IFDIR : S_IFREG) | (int)fileSystemInfo.UnixFileMode;
             }
         }
 
