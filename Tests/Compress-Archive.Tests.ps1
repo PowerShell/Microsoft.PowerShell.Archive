@@ -316,7 +316,8 @@ BeforeDiscovery {
                 $ExpectedFilePermissions = "-rwx------"
             }
 
-            chmod -R u+rwx "$sourcePathAbsolute"
+            find $sourcePathAbsolute -type d -print0 | xargs -0 chmod 775
+            find $sourcePathAbsolute -type f -print0 | xargs -0 chmod 700
             Compress-Archive -Path $sourcePath -DestinationPath $destinationPath
             $destinationPath | Should -BeZipArchiveOnlyContaining @('SourceDir/', 'SourceDir/ChildDir-1/', 'SourceDir/ChildDir-2/', 'SourceDir/ChildEmptyDir/', 'SourceDir/Sample-1.txt', 'SourceDir/ChildDir-1/Sample-2.txt', 'SourceDir/ChildDir-2/Sample-3.txt')
             $destinationPath | Should -BeZipArchiveWithUnixPermissions $tempUnzipPath $ExpectedDirectoryPermissions $ExpectedFilePermissions
