@@ -58,6 +58,7 @@ function Should-BeZipArchiveWithUnixPermissions {
         unzip $ActualValue -d $unzipPath
 
         # Get ls to list the unzipped contents of the archive with permissions
+        chmod 775 $unzipPath
         $output = ls -Rl $unzipPath
 
         # Check if the output is null
