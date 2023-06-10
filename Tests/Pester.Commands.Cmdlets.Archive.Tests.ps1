@@ -38,6 +38,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
         $preCreatedArchivePath = Join-Path $script:TestSourceRoot "TrailingSpacer.archive"
         Copy-Item $preCreatedArchivePath $TestDrive$($DS)TrailingSpacer.zip -Force
+
+        $preCreatedArchivePath = Join-Path $script:TestSourceRoot "EncodedWith936.archive"
+        Copy-Item $preCreatedArchivePath $TestDrive$($DS)EncodedWith936.zip -Force
     }
 
     AfterAll {
@@ -1178,6 +1181,16 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
             Compare-Object -ReferenceObject $extractedList -DifferenceObject $sourceList -PassThru | Should Be $null
         }
+
+        It "Validate Expand-Archive works with zip files without utf8 filenames" {
+            $archivePath = "$TestDrive$($DS)EncodingWith936.zip"
+            $destinationPath = "$TestDrive$($DS)EncodingWith936"
+            $filePath = "$TestDrive$($DS)EncodingWith936$($DS)LICENSE - 副本"
+
+            Expand-Archive -Path $archivePath -DestinationPath $destinationPath -EntryEncoding ([system.text.encoding]::GetEncoding(936))
+            Test-Path $filePath | Should Be $true
+        }
+
 
         # trailing spaces give this error on Linux: Exception calling "[System.IO.Compression.ZipFileExtensions]::ExtractToFile" with "3" argument(s): "Could not find a part of the path '/tmp/02132f1d-5b0c-4a99-b5bf-707cef7681a6/TrailingSpacer/Inner/TrailingSpace/test.txt'."
         It "Validate Expand-Archive works with zip files where the contents contain trailing whitespace" -skip:(!$IsWindows) {
