@@ -1,5 +1,8 @@
 # Microsoft.PowerShell.Archive Module
 
+> [!NOTE]
+> This repo is not currently actively being developed although we will actively address any security issues
+
 [Microsoft.PowerShell.Archive module](https://technet.microsoft.com/en-us/library/dn818910.aspx) contains cmdlets that let you create and extract ZIP archives.
 
 | Azure CI  |
