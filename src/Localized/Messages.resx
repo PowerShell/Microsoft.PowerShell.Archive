@@ -126,12 +126,6 @@
   <data name="ArchiveDoesNotExistMessage" xml:space="preserve">
     <value>The archive {0} does not exist.</value>
   </data>
-  <data name="ArchiveExistsAsDirectoryMessage" xml:space="preserve">
-    <value>The destination path {0} is a directory.</value>
-  </data>
-  <data name="ArchiveExistsMessage" xml:space="preserve">
-    <value>The destination path {0} already exists.</value>
-  </data>
   <data name="ArchiveExtensionDoesNotMatchArchiveFormatWarning" xml:space="preserve">
     <value>The archive {0} does not have an extension or an extension that matches the chosen archive format.</value>
   </data>
@@ -141,14 +135,23 @@
   <data name="ArchiveFormatDeterminedVerboseMessage" xml:space="preserve">
     <value>The -Format was not specified, so the archive format was determined to be {0} based on its extension.</value>
   </data>
-  <data name="ArchiveIsNonEmptyDirectory" xml:space="preserve">
-    <value>The archive {0} cannot be overwritten because it is a non-empty directory.</value>
-  </data>
   <data name="ArchiveIsReadOnlyMessage" xml:space="preserve">
     <value>The archive at {0} is read-only.</value>
   </data>
   <data name="CannotOverwriteWorkingDirectoryMessage" xml:space="preserve">
     <value>Unable to overwrite the path {0} because it is the same as the current working directory.</value>
+  </data>
+  <data name="Create" xml:space="preserve">
+    <value>Create</value>
+  </data>
+  <data name="DestinationExistsAsDirectoryMessage" xml:space="preserve">
+    <value>The destination path {0} is a directory.</value>
+  </data>
+  <data name="DestinationExistsMessage" xml:space="preserve">
+    <value>The destination path {0} already exists.</value>
+  </data>
+  <data name="DestinationIsNonEmptyDirectory" xml:space="preserve">
+    <value>The destination {0} cannot be overwritten because it is a non-empty directory.</value>
   </data>
   <data name="Create" xml:space="preserve">
     <value>Create</value>
@@ -171,13 +174,37 @@
   <data name="PathNotFoundMessage" xml:space="preserve">
     <value>The path {0} could not be found.</value>
   </data>
+  <data name="PathResolvedToMultiplePathsMessage" xml:space="preserve">
+    <value>The path {0} refers to multiple paths, but only one was expected. Perhaps this occured because multiple paths matched the wildcard (if applicable).</value>
+  </data>
   <data name="ProgressDisplay" xml:space="preserve">
     <value>{0}% complete</value>
+  </data>
+  <data name="PathResolvedToMultiplePathsMessage" xml:space="preserve">
+    <value>The path {0} refers to multiple paths, but only one was expected. Perhaps this occured because multiple paths matched the wildcard (if applicable).</value>
   </data>
   <data name="SameLiteralPathAndDestinationPathMessage" xml:space="preserve">
     <value>A path supplied to -LiteralPath is the same as the path supplied to -DestinationPath.</value>
   </data>
   <data name="SamePathAndDestinationPathMessage" xml:space="preserve">
     <value>A path supplied to -Path is the same as the path supplied to -DestinationPath.</value>
+  </data>
+  <data name="CannotDetermineDestinationPath" xml:space="preserve">
+    <value>The destination path cannot be determined automatically. Please use the -DestinationPath parameter to enter a destination path.</value>
+  </data>
+  <data name="LastWriteTimeBefore1980Warning" xml:space="preserve">
+    <value>The last write time of the path {0} is before 1980. Since zip does not support dates before January 1, 1980, the last write time will be set to January 1, 1980.</value>
+  </data>
+  <data name="ExpandingArchiveMessage" xml:space="preserve">
+    <value>Expanding archive {0}</value>
+  </data>
+  <data name="ExpandingEntryMessage" xml:space="preserve">
+    <value>Expanding archive entry {0} to destination {1}</value>
+  </data>
+  <data name="MultiplePathsSpecifiedMessage" xml:space="preserve">
+    <value>Multiple paths were specified to the cmdlet, but only one is allowed.</value>
+  </data>
+  <data name="ArchiveIsNotUpdateableMessage" xml:space="preserve">
+    <value>The archive {0} could not be updated because the format does not support updates.</value>
   </data>
 </root>

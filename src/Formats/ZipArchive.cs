@@ -3,8 +3,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.IO.Compression;
-using System.Text;
 
 namespace Microsoft.PowerShell.Archive
 {
@@ -16,19 +16,25 @@ namespace Microsoft.PowerShell.Archive
 
         private readonly string _archivePath;
 
-        private readonly System.IO.FileStream _archiveStream;
+        private readonly FileStream _archiveStream;
 
         private readonly System.IO.Compression.ZipArchive _zipArchive;
 
-        private readonly System.IO.Compression.CompressionLevel _compressionLevel;
+        private readonly CompressionLevel _compressionLevel;
 
         private const char ZipArchiveDirectoryPathTerminator = '/';
+
+        private int _entryIndex;
 
         ArchiveMode IArchive.Mode => _mode;
 
         string IArchive.Path => _archivePath;
 
-        public ZipArchive(string archivePath, ArchiveMode mode, System.IO.FileStream archiveStream, CompressionLevel compressionLevel)
+        public bool IsUpdateable => true;
+
+        internal int NumberOfEntries => _zipArchive.Entries.Count;
+
+        public ZipArchive(string archivePath, ArchiveMode mode, FileStream archiveStream, CompressionLevel compressionLevel)
         {
             _disposedValue = false;
             _mode = mode;
@@ -36,6 +42,7 @@ namespace Microsoft.PowerShell.Archive
             _archiveStream = archiveStream;
             _zipArchive = new System.IO.Compression.ZipArchive(stream: archiveStream, mode: ConvertToZipArchiveMode(_mode), leaveOpen: true);
             _compressionLevel = compressionLevel;
+            _entryIndex = -1;
         }
 
         // If a file is added to the archive when it already contains a folder with the same name,
@@ -68,7 +75,18 @@ namespace Microsoft.PowerShell.Archive
                         entryName += ZipArchiveDirectoryPathTerminator;
                     }
 
-                    _zipArchive.CreateEntry(entryName);
+                    entryInArchive = _zipArchive.CreateEntry(entryName);
+
+                    // Set the last write time
+                    if (entryInArchive != null)
+                    {
+                        var lastWriteTime = addition.FileSystemInfo.LastWriteTime;
+                        if (lastWriteTime.Year < 1980 || lastWriteTime.Year > 2107)
+                        {
+                            lastWriteTime = new DateTime(1980, 1, 1, 0, 0, 0);
+                        }
+                        entryInArchive.LastWriteTime = lastWriteTime;
+                    }
                 }
             }
             else
@@ -84,14 +102,24 @@ namespace Microsoft.PowerShell.Archive
             }
         }
 
-        string[] IArchive.GetEntries()
+        IEntry? IArchive.GetNextEntry()
         {
-            throw new NotImplementedException();
-        }
+            if (_entryIndex < 0)
+            {
+                _entryIndex = 0;
+            }
 
-        void IArchive.Expand(string destinationPath)
-        {
-            throw new NotImplementedException();
+            // If there are no entries, return null
+            if (_zipArchive.Entries.Count == 0 || _entryIndex >= _zipArchive.Entries.Count)
+            {
+                return null;
+            }
+
+            // Create an ZipArchive.ZipArchiveEntry object
+            var nextEntry = _zipArchive.Entries[_entryIndex];
+            _entryIndex++;
+
+            return new ZipArchiveEntry(nextEntry);
         }
 
         private static System.IO.Compression.ZipArchiveMode ConvertToZipArchiveMode(ArchiveMode archiveMode)
@@ -124,6 +152,44 @@ namespace Microsoft.PowerShell.Archive
             // Do not change this code. Put cleanup code in 'Dispose(bool disposing)' method
             Dispose(disposing: true);
             GC.SuppressFinalize(this);
+        }
+
+        internal class ZipArchiveEntry : IEntry
+        {
+            // Underlying object is System.IO.Compression.ZipArchiveEntry
+
+            private System.IO.Compression.ZipArchiveEntry _entry;
+
+            string IEntry.Name => _entry.FullName;
+
+            bool IEntry.IsDirectory => _entry.FullName.EndsWith(System.IO.Path.AltDirectorySeparatorChar);
+
+            void IEntry.ExpandTo(string destinationPath)
+            {
+                // If the parent directory does not exist, create it
+                string? parentDirectory = Path.GetDirectoryName(destinationPath);
+                if (parentDirectory is not null && !Directory.Exists(parentDirectory))
+                {
+                    Directory.CreateDirectory(parentDirectory);
+                }
+
+                // .NET APIs differentiate a file and directory by a terminating `/`
+                // If the entry name ends with `/`, it is a directory
+                if (_entry.FullName.EndsWith(System.IO.Path.AltDirectorySeparatorChar))
+                {
+                    System.IO.Directory.CreateDirectory(destinationPath);
+                    var lastWriteTime = _entry.LastWriteTime;
+                    System.IO.Directory.SetLastWriteTime(destinationPath, lastWriteTime.DateTime);
+                } else
+                {
+                    _entry.ExtractToFile(destinationPath);
+                }
+            }
+
+            internal ZipArchiveEntry(System.IO.Compression.ZipArchiveEntry entry)
+            {
+                _entry = entry;
+            }
         }
     }
 }

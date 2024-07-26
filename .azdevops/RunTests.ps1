@@ -21,7 +21,7 @@ Import-Module -Name "Pester" -MinimumVersion $pesterMinVersion -MaximumVersion $
 # Run tests
 $OutputFile = "$PWD/build-unit-tests.xml"
 $results = $null
-$results = Invoke-Pester -Script ./Tests/Compress-Archive.Tests.ps1 -OutputFile $OutputFile -PassThru -OutputFormat NUnitXml -Show Failed, Context, Describe, Fails
+$results = Invoke-Pester -Script ./Tests -OutputFile $OutputFile -PassThru -OutputFormat NUnitXml -Show Failed, Context, Describe, Fails
 Write-Host "##vso[artifact.upload containerfolder=testResults;artifactname=testResults]$OutputFile"
 if(!$results -or $results.FailedCount -gt 0 -or !$results.TotalCount)
 {
