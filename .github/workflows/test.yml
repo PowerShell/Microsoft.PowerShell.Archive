@@ -1,0 +1,48 @@
+name: PowerShell Archive Module Tests
+
+on:
+  push:
+    branches: [ main, master, dev ]
+  pull_request:
+    branches: [ main, master, dev ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    
+    runs-on: ${{ matrix.os }}
+    
+    name: Test on ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1000
+    
+    - name: Install Pester
+      shell: pwsh
+      run: |
+        if (!(Get-Module -ListAvailable -Name Pester | Where-Object {$_.Version -ge "5.0"})) {
+            Install-Module -Name Pester -Force -SkipPublisherCheck -MinimumVersion 5.0.0
+        }
+    
+    - name: Run Tests
+      shell: pwsh
+      run: |
+        $testResultsFile = "./ArchiveTestResults.xml"
+        Import-Module "./Microsoft.PowerShell.Archive/Microsoft.PowerShell.Archive.psd1" -Force
+        $testResults = Invoke-Pester -Script "./Tests" -OutputFormat NUnitXml -OutputFile $testResultsFile -PassThru
+        if ($testResults.FailedCount -gt 0) {
+            throw "$($testResults.FailedCount) tests failed."
+        }
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}
+        path: ArchiveTestResults.xml
