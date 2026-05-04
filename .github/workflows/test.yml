@@ -2,9 +2,9 @@ name: PowerShell Archive Module Tests
 
 on:
   push:
-    branches: [ main, master, dev ]
+    branches: [ master, servicing ]
   pull_request:
-    branches: [ main, master, dev ]
+    branches: [ master, servicing ]
   workflow_dispatch:
 
 jobs:
