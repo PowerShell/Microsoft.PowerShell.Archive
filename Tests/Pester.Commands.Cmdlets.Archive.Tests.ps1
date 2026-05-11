@@ -1,4 +1,7 @@
-﻿<############################################################################################
+﻿# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
+<############################################################################################
  # File: Pester.Commands.Cmdlets.ArchiveTests.ps1
  # Commands.Cmdlets.ArchiveTests suite contains Tests that are
  # used for validating Microsoft.PowerShell.Archive module.

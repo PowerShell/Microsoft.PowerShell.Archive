@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
 $DS = [System.IO.Path]::DirectorySeparatorChar
 function Add-CompressionAssemblies {
     Add-Type -AssemblyName System.IO.Compression
