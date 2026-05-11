@@ -10,17 +10,18 @@ These instructions define required file-level formatting for PowerShell scripts 
 
 ## Copyright Header
 
-Every `.ps1` file and `.psm1` file must start with this exact two-line header at the top of the file:
+If a change adds a new `.ps1` file or `.psm1` file or touches an existing one, the file should start with the copyright and license header and have an empty line after it, as shown in the example below:
 
 ```powershell
 # Copyright (c) Microsoft Corporation.
 # Licensed under the MIT License.
+
 ```
 
 Do not place blank lines, comments, or code before this header.
 
-## Requirement
+## Requirements
 
 - Add the copyright header when creating a new `.ps1` or `.psm1` file.
 - Preserve the header when editing an existing `.ps1` or `.psm1` file.
-- If a file is missing the header, add it at the very top of the file.
+- If an existing `.ps1` or `.psm1` file is missing the header, only modify that file to add the header if a change touches that file. Do not make a change to add the header if the file is not being modified.
