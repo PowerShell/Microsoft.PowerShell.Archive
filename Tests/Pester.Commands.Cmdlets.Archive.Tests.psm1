@@ -222,7 +222,6 @@ function ExpandArchiveInvalidParameterValidator {
     }
     catch
     {
-        Write-Verbose -Verbose "error fully qualified error id: $($_.FullyQualifiedErrorId)"
         $_.FullyQualifiedErrorId | Should Be $expectedFullyQualifiedErrorId
     }
 }
