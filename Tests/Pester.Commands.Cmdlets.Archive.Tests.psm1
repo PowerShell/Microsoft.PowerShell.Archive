@@ -211,7 +211,7 @@ function ExpandArchiveInvalidParameterValidator {
     {
         if($isLiteralPathParameterSet)
         {
-            Expand-Archive -LiteralPath $path -DestinationPath $destinationPath
+            Expand-Archive -LiteralPath $null -DestinationPath $destinationPath
         }
         else
         {
