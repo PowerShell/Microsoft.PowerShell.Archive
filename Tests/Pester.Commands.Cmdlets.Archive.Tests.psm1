@@ -202,7 +202,7 @@ function ExpandArchiveInvalidParameterValidator {
     param
     (
         [boolean] $isLiteralPathParameterSet,
-        [string[]] $path,
+        [string] $path,
         [string] $destinationPath,
         [string] $expectedFullyQualifiedErrorId
     )
