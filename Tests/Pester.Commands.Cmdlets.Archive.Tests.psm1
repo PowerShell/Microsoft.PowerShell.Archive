@@ -211,7 +211,7 @@ function ExpandArchiveInvalidParameterValidator {
     {
         if($isLiteralPathParameterSet)
         {
-            Expand-Archive -LiteralPath $null -DestinationPath $destinationPath
+            Expand-Archive -LiteralPath $path -DestinationPath $destinationPath
         }
         else
         {
@@ -222,6 +222,7 @@ function ExpandArchiveInvalidParameterValidator {
     }
     catch
     {
+        Write-Verbose -Verbose "error fully qualified error id: $($_.FullyQualifiedErrorId)"
         $_.FullyQualifiedErrorId | Should Be $expectedFullyQualifiedErrorId
     }
 }
