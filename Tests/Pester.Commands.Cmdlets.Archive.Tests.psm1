@@ -175,8 +175,6 @@ function ArchiveFileEntrySeparatorValidator {
     Add-CompressionAssemblies
     try
     {
-        $destFile = "$TestDrive$($DS)ExpandedFile"+([System.Guid]::NewGuid().ToString())+".txt"
-
         $archiveFileStreamArgs = @($path, [System.IO.FileMode]::Open)
         $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
 
@@ -213,7 +211,7 @@ function ExpandArchiveInvalidParameterValidator {
     {
         if($isLiteralPathParameterSet)
         {
-            Expand-Archive -LiteralPath $literalPath -DestinationPath $destinationPath
+            Expand-Archive -LiteralPath $path -DestinationPath $destinationPath
         }
         else
         {

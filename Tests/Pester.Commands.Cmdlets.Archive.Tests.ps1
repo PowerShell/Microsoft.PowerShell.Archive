@@ -10,6 +10,11 @@ $modPath = "$psscriptroot/Pester.Commands.Cmdlets.Archive.Tests.psm1"
 Import-Module $modPath -Force -Verbose
 
 $DS = [System.IO.Path]::DirectorySeparatorChar
+$PS = [System.IO.Path]::PathSeparator
+$script:IsWindows = $IsWindows
+if ($IsWindows -eq $null) {
+    $script:IsWindows = ($PSVersionTable.PSEdition -eq "Desktop")
+}
 Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
     BeforeAll {
@@ -18,7 +23,7 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
         $originalPSModulePath = $env:PSModulePath
         $testSourceRoot = $PSScriptRoot
         # make sure we use the one in this repo
-        $env:PSModulePath = "$($testSourceRoot)\..;$($env:PSModulePath)"
+        $env:PSModulePath = "$($testSourceRoot)$($DS)..$($PS)$($env:PSModulePath)"
 
         New-Item $TestDrive$($DS)SourceDir -Type Directory | Out-Null
         New-Item $TestDrive$($DS)SourceDir$($DS)ChildDir-1 -Type Directory | Out-Null
