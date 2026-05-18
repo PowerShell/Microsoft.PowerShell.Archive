@@ -575,9 +575,9 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             ExpandArchiveInvalidParameterValidator $false $null $null "ParameterArgumentValidationError,Expand-Archive"
 
             ExpandArchiveInvalidParameterValidator $false "$TestDrive$($DS)SourceDir" $null "ParameterArgumentValidationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $false "" "$TestDrive$($DS)SourceDir" "ParameterArgumentTransformationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $false "$TestDrive$($DS)SourceDir" "" "ParameterArgumentTransformationError,Expand-Archive"
-            ExpandArchiveInvalidParameterValidator $false "" "" "ParameterArgumentTransformationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $false "" "$TestDrive$($DS)SourceDir" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $false "$TestDrive$($DS)SourceDir" "" "ParameterArgumentValidationError,Expand-Archive"
+            ExpandArchiveInvalidParameterValidator $false "" "" "ParameterArgumentValidationError,Expand-Archive"
 
             ExpandArchiveInvalidParameterValidator $true $null "$TestDrive$($DS)SourceDir" "ParameterArgumentValidationError,Expand-Archive"
             ExpandArchiveInvalidParameterValidator $true $null $null "ParameterArgumentValidationError,Expand-Archive"
