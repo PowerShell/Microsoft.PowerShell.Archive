@@ -1,0 +1,87 @@
+name: PowerShell Archive Module Tests
+
+on:
+  push:
+    branches: [ master, servicing ]
+  pull_request:
+    branches: [ master, servicing ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    
+    runs-on: ${{ matrix.os }}
+    
+    name: Test on ${{ matrix.os }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1000
+    
+    - name: Install Pester
+      shell: pwsh
+      run: |
+        if (!(Get-Module -ListAvailable -Name Pester | Where-Object {$_.Version -le "4.99" -and $_.Version -ge "4.0"})) {
+            Install-Module -Name Pester -Force -SkipPublisherCheck -MaximumVersion 4.99
+        }
+    
+    - name: Run Tests
+      shell: pwsh
+      run: |
+        Import-Module "Pester" -MaximumVersion "4.99"
+        Get-Module "Pester"
+        $testResultsFile = "./ArchiveTestResults.xml"
+        Import-Module "./Microsoft.PowerShell.Archive/Microsoft.PowerShell.Archive.psd1" -Force
+        $testResults = Invoke-Pester -Script "./Tests" -OutputFormat NUnitXml -OutputFile $testResultsFile -PassThru
+        if ($testResults.FailedCount -gt 0) {
+            throw "$($testResults.FailedCount) tests failed."
+        }
+    
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: test-results-${{ matrix.os }}
+        path: ArchiveTestResults.xml
+
+  winps-tests:
+    runs-on: windows-latest
+
+    name: Windows PowerShell Tests
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1000
+
+    - name: Install Pester
+      shell: pwsh
+      run: |
+        if (!(Get-Module -ListAvailable -Name Pester | Where-Object {$_.Version -le "4.99" -and $_.Version -ge "4.0"})) {
+            Install-Module -Name Pester -Force -SkipPublisherCheck -MaximumVersion 4.99
+        }
+
+    - name: Run Tests
+      shell: pwsh
+      run: |
+        Import-Module "Pester" -MaximumVersion "4.99"
+        Get-Module "Pester"
+        $testResultsFile = "./ArchiveTestResults.xml"
+        Import-Module "./Microsoft.PowerShell.Archive/Microsoft.PowerShell.Archive.psd1" -Force
+        $testResults = Invoke-Pester -Script "./Tests" -OutputFormat NUnitXml -OutputFile $testResultsFile -PassThru
+        if ($testResults.FailedCount -gt 0) {
+            throw "$($testResults.FailedCount) tests failed."
+        }
+
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: windows-powershell-test-results
+        path: ArchiveTestResults.xml
