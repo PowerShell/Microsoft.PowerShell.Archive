@@ -2,9 +2,9 @@ name: PowerShell Archive Module Tests
 
 on:
   push:
-    branches: [ master, servicing, github-mirror ]
+    branches: [ master, servicing, "servicing-*", github-mirror ]
   pull_request:
-    branches: [ master, servicing, github-mirror ]
+    branches: [ master, servicing, "servicing-*", github-mirror ]
   workflow_dispatch:
 
 jobs:
