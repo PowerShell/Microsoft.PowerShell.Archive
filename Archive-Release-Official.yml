@@ -1,0 +1,210 @@
+name: Microsoft-PowerShell-Archive-Release-$(Build.BuildId)
+trigger: none 
+pr:
+  branches:
+    include:
+    - master
+    - release*
+parameters: # parameters are shown up in ADO UI in a build queue time
+- name: 'debug'
+  displayName: 'Enable debug output'
+  type: boolean
+  default: false
+
+variables:
+  - name: DOTNET_CLI_TELEMETRY_OPTOUT
+    value: 1
+  - name: POWERSHELL_TELEMETRY_OPTOUT
+    value: 1
+  - name: WindowsContainerImage
+    value: onebranch.azurecr.io/windows/ltsc2022/vse2022:latest # Docker image which is used to build the project https://aka.ms/obpipelines/containers
+
+resources:
+  repositories:
+  - repository: templates
+    type: git
+    name: OneBranch.Pipelines/GovernedTemplates
+    ref: refs/heads/main
+
+extends:  # Governed template expands from here which defines over all pipeline orchestration with OneBranch security, Compliance & Governance enabled
+  template: v2/OneBranch.Official.CrossPlat.yml@templates  # The Official template may only be used by Production-classified pipelines
+  parameters:
+    featureFlags:
+      WindowsHostVersion: '1ESWindows2022'
+      linuxEsrpSigning: true
+    customTags: 'ES365AIMigrationTooling'
+    release:
+      category: NonAzure
+    globalSdl:
+      disableLegacyManifest: true
+      sbom:
+        enabled: true
+        packageName: Microsoft.PowerShell.Archive
+      codeql:
+        tsaEnabled: true
+        compiled:
+          enabled: true
+      credscan:
+        enabled: true
+        scanFolder:  $(Build.SourcesDirectory)\Microsoft.PowerShell.Archive
+      binskim:
+        enabled: true
+      apiscan:
+        enabled: false
+
+    stages:
+    - stage: stagebuild
+      displayName: Build and Package Microsoft.PowerShell.Archive
+      jobs:
+      - job: jobbuild
+        displayName: Build Microsoft.PowerShell.Archive Files
+        variables:
+        - name: ob_outputDirectory
+          value: '$(Build.ArtifactStagingDirectory)/ONEBRANCH_ARTIFACT'
+        - name: repoRoot
+          value: $(Build.SourcesDirectory)\Microsoft.PowerShell.Archive
+        - name: srcCodePath
+          value: $(repoRoot)\Microsoft.PowerShell.Archive
+        - name: ob_sdl_tsa_configFile
+          value: $(Build.SourcesDirectory)\Microsoft.PowerShell.Archive\.config\tsaoptions.json
+        - name: signSrcPath
+          value: $(repoRoot)\Microsoft.PowerShell.Archive
+        - name: signOutPath
+          value: $(repoRoot)/signed
+        - name: ob_sdl_sbom_enabled
+          value: true
+        - name: ob_signing_setup_enabled
+          value: true
+        #CodeQL tasks added manually to workaround signing failures
+        - name: ob_sdl_codeql_compiled_enabled
+          value: false
+        pool:
+          type: windows
+        steps:
+        - checkout: self
+          env:
+            ob_restore_phase: true # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+
+        - pwsh: |
+            if (-not (Test-Path $(repoRoot)/.config/tsaoptions.json)) {
+              Get-ChildItem $(Build.SourcesDirectory) -recurse -ErrorAction SilentlyContinue
+              throw "tsaoptions.json does not exist under $(repoRoot)/.config"
+            }
+          displayName: Test if tsaoptions.json exists
+          env:
+            ob_restore_phase: true # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+
+        - pwsh: |
+            Get-ChildItem env:
+          displayName: Capture Environment
+          env:
+            ob_restore_phase: true # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+
+        - pwsh: |
+            Write-Host "Displaying contents of Build.SourcesDirectory: $(Build.SourcesDirectory)"
+            Get-ChildItem $(Build.SourcesDirectory) -Recurse
+          displayName: 'Capture Build.SourcesDirectory $(Build.SourcesDirectory)'
+          env:
+            ob_restore_phase: true # Set ob_restore_phase to run this step before '🔒 Setup Signing' step.
+
+        - pwsh: |
+            Write-Host "Displaying contents of signSrcPath: $(signSrcPath)"
+            Get-ChildItem $(signSrcPath) -Recurse
+          displayName: 'Capture signSrcPath $(signSrcPath)'
+          env:
+            ob_restore_phase: true # Set ob_restore_phase to run this step before '🔒 Setup Signing' step. 
+
+        - task: onebranch.pipeline.signing@1
+          displayName: Sign 1st party files
+          inputs:
+            command: 'sign'
+            signing_profile: external_distribution
+            files_to_sign: '**\*.ps1;**\*.psd1;**\*.psm1'
+            search_root: $(signSrcPath)
+
+        - pwsh: |
+            # for Publish-PSResource call, folder structure needs to be 'moduleName/moduleName.psd1'
+            $signedModuleDirPath = Join-Path $(signOutPath) -ChildPath "Microsoft.PowerShell.Archive"
+            Copy-Item -Path $(signSrcPath) -Dest $signedModuleDirPath -Recurse
+            Get-ChildItem $(signOutPath) -Recurse
+            $signedModuleDirExists = Test-Path $signedModuleDirPath
+            Write-Verbose -Verbose "expected module dir '$signedModuleDirPath' with signed files exists: $signedModuleDirExists"
+          displayName: "Copy signed files from '$(signSrcPath)' to '$(signOutPath)/Microsoft.PowerShell.Archive'"
+
+        - pwsh: |
+            # This need to be done before set-location so the module from PSHome is loaded
+            Import-Module -Name Microsoft.PowerShell.PSResourceGet -Force
+
+            $signedModuleDirPath = Join-Path $(signOutPath) -ChildPath "Microsoft.PowerShell.Archive"
+            Set-Location $signedModuleDirPath
+            $publishPath = Join-Path $(signOutPath) -ChildPath 'PublishedNupkg'
+
+            $null = New-Item -ItemType Directory -Path $publishPath -Force
+
+            Register-PSResourceRepository -Name 'localRepo' -Uri $publishPath
+            Publish-PSResource -Path $signedModuleDirPath -Repository 'localRepo' -Verbose
+            Write-Output "##vso[task.setvariable variable=publishPath]$publishPath"
+          displayName: Create nupkg for publishing
+
+        - task: onebranch.pipeline.signing@1
+          displayName: Sign nupkg
+          inputs:
+            command: 'sign'
+            signing_profile: external_distribution
+            files_to_sign: '**\*.nupkg'
+            search_root: '$(publishPath)'
+
+        - task: CopyFiles@2
+          displayName: "Copy nupkg to ob_outputDirectory - '$(ob_outputDirectory)'"
+          inputs:
+            Contents: $(publishPath)\Microsoft.PowerShell.Archive.*.nupkg
+            TargetFolder: $(ob_outputDirectory)
+
+    - stage: release
+      displayName: Release Microsoft.PowerShell.Archive
+      dependsOn: stagebuild
+      variables:
+        version: $[ stageDependencies.build.main.outputs['package.version'] ]
+        drop: $(Pipeline.Workspace)/drop_stagebuild_jobbuild
+        ob_release_environment: 'Production'
+
+      jobs:
+      - job: validation
+        displayName: Manual validation
+        pool:
+          type: server
+        timeoutInMinutes: 1440
+        steps:
+        - task: ManualValidation@0
+          displayName: Wait 24 hours for validation
+          inputs:
+            instructions: Please validate the release
+            timeoutInMinutes: 1440
+
+      - job: PSGalleryPublish
+        displayName: Publish to PSGallery
+        dependsOn: validation
+        templateContext:
+          inputs:
+          - input: pipelineArtifact
+            artifactName: drop_stagebuild_jobbuild
+        pool:
+          type: release
+          os: windows
+        variables:
+          ob_outputDirectory: '$(Build.ArtifactStagingDirectory)/ONEBRANCH_ARTIFACT'
+        steps:
+        - task: PowerShell@2
+          inputs:
+            targetType: 'inline'
+            script: |
+              Get-ChildItem "$(Pipeline.Workspace)/" -Recurse
+          displayName: Find signed Nupkg
+
+        - task: NuGetCommand@2
+          displayName: Push Microsoft.PowerShell.Archive module artifacts to PowerShell Gallery feed
+          inputs:
+            command: push
+            packagesToPush: '$(Pipeline.Workspace)\Microsoft.PowerShell.Archive\signed\PublishedNupkg\Microsoft.PowerShell.Archive.*.nupkg'
+            nuGetFeedType: external
+            publishFeedCredentials: Archive-PSGalleryPush
