@@ -617,6 +617,147 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             catch { $_.FullyQualifiedErrorId | Should Be $expectedError }
         }
 
+        $testCases = @{Entry="CON"},
+                @{Entry="PRN"},
+                @{Entry="AUX"},
+                @{Entry="NUL"},
+                @{Entry="NUL "},
+                @{Entry="NUL."},
+                @{Entry="NUL.."}
+                @{Entry="COM1"},
+                @{Entry="COM2"},
+                @{Entry="COM3"},
+                @{Entry="COM4"},
+                @{Entry="COM5"},
+                @{Entry="COM6"},
+                @{Entry="COM7"},
+                @{Entry="COM8"},
+                @{Entry="COM9"},
+                @{Entry="COM¹"},
+                @{Entry="COM²"},
+                @{Entry="COM³"},
+                @{Entry="LPT1"},
+                @{Entry="LPT2"},
+                @{Entry="LPT3"},
+                @{Entry="LPT4"},
+                @{Entry="LPT5"},
+                @{Entry="LPT6"},
+                @{Entry="LPT7"},
+                @{Entry="LPT8"},
+                @{Entry="LPT9"},
+                @{Entry="LPT¹"},
+                @{Entry="LPT²"},
+                @{Entry="LPT³"}
+
+        It "Validate Expand-Archive renames entries using reserved Windows device name '<Entry>'" -TestCases $testCases -skip:(!$IsWindows) {
+            param($Entry)
+            $archivePath = "$TestDrive$($DS)ReservedDeviceNameEntry.zip"
+            $destinationPath = "$TestDrive$($DS)ReservedDeviceNameEntry"
+
+            Add-CompressionAssemblies
+
+            $archiveFileStreamArgs = @($archivePath, [System.IO.FileMode]::Create)
+            $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
+
+            $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Create, $false)
+            $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
+
+            $entry = $zipArchive.CreateEntry($Entry)
+            $entryStream = $entry.Open()
+            $entryWriter = New-Object -TypeName System.IO.StreamWriter -ArgumentList $entryStream
+            $entryWriter.Write("Invalid Entry Content")
+            $entryWriter.Dispose()
+
+            if ($zipArchive) { $zipArchive.Dispose() }
+            if ($archiveFileStream) { $archiveFileStream.Dispose() }
+
+            try {
+                Expand-Archive -Path $archivePath -DestinationPath $destinationPath -WarningVariable WarningVar -WarningAction SilentlyContinue
+
+                $renamedFileName = "_$($Entry.ToString().TrimEnd(' .'))"
+                $renamedFilePath = Join-Path $destinationPath -ChildPath $renamedFileName
+                $renamedFileExists = Test-Path $renamedFilePath
+                $renamedFileExists | Should Be $true
+
+                $WarningVar.Count | Should -Be 1
+                $WarningVar[0] | Should Match "Windows reserved device name as one of its segments which is not supported. The entry was renamed"
+            }
+            finally
+            {
+                Remove-Item -LiteralPath "$TestDrive$($DS)ReservedDeviceNameEntry" -Force -Recurse
+            }
+
+        }
+
+        $fileNameWithRerservedDeviceNameStemTestCases = @{Entry="NUL.tar.gz"},
+            @{Entry="NUL.txt"}
+
+        It "Validate Expand-Archive allows entries that have a Windows reserved device name stem but also include file extension '<Entry>'" -TestCases $fileNameWithRerservedDeviceNameStemTestCases -skip:(!$IsWindows) {
+            param($Entry)
+            $archivePath = "$TestDrive$($DS)ReservedDeviceNameEntry.zip"
+            $destinationPath = "$TestDrive$($DS)ReservedDeviceNameEntry"
+
+            Add-CompressionAssemblies
+
+            $archiveFileStreamArgs = @($archivePath, [System.IO.FileMode]::Create)
+            $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
+
+            $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Create, $false)
+            $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
+
+            $entry = $zipArchive.CreateEntry($Entry)
+            $entryStream = $entry.Open()
+            $entryWriter = New-Object -TypeName System.IO.StreamWriter -ArgumentList $entryStream
+            $entryWriter.Write("Valid Entry Content")
+            $entryWriter.Dispose()
+
+            if ($zipArchive) { $zipArchive.Dispose() }
+            if ($archiveFileStream) { $archiveFileStream.Dispose() }
+
+            Expand-Archive -Path $archivePath -DestinationPath $destinationPath -WarningVariable WarningVar -WarningAction SilentlyContinue
+            $archiveEntryFilePath = Join-Path $destinationPath -ChildPath "$Entry"
+            $archiveEntryFileExists = Test-Path $archiveEntryFilePath
+            $archiveEntryFileExists | Should Be $true
+
+            $WarningVar.Count | Should -Be 0
+        }
+
+        $win32DevicePathPrefixTestCases = @(
+            @{ Entry = "\\.\file1.txt" },
+            @{ Entry = "\\?\$TestDrive$($DS)file1.txt" },
+            @{ Entry = "//./file1.txt" },
+            @{ Entry = "//?/$TestDrive$($DS)file1.txt" }
+        )
+
+        It "Validate Expand-Archive rejects zip entries using Win32 device path prefix <Entry>" -TestCases $win32DevicePathPrefixTestCases -skip:(!$IsWindows) {
+            param($Entry)
+            $archivePath = "$TestDrive$($DS)Win32DevicePathPrefixEntry.zip"
+            $destinationPath = "$TestDrive$($DS)Win32DevicePathPrefixEntry"
+
+            Add-CompressionAssemblies
+
+            $archiveFileStreamArgs = @($archivePath, [System.IO.FileMode]::Create)
+            $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
+
+            $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Create, $false)
+            $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
+
+            $entry = $zipArchive.CreateEntry($Entry)
+            $entryStream = $entry.Open()
+            $entryWriter = New-Object -TypeName System.IO.StreamWriter -ArgumentList $entryStream
+            $entryWriter.Write("Invalid Entry Content")
+            $entryWriter.Dispose()
+
+            if ($zipArchive) { $zipArchive.Dispose() }
+            if ($archiveFileStream) { $archiveFileStream.Dispose() }
+
+            $res = Test-Path $archivePath
+            $res | Should Be $true
+            Expand-Archive -Path $archivePath -DestinationPath $destinationPath -ErrorAction SilentlyContinue -ErrorVariable err
+            $err.Count | Should -Be 1
+            $err[0].Exception.Message | Should Match "invalid archive entry"
+        }
+
         It "Validate that you can compress an archive to a custom PSDrive using the Compress-Archive cmdlet" {
             $sourcePath = "$TestDrive$($DS)SourceDir$($DS)ChildDir-1$($DS)Sample-3.txt"
             $destinationDriveName = 'CompressArchivePesterTest'

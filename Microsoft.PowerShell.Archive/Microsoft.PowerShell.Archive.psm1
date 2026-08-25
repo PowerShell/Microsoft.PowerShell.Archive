@@ -1,3 +1,6 @@
+# Copyright (c) Microsoft Corporation.
+# Licensed under the MIT License.
+
 data LocalizedData
 {
     # culture="en-US"
@@ -29,6 +32,13 @@ data LocalizedData
 Import-LocalizedData LocalizedData -filename ArchiveResources -ErrorAction Ignore
 
 $zipFileExtension = ".zip"
+
+# Reserved Windows device names used by IsValidWindowsArchiveEntryPath to guard Expand-Archive.
+$script:reservedDeviceNames = New-Object -TypeName 'System.Collections.Generic.HashSet[string]' -ArgumentList @(
+    [string[]]@('CON','PRN','AUX','NUL',
+                'COM1','COM2','COM3','COM4','COM5','COM6','COM7','COM8','COM9', 'COM¹', 'COM²', 'COM³',
+                'LPT1','LPT2','LPT3','LPT4','LPT5','LPT6','LPT7','LPT8','LPT9', 'LPT¹', 'LPT²', 'LPT³'),
+    [System.StringComparer]::OrdinalIgnoreCase)
 
 <############################################################################################
 # The Compress-Archive cmdlet can be used to zip/compress one or more files/directories.
@@ -921,6 +931,62 @@ function ValidateArchivePathHelper
 }
 
 <############################################################################################
+# Get-WindowsArchiveEntryPathValidationResult: Validates a raw archive entry path for Windows
+# and returns whether the path should be rejected plus a potentially sanitized path.
+# Invalid entries include Win32 device path prefixes (\\.\  \\?\  //./  //?/) and any
+# segment containing ':'. Reserved Windows device names in segments are sanitized and prefixed with '_'.
+###############################################################################################>
+function Get-WindowsArchiveEntryPathValidationResult
+{
+    param([string] $Path)
+
+    $result = [PSCustomObject]@{
+        ContainsInvalidDevicePathPrefix = $false
+        IsPathModified = $false
+        UpdatedPath = $Path
+    }
+
+    if ([string]::IsNullOrEmpty($Path))
+    {
+        return $result
+    }
+
+    # Colons are illegal in NTFS filenames (i.e NUL:, NUL:stream, file:bad) and must be rejected.
+    # This method is only called with the entry name and does not contain any drive path (i.e 'C:')
+    # Also validate against Win32 device path prefixes (\\.\  \\?\  //./  //?/)
+    if ($Path -match '^(\\\\|//)[.?][/\\]' -or $Path.Contains(':'))
+    {
+        $result.ContainsInvalidDevicePathPrefix = $true
+        return $result
+    }
+
+    $updatedSegments = New-Object System.Collections.Generic.List[string]
+
+    foreach ($segment in ($Path -split '[/\\]'))
+    {
+        $updatedSegment = $segment
+        $trimmedSegment = $segment.TrimEnd(' .')
+        # Win32 strips trailing spaces and periods before resolving entries: "NUL " -> "NUL", "NUL." -> "NUL", this trimming should be preserved when validating and renaming entries.
+        if ($script:reservedDeviceNames.Contains($trimmedSegment))
+        {
+            $updatedSegment = '_' + $trimmedSegment
+            $result.IsPathModified = $true
+        }
+
+        $updatedSegments.Add($updatedSegment)
+    }
+
+    if ($result.IsPathModified)
+    {
+        $result.UpdatedPath = [string]::Join([System.IO.Path]::DirectorySeparatorChar, $updatedSegments)
+        $BadArchiveEntryMessage = ($LocalizedData.ReservedDeviceNameInArchiveEntry -f $Path, $result.UpdatedPath)
+        Write-Warning $BadArchiveEntryMessage
+    }
+
+    return $result
+}
+
+<############################################################################################
 # ExpandArchiveHelper: This is a helper function used to expand the archive file contents
 # to the specified directory.
 ############################################################################################>
@@ -990,8 +1056,29 @@ function ExpandArchiveHelper
         # The archive entries can either be empty directories or files.
         foreach($currentArchiveEntry in $zipArchive.Entries)
         {
+            $entryPath = $currentArchiveEntry.FullName
+            $isWindowsOS = [System.Environment]::OSVersion.Platform -eq [System.PlatformID]::Win32NT
+
+            if ($isWindowsOS)
+            {
+                # Validate and sanitize the raw entry name before any path resolution.
+                $pathValidationResult = Get-WindowsArchiveEntryPathValidationResult -Path $entryPath
+
+                # Skip invalid paths with Win32 device path prefixes (\\.\ \\?\ //. //?)
+                # or segments containing ':'.
+                if ($pathValidationResult.ContainsInvalidDevicePathPrefix)
+                {
+                    # if contains device path prefix: skip
+                    $BadArchiveEntryMessage = ($LocalizedData.BadArchiveEntry -f $entryPath)
+                    Write-Error $BadArchiveEntryMessage
+                    continue
+                }
+
+                $entryPath = $pathValidationResult.UpdatedPath
+            }
+
             # Windows filesystem provider will internally convert from `/` to `\`
-            $currentArchiveEntryPath = Join-Path -Path $expandedDir -ChildPath $currentArchiveEntry.FullName
+            $currentArchiveEntryPath = Join-Path -Path $expandedDir -ChildPath $entryPath
 
             # Remove possible relative segments from target
             # This is similar to [System.IO.Path]::GetFullPath($currentArchiveEntryPath) but uses PS current dir instead of process-wide current dir
@@ -1001,7 +1088,7 @@ function ExpandArchiveHelper
             # Ordinal match is safest, case-sensitive volumes can be mounted within volumes that are case-insensitive.
             if (-not ($currentArchiveEntryPath.StartsWith($expandedDir, [System.StringComparison]::Ordinal)))
             {
-                $BadArchiveEntryMessage = ($LocalizedData.BadArchiveEntry -f $currentArchiveEntry.FullName)
+                $BadArchiveEntryMessage = ($LocalizedData.BadArchiveEntry -f $entryPath)
                 # notify user of bad archive entry
                 Write-Error $BadArchiveEntryMessage
                 # move on to the next entry in the archive
