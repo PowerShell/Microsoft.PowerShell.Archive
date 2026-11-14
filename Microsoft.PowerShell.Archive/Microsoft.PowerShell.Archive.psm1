@@ -294,6 +294,11 @@ function Expand-Archive
         ValueFromPipelineByPropertyName=$false)]
         [switch] $Force,
 
+        [parameter (mandatory=$false,
+        ValueFromPipeline=$false,
+        ValueFromPipelineByPropertyName=$false)]
+        [System.Text.Encoding] $EntryEncoding,
+
         [switch]
         $PassThru = $false
     )
@@ -302,7 +307,6 @@ function Expand-Archive
     {
        $isVerbose = $psboundparameters.ContainsKey("Verbose")
        $isConfirm = $psboundparameters.ContainsKey("Confirm")
-
         $isDestinationPathProvided = $true
         if($DestinationPath -eq [string]::Empty)
         {
@@ -411,7 +415,7 @@ function Expand-Archive
                     }
                 }
 
-                ExpandArchiveHelper $resolvedSourcePaths $resolvedDestinationPath ([ref]$expandedItems) $Force $isVerbose $isConfirm
+                ExpandArchiveHelper $resolvedSourcePaths $resolvedDestinationPath ([ref]$expandedItems) $EntryEncoding $Force $isVerbose $isConfirm
 
                 $isArchiveFileProcessingComplete = $true
             }
@@ -997,6 +1001,7 @@ function ExpandArchiveHelper
         [string]  $archiveFile,
         [string]  $expandedDir,
         [ref]     $expandedItems,
+        [System.Text.Encoding] $entryEncoding,
         [boolean] $force,
         [boolean] $isVerbose,
         [boolean] $isConfirm
@@ -1011,7 +1016,13 @@ function ExpandArchiveHelper
         $archiveFileStreamArgs = @($archiveFile, [System.IO.FileMode]::Open, [System.IO.FileAccess]::Read)
         $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
 
-        $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
+        if ($entryEncoding -eq $null) {
+            $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false)
+        }
+        else
+        {
+            $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Read, $false, $entryEncoding)
+        }
         try
         {
             $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
