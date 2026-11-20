@@ -960,7 +960,9 @@ function Get-WindowsArchiveEntryPathValidationResult
         return $result
     }
 
-    [string[]] $updatedSegments = foreach ($segment in ($Path -split '[/\\]'))
+    $updatedSegments = [System.Collections.Generic.List[string]]::new()
+
+    foreach ($segment in ($Path -split '[/\\]'))
     {
         $updatedSegment = $segment
         $trimmedSegment = $segment.TrimEnd(' .')
@@ -971,7 +973,7 @@ function Get-WindowsArchiveEntryPathValidationResult
             $result.IsPathModified = $true
         }
 
-        $updatedSegment
+        $updatedSegments.Add($updatedSegment)
     }
 
     if ($result.IsPathModified)
