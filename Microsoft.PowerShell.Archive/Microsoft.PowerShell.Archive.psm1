@@ -960,7 +960,7 @@ function Get-WindowsArchiveEntryPathValidationResult
         return $result
     }
 
-    $updatedSegments = New-Object System.Collections.Generic.List[string]
+    $updatedSegments = [System.Collections.Generic.List[string]]::new()
 
     foreach ($segment in ($Path -split '[/\\]'))
     {
@@ -1124,8 +1124,8 @@ function ExpandArchiveHelper
             {
                 try
                 {
-                    $currentArchiveEntryFileInfo = New-Object -TypeName System.IO.FileInfo -ArgumentList $currentArchiveEntryPath
-                    $parentDirExists = Test-Path -LiteralPath $currentArchiveEntryFileInfo.DirectoryName -PathType Container
+                    $currentArchiveEntryFileInfo = [System.IO.FileInfo] $currentArchiveEntryPath
+                    $parentDirExists = [System.IO.Directory]::Exists($currentArchiveEntryFileInfo.DirectoryName)
 
                     # If the Parent directory of the current entry in the archive file does not exist, then create it.
                     if($parentDirExists -eq $false)
@@ -1184,7 +1184,7 @@ function ExpandArchiveHelper
                     {
                         # The ExtractToFile() method doesn't handle whitespace correctly, strip whitespace which is consistent with how Explorer handles archives
                         # There is an edge case where an archive contains files whose only difference is whitespace, but this is uncommon and likely not legitimate
-                        [string[]] $parts = $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar) | % { $_.Trim() }
+                        [string[]] $parts = foreach ($part in $currentArchiveEntryPath.Split([System.IO.Path]::DirectorySeparatorChar)) { $part.Trim() }
                         $currentArchiveEntryPath = [string]::Join([System.IO.Path]::DirectorySeparatorChar, $parts)
 
                         [System.IO.Compression.ZipFileExtensions]::ExtractToFile($currentArchiveEntry, $currentArchiveEntryPath, $false)

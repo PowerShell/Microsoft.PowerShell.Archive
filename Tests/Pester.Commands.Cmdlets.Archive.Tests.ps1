@@ -689,6 +689,36 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
 
         }
 
+        It "Validate Expand-Archive renames a reserved Windows device name in a nested entry and keeps the other segments" -skip:(!$IsWindows) {
+            $archivePath = "$TestDrive$($DS)NestedReservedDeviceNameEntry.zip"
+            $destinationPath = "$TestDrive$($DS)NestedReservedDeviceNameEntry"
+
+            Add-CompressionAssemblies
+
+            $archiveFileStreamArgs = @($archivePath, [System.IO.FileMode]::Create)
+            $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList $archiveFileStreamArgs
+
+            $zipArchiveArgs = @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Create, $false)
+            $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList $zipArchiveArgs
+
+            $entry = $zipArchive.CreateEntry("Outer/CON./Inner/File.txt")
+            $entryStream = $entry.Open()
+            $entryWriter = New-Object -TypeName System.IO.StreamWriter -ArgumentList $entryStream
+            $entryWriter.Write("Nested Entry Content")
+            $entryWriter.Dispose()
+
+            if ($zipArchive) { $zipArchive.Dispose() }
+            if ($archiveFileStream) { $archiveFileStream.Dispose() }
+
+            $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -PassThru -WarningVariable WarningVar -WarningAction SilentlyContinue
+
+            $expectedDirPath = "$destinationPath$($DS)Outer$($DS)_CON$($DS)Inner"
+            $expectedFilePath = "$expectedDirPath$($DS)File.txt"
+            Get-Content -LiteralPath $expectedFilePath | Should -BeExactly "Nested Entry Content"
+            ($contents.FullName -join '|') | Should -BeExactly "$expectedDirPath|$expectedFilePath"
+            $WarningVar.Count | Should -Be 1
+        }
+
         $fileNameWithRerservedDeviceNameStemTestCases = @{Entry="NUL.tar.gz"},
             @{Entry="NUL.txt"}
 
@@ -1172,6 +1202,127 @@ Describe "Test suite for Microsoft.PowerShell.Archive module" -Tags "BVT" {
             finally {
                 [System.Threading.Thread]::CurrentThread.CurrentCulture = $currentCulture
             }
+        }
+    }
+
+    Context "Expand-Archive - extracted content and -PassThru output" {
+
+        BeforeAll {
+            $archivePath = "$TestDrive$($DS)ContentAndPassThru.zip"
+            $unicodeDirName = "файл"
+            $unicodeFileName = "日本語 αρχείο 😀.txt"
+
+            $binaryContent = New-Object -TypeName byte[] -ArgumentList 256
+            for ($i = 0; $i -lt $binaryContent.Length; $i++) { $binaryContent[$i] = $i }
+
+            # Entries in archive order. Names ending with '/' are directory entries.
+            $archiveEntries = @(
+                @{ Name = "a/top.txt"; Content = [System.Text.Encoding]::UTF8.GetBytes("top") }
+                @{ Name = "a/b/c/deep.bin"; Content = $binaryContent }
+                @{ Name = "a/b/mid.txt"; Content = [System.Text.Encoding]::UTF8.GetBytes("mid") }
+                @{ Name = "empty/" }
+                @{ Name = "a/zero.txt"; Content = [byte[]] @() }
+                @{ Name = "$unicodeDirName/$unicodeFileName"; Content = [System.Text.Encoding]::UTF8.GetBytes($unicodeFileName) }
+                @{ Name = "a/b/c/" }
+                @{ Name = "a/emptychild/" }
+            )
+
+            Add-CompressionAssemblies
+
+            $archiveFileStream = New-Object -TypeName System.IO.FileStream -ArgumentList @($archivePath, [System.IO.FileMode]::Create)
+            $zipArchive = New-Object -TypeName System.IO.Compression.ZipArchive -ArgumentList @($archiveFileStream, [System.IO.Compression.ZipArchiveMode]::Create, $false)
+            try
+            {
+                foreach ($archiveEntry in $archiveEntries)
+                {
+                    $entry = $zipArchive.CreateEntry($archiveEntry.Name)
+                    if (-not $archiveEntry.Name.EndsWith('/'))
+                    {
+                        $entryStream = $entry.Open()
+                        $entryStream.Write($archiveEntry.Content, 0, $archiveEntry.Content.Length)
+                        $entryStream.Dispose()
+                    }
+                }
+            }
+            finally
+            {
+                $zipArchive.Dispose()
+                $archiveFileStream.Dispose()
+            }
+
+            # Every file and directory the archive should produce, relative to the destination.
+            $expectedItems = foreach ($archiveEntry in $archiveEntries)
+            {
+                $segments = $archiveEntry.Name.TrimEnd('/').Split('/')
+                for ($i = 1; $i -le $segments.Count; $i++)
+                {
+                    $segments[0..($i - 1)] -join $DS
+                }
+            }
+            $expectedItems = $expectedItems | Sort-Object -Unique
+
+            function Assert-ExpandedContent([string] $DestinationPath)
+            {
+                $actualItems = Get-ChildItem -LiteralPath $DestinationPath -Recurse -Force |
+                    ForEach-Object { $_.FullName.Substring($DestinationPath.Length + 1) } |
+                    Sort-Object
+                ($actualItems -join '|') | Should -BeExactly ($expectedItems -join '|')
+
+                foreach ($archiveEntry in $archiveEntries)
+                {
+                    if (-not $archiveEntry.Name.EndsWith('/'))
+                    {
+                        $filePath = $DestinationPath + $DS + $archiveEntry.Name.Replace('/', $DS)
+                        $actualContent = [System.IO.File]::ReadAllBytes($filePath)
+                        [System.BitConverter]::ToString($actualContent) | Should -BeExactly ([System.BitConverter]::ToString($archiveEntry.Content))
+                    }
+                }
+            }
+        }
+
+        It "Validate Expand-Archive extracts nested, empty and unicode-named entries with the same content and -PassThru output" {
+            $destinationPath = "$TestDrive$($DS)ContentAndPassThru"
+
+            $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -PassThru
+
+            Assert-ExpandedContent $destinationPath
+
+            # Only the first new parent folder of each file is returned, and folders that already exist are not.
+            $expectedPassThru = @(
+                "a",
+                "a$($DS)top.txt",
+                "a$($DS)b$($DS)c",
+                "a$($DS)b$($DS)c$($DS)deep.bin",
+                "a$($DS)b$($DS)mid.txt",
+                "empty",
+                "a$($DS)zero.txt",
+                $unicodeDirName,
+                "$unicodeDirName$($DS)$unicodeFileName",
+                "a$($DS)emptychild"
+            ) | ForEach-Object { "$destinationPath$($DS)$_" }
+            ($contents.FullName -join '|') | Should -BeExactly ($expectedPassThru -join '|')
+        }
+
+        It "Validate Expand-Archive -Force overwrites existing files, recreates missing folders and returns the same -PassThru output" {
+            $destinationPath = "$TestDrive$($DS)ContentAndPassThruForce"
+
+            Expand-Archive -Path $archivePath -DestinationPath $destinationPath
+            Set-Content -LiteralPath "$destinationPath$($DS)a$($DS)top.txt" -Value "changed content"
+            Remove-Item -LiteralPath "$destinationPath$($DS)$unicodeDirName" -Recurse -Force
+
+            $contents = Expand-Archive -Path $archivePath -DestinationPath $destinationPath -Force -PassThru
+
+            Assert-ExpandedContent $destinationPath
+
+            $expectedPassThru = @(
+                "a$($DS)top.txt",
+                "a$($DS)b$($DS)c$($DS)deep.bin",
+                "a$($DS)b$($DS)mid.txt",
+                "a$($DS)zero.txt",
+                $unicodeDirName,
+                "$unicodeDirName$($DS)$unicodeFileName"
+            ) | ForEach-Object { "$destinationPath$($DS)$_" }
+            ($contents.FullName -join '|') | Should -BeExactly ($expectedPassThru -join '|')
         }
     }
 }
